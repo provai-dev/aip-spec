@@ -1,0 +1,168 @@
+name: AIP Index
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  generate-index:
+    name: Generate AIP Index
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate AIP_INDEX.md
+        run: |
+          python3 - <<'PYEOF'
+          import os, re
+          from datetime import datetime, timezone
+
+          PROPOSAL_DIR = "proposals"
+          OUTPUT_FILE  = "AIP_INDEX.md"
+
+          STATUS_EMOJI = {
+            "Draft":       "🟡 Draft",
+            "Last Call":   "🔵 Last Call",
+            "Accepted":    "🟢 Accepted",
+            "Rejected":    "🔴 Rejected",
+            "Withdrawn":   "⚪ Withdrawn",
+            "Superseded":  "🔁 Superseded",
+          }
+
+          proposals = []
+          last_call_active = []
+
+          for root, dirs, files in os.walk(PROPOSAL_DIR):
+            dirs[:] = [d for d in dirs if d not in ("withdrawn", "_template")]
+            for fname in files:
+              if fname != "proposal.md":
+                continue
+              path = os.path.join(root, fname)
+              with open(path) as f:
+                content = f.read()
+
+              fm_match = re.match(r'^---\n(.*?)\n---', content, re.DOTALL)
+              if not fm_match:
+                continue
+
+              fm = {}
+              for line in fm_match.group(1).splitlines():
+                if ":" in line:
+                  k, _, v = line.partition(":")
+                  fm[k.strip()] = v.strip()
+
+              aip     = fm.get("AIP", "")
+              title   = fm.get("Title", "")
+              authors = fm.get("Author(s)", "")
+              status  = fm.get("Status", "")
+              aip_type= fm.get("Type", "")
+              created = fm.get("Created", "")
+              lce     = fm.get("Last-Call-Ends", "~")
+              spec_v  = fm.get("Spec-Version", "~")  # set when integrated
+
+              if not aip or aip == "XXXX":
+                continue
+
+              proposals.append({
+                "aip": int(aip),
+                "title": title,
+                "authors": authors,
+                "status": status,
+                "type": aip_type,
+                "created": created,
+                "lce": lce,
+                "spec_version": spec_v,
+                "path": path,
+              })
+
+              if status == "Last Call" and lce and lce != "~":
+                last_call_active.append({"aip": int(aip), "title": title, "ends": lce, "path": path})
+
+          proposals.sort(key=lambda x: x["aip"])
+
+          now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+          lines = []
+          lines.append("# AIP Index")
+          lines.append("")
+          lines.append(f"_Last updated: {now}_")
+          lines.append("")
+          lines.append("**Canonical specification:** [docs/aip-spec.md](docs/aip-spec.md)  ")
+          lines.append("**Proposal lifecycle:** [GOVERNANCE.md § 4](GOVERNANCE.md#4-proposal-lifecycle)")
+          lines.append("")
+
+          if last_call_active:
+            lines.append("## 🔵 Last Call Active")
+            lines.append("")
+            lines.append("| AIP | Title | Last Call Ends |")
+            lines.append("|-----|-------|----------------|")
+            for p in sorted(last_call_active, key=lambda x: x["ends"]):
+              lines.append(f"| AIP-{p['aip']:04d} | [{p['title']}]({p['path']}) | {p['ends']} |")
+            lines.append("")
+
+          lines.append("## All Proposals")
+          lines.append("")
+          lines.append("| AIP | Title | Type | Status | Created | Spec Version |")
+          lines.append("|-----|-------|------|--------|---------|--------------|")
+
+          for p in proposals:
+            status_label = STATUS_EMOJI.get(p["status"], p["status"])
+            aip_link = f"[AIP-{p['aip']:04d}]({p['path']})"
+            lines.append(
+              f"| {aip_link} | {p['title']} | {p['type']} | {status_label} "
+              f"| {p['created']} | {p['spec_version']} |"
+            )
+
+          lines.append("")
+
+          with open(OUTPUT_FILE, "w") as f:
+            f.write("\n".join(lines) + "\n")
+
+          print(f"✅ Generated {OUTPUT_FILE} with {len(proposals)} proposals")
+          PYEOF
+
+      - name: Check index is up to date (on PRs)
+        if: github.event_name == 'pull_request'
+        run: |
+          if ! git diff --quiet AIP_INDEX.md; then
+            echo "❌ AIP_INDEX.md is out of date."
+            echo "   Run the index generator locally and commit the updated file."
+            echo ""
+            git diff AIP_INDEX.md
+            exit 1
+          fi
+          echo "✅ AIP_INDEX.md is up to date"
+
+      - name: Open PR to update index (on push to main)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          if git diff --quiet AIP_INDEX.md; then
+            echo "✅ AIP_INDEX.md already up to date — no PR needed"
+            exit 0
+          fi
+
+          git config user.name  "aip-bot"
+          git config user.email "actions@github.com"
+
+          branch="bot/update-aip-index-$(date +%Y%m%d-%H%M%S)"
+          git checkout -b "$branch"
+          git add AIP_INDEX.md
+          git commit -m "[CI] Update AIP_INDEX.md"
+          git push origin "$branch"
+
+          gh pr create \
+            --title "[CI] Update AIP_INDEX.md" \
+            --body "Automated index update after merge to main. Generated by aip-index.yaml." \
+            --base main \
+            --head "$branch" \
+            --label "ci"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

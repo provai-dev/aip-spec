@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provai.dev/schemas/aip/endorsement/latest",
+  "$comment": "This schema is normatively defined in docs/aip-spec.md Section 4.2. Do not modify this file without updating the RFC document accordingly.",
+  "title": "AIP Endorsement",
+  "description": "A signed task-outcome record submitted by one AIP agent to endorse another. Defined in AIP-CORE-v0.1 §10.3. Endorsements feed the Reputation system — they record the outcome of a task that from_aid observed to_aid perform. The Registry stores these immutably. Self-endorsement (from_aid == to_aid) is prohibited.",
+  "type": "object",
+  "required": [
+    "endorsement_id",
+    "from_aid",
+    "to_aid",
+    "task_id",
+    "outcome",
+    "timestamp",
+    "signature"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "endorsement_id": {
+      "type": "string",
+      "description": "Unique identifier for this endorsement. Format convention: 'end:' prefix followed by a UUID v4. Consistent with manifest_id ('cm:') and revocation_id ('rev:') prefix conventions.",
+      "pattern": "^end:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "from_aid": {
+      "type": "string",
+      "pattern": "^did:aip:[a-z][a-z0-9]*(-[a-z0-9]+)*:[0-9a-f]{32}$",
+      "description": "AID of the endorsing agent. MUST be registered and not revoked. MUST NOT equal to_aid (self-endorsement is prohibited by §10.3 and rejected by the Registry with CodeInvalidRequest)."
+    },
+    "to_aid": {
+      "type": "string",
+      "pattern": "^did:aip:[a-z][a-z0-9]*(-[a-z0-9]+)*:[0-9a-f]{32}$",
+      "description": "AID of the agent being endorsed. MUST be registered. MUST NOT equal from_aid."
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque task identifier linking this endorsement to a specific work unit. SHOULD match a task_id used in a delegation chain. Not validated by the Registry beyond being non-empty — the meaning is defined by the application layer."
+    },
+    "outcome": {
+      "type": "string",
+      "enum": ["success", "partial", "failure"],
+      "description": "Machine-readable task outcome. success — the task was completed as specified. partial — the task was partially completed (e.g. time-bounded ephemeral agent, incomplete result). failure — the task failed or was not completed satisfactorily."
+    },
+    "notes": {
+      "type": ["string", "null"],
+      "description": "OPTIONAL. Free-form human-readable context about the outcome. Not machine-enforced. Null or absent when no additional context is needed."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of when this endorsement was issued. MUST be a valid RFC 3339 datetime. The Registry stores this as-is; no clock skew validation is enforced on endorsements."
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]+$",
+      "description": "Base64url-encoded EdDSA signature of this endorsement, signed with from_aid's current private key. The Registry MUST verify this signature against the current public key of from_aid before recording. Invalid signatures MUST be rejected with CodeInvalidRequest."
+    }
+  },
+  "not": {
+    "properties": {
+      "from_aid": true,
+      "to_aid": true
+    },
+    "required": ["from_aid", "to_aid"],
+    "description": "from_aid and to_aid MUST be different values. Self-endorsement is prohibited."
+  },
+  "$defs": {
+    "reputation_effect": {
+      "$comment": "Endorsements affect the to_aid reputation score in the Registry's reputation table. The aggregation algorithm (AIP-CORE-v0.1 §10.4) weights endorsements by the from_aid's own reputation score, recency, and outcome severity. The Registry MAY apply a minimum from_aid reputation threshold before counting endorsements."
+    }
+  },
+  "$comment": "Endorsement signature covers the canonical field order: (endorsement_id, from_aid, to_aid, task_id, outcome, notes, timestamp, signature) with signature set to '' during signing. The endorsement_id pattern uses 'end:' prefix to match the Registry's convention for typed identifiers. See AIP-CORE-v0.1 §10.3."
+}

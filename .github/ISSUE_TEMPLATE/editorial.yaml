@@ -1,0 +1,37 @@
+name: "\u270F\uFE0F Editorial Fix"
+description: >
+  Report a typo, broken link, formatting issue, or other editorial problem
+  in docs/aip-spec.md or any governance document.
+  No proposal process required — editorial fixes can be submitted as a PR directly.
+title: "[EDITORIAL] "
+labels: ["editorial"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Editorial fixes are the fastest path to contribution.
+        You can skip this issue entirely and submit a PR directly with title `[EDITORIAL] ...`.
+        A single Editor can review and merge without Last Call.
+
+  - type: input
+    id: location
+    attributes:
+      label: File and Section
+      description: Which file and section contains the issue?
+      placeholder: "e.g., docs/aip-spec.md § 4.2"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What is the problem? Quote the relevant text if helpful.
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested Fix
+      description: What should it say instead? (Optional — leave blank if unsure.)

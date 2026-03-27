@@ -1,0 +1,71 @@
+name: "\U0001F41B Errata"
+description: >
+  Report an error, ambiguity, or inconsistency in the AIP specification.
+  Use this for substantive spec issues. For typos and formatting, use the Editorial template.
+title: "[ERRATA] "
+labels: ["errata"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Errata reports are how the specification improves. Thank you for the careful reading.
+
+        **Reference document:** All references should be to [`docs/aip-spec.md`](../../docs/aip-spec.md)
+        using section numbers (e.g., "Section 7.3, paragraph 2").
+
+        Technical errata (normative behaviour changes) may trigger a PATCH version bump
+        per [VERSIONING.md](../../VERSIONING.md).
+
+  - type: input
+    id: spec_section
+    attributes:
+      label: Spec Section
+      description: Section number and title in docs/aip-spec.md
+      placeholder: "e.g., Section 7.3 — Token Validation"
+    validations:
+      required: true
+
+  - type: textarea
+    id: current_text
+    attributes:
+      label: Current Text
+      description: Quote the exact text that is incorrect or ambiguous.
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: correct_text
+    attributes:
+      label: Correct Text or Interpretation
+      description: >
+        What should it say? If you are reporting an ambiguity rather than a clear
+        error, describe the two (or more) valid interpretations and which is correct.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: errata_type
+    attributes:
+      label: Errata Type
+      options:
+        - "Technical — normative behaviour changes (may require version bump)"
+        - "Editorial — clarity only, no behaviour change"
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact on Implementations
+      description: >
+        Are you aware of implementations that behave incorrectly because of this
+        errata? Does this affect interoperability?
+
+  - type: input
+    id: credit
+    attributes:
+      label: Credit (optional)
+      description: >
+        Name or GitHub handle to credit in CONTRIBUTORS.md and CHANGELOG.md.
+        Leave blank to be credited as anonymous.

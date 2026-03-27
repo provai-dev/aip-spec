@@ -1,0 +1,31 @@
+name: "\U0001F512 Security Vulnerability"
+description: >
+  DO NOT describe the vulnerability here.
+  This template exists only to redirect you to the correct private disclosure process.
+title: "[SECURITY] Private disclosure — see instructions"
+labels: ["security"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Stop — Do Not File a Public Issue for Security Vulnerabilities
+
+        Publicly disclosing a vulnerability before a fix is available puts all
+        AIP implementations at risk.
+
+        ### How to report securely
+
+        1. Go to the **[Security tab](https://github.com/provai-dev/aip-spec/security)**
+           of this repository.
+        2. Click **"Report a vulnerability"** to open a private Security Advisory.
+        3. Describe the issue there — it is visible only to Editors.
+
+        See **[SECURITY.md](../../SECURITY.md)** for the full disclosure policy,
+        response SLA, and recognition process.
+
+        ---
+
+        If you cannot use GitHub Security Advisories, contact the Editors directly
+        using the information in [EDITORS.md](../../EDITORS.md).
+
+        **Do not proceed with this public issue form.**

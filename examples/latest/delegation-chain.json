@@ -1,0 +1,83 @@
+{
+  "aip_chain": [
+    {
+      "header": {
+        "alg": "EdDSA",
+        "typ": "JWT",
+        "kid": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2do7#key-1"
+      },
+      "payload": {
+        "sub": "did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3",
+        "principal": {
+          "type": "human",
+          "id": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2do7"
+        },
+        "delegated_by": null,
+        "delegation_depth": 0,
+        "max_delegation_depth": 3,
+        "issued_at": "2026-03-22T10:00:00Z",
+        "expires_at": "2026-06-22T10:00:00Z",
+        "purpose": "Personal assistant for email and calendar management",
+        "scope": [
+          "email.read",
+          "email.write",
+          "email.send",
+          "calendar.read",
+          "calendar.write"
+        ]
+      },
+      "signature": "example_signature_root_principal"
+    },
+    {
+      "header": {
+        "alg": "EdDSA",
+        "typ": "JWT",
+        "kid": "did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3#key-1"
+      },
+      "payload": {
+        "sub": "did:aip:ephemeral:abc0123456789def0123456789def01234",
+        "principal": {
+          "type": "human",
+          "id": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2do7"
+        },
+        "delegated_by": "did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3",
+        "delegation_depth": 1,
+        "max_delegation_depth": 2,
+        "issued_at": "2026-03-22T10:05:00Z",
+        "expires_at": "2026-03-22T12:05:00Z",
+        "purpose": "Research task for specific project",
+        "task_id": "project-alpha-research-001",
+        "scope": [
+          "web.browse",
+          "web.download"
+        ]
+      },
+      "signature": "example_signature_delegated_agent"
+    },
+    {
+      "header": {
+        "alg": "EdDSA",
+        "typ": "JWT",
+        "kid": "did:aip:ephemeral:abc0123456789def0123456789def01234#key-1"
+      },
+      "payload": {
+        "sub": "did:aip:ephemeral:def123456789abc0123456789abc012345",
+        "principal": {
+          "type": "human",
+          "id": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2do7"
+        },
+        "delegated_by": "did:aip:ephemeral:abc0123456789def0123456789def01234",
+        "delegation_depth": 2,
+        "max_delegation_depth": 1,
+        "issued_at": "2026-03-22T10:10:00Z",
+        "expires_at": "2026-03-22T11:10:00Z",
+        "purpose": "Web scraping subtask",
+        "task_id": "project-alpha-research-001-scrape-001",
+        "scope": [
+          "web.browse"
+        ]
+      },
+      "signature": "example_signature_sub_agent"
+    }
+  ]
+}

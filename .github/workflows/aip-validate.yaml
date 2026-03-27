@@ -1,0 +1,212 @@
+name: Validate AIP Specification
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  # ── Job 1: PR title format ──────────────────────────────────────────────────
+  pr-title:
+    name: PR Title Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR title
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          # Valid prefixes:
+          #   [AIP-XXXX]    — proposal or spec change
+          #   [EDITORIAL]   — editorial fix
+          #   [GOVERNANCE]  — governance/process document
+          #   [SECURITY]    — security advisory or fix
+          #   [CI]          — CI/tooling change
+          #   [RELEASE]     — version cut
+          if echo "$TITLE" | grep -qE '^\[(AIP-[0-9]+|EDITORIAL|GOVERNANCE|SECURITY|CI|RELEASE)\]'; then
+            echo "✅ PR title format valid: $TITLE"
+          else
+            echo "❌ PR title must begin with one of:"
+            echo "   [AIP-XXXX], [EDITORIAL], [GOVERNANCE], [SECURITY], [CI], [RELEASE]"
+            echo "   Got: $TITLE"
+            exit 1
+          fi
+
+  # ── Job 2: Proposal validation ──────────────────────────────────────────────
+  proposals:
+    name: Validate Proposals
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate proposal frontmatter and uniqueness
+        run: |
+          python3 - <<'PYEOF'
+          import os, re, sys
+
+          required_fields = ["AIP", "Title", "Author(s)", "Status", "Type", "Created"]
+          valid_statuses  = {"Draft", "Last Call", "Accepted", "Rejected", "Withdrawn", "Superseded"}
+          valid_types     = {"Standards Track", "Informational", "Process"}
+
+          seen_aip = {}
+          errors   = []
+
+          for root, dirs, files in os.walk("proposals"):
+            # skip withdrawn and template directories
+            dirs[:] = [d for d in dirs if d not in ("withdrawn", "_template")]
+            for fname in files:
+              if fname != "proposal.md":
+                continue
+              path = os.path.join(root, fname)
+              with open(path) as f:
+                content = f.read()
+
+              # extract YAML-ish frontmatter between --- delimiters
+              fm_match = re.match(r'^---\n(.*?)\n---', content, re.DOTALL)
+              if not fm_match:
+                errors.append(f"{path}: missing frontmatter block (expected --- delimiters)")
+                continue
+
+              fm = {}
+              for line in fm_match.group(1).splitlines():
+                if ":" in line:
+                  k, _, v = line.partition(":")
+                  fm[k.strip()] = v.strip()
+
+              # required fields present
+              for field in required_fields:
+                if field not in fm or not fm[field] or fm[field] == "~":
+                  errors.append(f"{path}: missing or empty required field '{field}'")
+
+              # AIP number is numeric
+              aip = fm.get("AIP", "")
+              if aip and aip != "XXXX":
+                if not re.match(r'^\d+$', aip):
+                  errors.append(f"{path}: AIP field must be numeric, got '{aip}'")
+                elif aip in seen_aip:
+                  errors.append(f"{path}: duplicate AIP number {aip} (also in {seen_aip[aip]})")
+                else:
+                  seen_aip[aip] = path
+
+              # Status is valid
+              status = fm.get("Status", "")
+              if status and status not in valid_statuses:
+                errors.append(f"{path}: invalid Status '{status}', must be one of {valid_statuses}")
+
+              # Type is valid
+              aip_type = fm.get("Type", "")
+              if aip_type and aip_type not in valid_types:
+                errors.append(f"{path}: invalid Type '{aip_type}', must be one of {valid_types}")
+
+              # Created is ISO 8601
+              created = fm.get("Created", "")
+              if created and created != "YYYY-MM-DD":
+                if not re.match(r'^\d{4}-\d{2}-\d{2}$', created):
+                  errors.append(f"{path}: Created must be ISO 8601 (YYYY-MM-DD), got '{created}'")
+
+          if errors:
+            for e in errors:
+              print(f"❌ {e}")
+            sys.exit(1)
+
+          print(f"✅ All proposals valid ({len(seen_aip)} AIP numbers checked)")
+          PYEOF
+
+  # ── Job 3: Schema JSON validity ─────────────────────────────────────────────
+  schemas:
+    name: Validate JSON Schemas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check JSON schemas are valid JSON
+        run: |
+          errors=0
+          for f in schemas/latest/*.json; do
+            if python3 -m json.tool "$f" > /dev/null 2>&1; then
+              echo "✅ $f"
+            else
+              echo "❌ $f is not valid JSON"
+              errors=$((errors + 1))
+            fi
+          done
+          [ $errors -eq 0 ] || exit 1
+
+      - name: Check examples are valid JSON
+        run: |
+          errors=0
+          for f in examples/latest/*.json; do
+            if python3 -m json.tool "$f" > /dev/null 2>&1; then
+              echo "✅ $f"
+            else
+              echo "❌ $f is not valid JSON"
+              errors=$((errors + 1))
+            fi
+          done
+          [ $errors -eq 0 ] || exit 1
+
+  # ── Job 4: spec/latest/ deprecation guard ───────────────────────────────────
+  deprecation-guard:
+    name: Deprecation Guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Warn if spec/latest/ is modified
+        run: |
+          changed=$(git diff --name-only HEAD~1 HEAD -- 'spec/latest/' 2>/dev/null || true)
+          if [ -n "$changed" ]; then
+            echo "⚠️  WARNING: The following deprecated files were modified:"
+            echo "$changed"
+            echo ""
+            echo "spec/latest/ files are deprecated. Normative changes go in docs/aip-spec.md."
+            echo "See GOVERNANCE.md § 3 — Authoritative Source of Truth."
+            echo ""
+            echo "If this is intentional (e.g., updating deprecation notices), this warning"
+            echo "can be ignored. The check does not fail the build during the transition period."
+          else
+            echo "✅ No deprecated spec/latest/ files modified"
+          fi
+
+  # ── Job 5: Internal cross-reference check ───────────────────────────────────
+  cross-refs:
+    name: Internal Cross-References
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check internal Markdown links in docs/aip-spec.md
+        run: |
+          python3 - <<'PYEOF'
+          import re, sys
+
+          with open("docs/aip-spec.md") as f:
+            content = f.read()
+
+          # collect all heading anchors GitHub generates
+          anchors = set()
+          for heading in re.findall(r'^#{1,6}\s+(.+)$', content, re.MULTILINE):
+            anchor = heading.lower()
+            anchor = re.sub(r'[^\w\s-]', '', anchor)
+            anchor = re.sub(r'[\s]+', '-', anchor.strip())
+            anchors.add(anchor)
+
+          # find all internal links (#...)
+          broken = []
+          for link in re.findall(r'\[.*?\]\(#([\w-]+)\)', content):
+            if link not in anchors:
+              broken.append(f"#{link}")
+
+          if broken:
+            print("❌ Broken internal links in docs/aip-spec.md:")
+            for b in broken:
+              print(f"   {b}")
+            # warn only — do not fail, anchors vary by renderer
+            print("(warning only — anchor generation may differ across renderers)")
+          else:
+            print("✅ No broken internal links detected")
+          PYEOF

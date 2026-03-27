@@ -1,0 +1,40 @@
+name: "\U0001F4AC Discussion / Question"
+description: >
+  Ask a question about the AIP specification, raise a design concern, or
+  start an open-ended technical discussion.
+  Not for bug reports or formal proposals — use those templates instead.
+title: "[DISCUSSION] "
+labels: ["question", "discussion"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For informal real-time conversation, join [Discord](https://discord.gg/FpeHxaKV).
+        For structured technical discussions that benefit from a permanent record, use this form.
+
+        **Note:** No normative decisions are made in Discussion issues. If your discussion
+        leads to a proposed spec change, file a [New Proposal](new-proposal.yaml) issue.
+
+  - type: textarea
+    id: topic
+    attributes:
+      label: Topic / Question
+      description: What do you want to discuss or understand?
+    validations:
+      required: true
+
+  - type: textarea
+    id: spec_sections
+    attributes:
+      label: Relevant Spec Sections
+      description: >
+        Which sections of docs/aip-spec.md are relevant to your question?
+        (Optional, but helps Editors route your question.)
+
+  - type: textarea
+    id: considered
+    attributes:
+      label: What You Have Already Considered
+      description: >
+        Share any research, alternatives, or partial answers you have found.
+        This helps focus the discussion and avoids re-covering ground.

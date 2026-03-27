@@ -1,0 +1,81 @@
+name: "\U0001F4DC New Proposal (AIP)"
+description: >
+  Propose a new normative change to the AIP specification.
+  This is the Idea stage — a lightweight check before you invest in a full proposal.
+  See CONTRIBUTING.md for the full proposal process.
+title: "[IDEA] "
+labels: ["proposal", "idea"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Before filing:** Check [AIP_INDEX.md](../AIP_INDEX.md) and open issues to confirm this hasn't been proposed before.
+
+        This is an **Idea** issue — the first step in the proposal lifecycle ([GOVERNANCE.md § 4.1](../GOVERNANCE.md#41-idea)).
+        Its purpose is to establish community interest before you write a full proposal document.
+        An Editor or Reviewer will comment "proceed" if this is worth a formal AIP.
+
+  - type: input
+    id: title
+    attributes:
+      label: Proposed Title
+      placeholder: "e.g., Add token binding to Credential Token"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: >
+        What problem does the current specification fail to solve?
+        Be specific — link to the spec section(s) that are insufficient.
+    validations:
+      required: true
+
+  - type: textarea
+    id: direction
+    attributes:
+      label: Proposed Direction
+      description: >
+        What direction should a formal proposal take?
+        This is not the spec text — just the approach you have in mind.
+    validations:
+      required: true
+
+  - type: textarea
+    id: spec_sections
+    attributes:
+      label: Affected Spec Sections
+      description: >
+        Which section(s) of docs/aip-spec.md would this proposal modify?
+        (Leave blank if unknown at this stage.)
+
+  - type: textarea
+    id: security
+    attributes:
+      label: Security Implications
+      description: >
+        Does this change affect authentication, authorisation, cryptography,
+        delegation, or revocation? Any initial thoughts on security impact?
+
+  - type: dropdown
+    id: authoring
+    attributes:
+      label: Are you willing to author the formal proposal?
+      options:
+        - "Yes — I will write proposal.md"
+        - "Yes — with a co-author (tag them below)"
+        - "No — I am raising this for the community to take up"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Pre-flight Checklist
+      options:
+        - label: I checked AIP_INDEX.md and open issues — this has not been proposed before
+          required: true
+        - label: I have read CONTRIBUTING.md and understand the proposal process
+          required: true

@@ -1,0 +1,11 @@
+{
+  "revocation_id": "rv:12345678-1234-5678-9abc-123456789def",
+  "aid": "did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3",
+  "issued_by": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2do7",
+  "issued_at": "2026-03-22T15:30:00Z",
+  "revocation_type": "full_revoke",
+  "reason": "key_compromised",
+  "propagate_to_children": true,
+  "description": "Agent private key compromised - immediate revocation required",
+  "signature": "example_revocation_signature"
+}
