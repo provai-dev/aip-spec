@@ -132,7 +132,7 @@ jobs:
       - name: Check index is up to date (on PRs)
         if: github.event_name == 'pull_request'
         run: |
-          if ! git diff --quiet AIP_INDEX.md; then
+          if [ -n "$(git status --porcelain AIP_INDEX.md)" ]; then
             echo "❌ AIP_INDEX.md is out of date."
             echo "   Run the index generator locally and commit the updated file."
             echo ""
@@ -144,7 +144,7 @@ jobs:
       - name: Open PR to update index (on push to main)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-          if git diff --quiet AIP_INDEX.md; then
+          if [ -z "$(git status --porcelain AIP_INDEX.md)" ]; then
             echo "✅ AIP_INDEX.md already up to date — no PR needed"
             exit 0
           fi
