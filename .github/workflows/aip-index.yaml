@@ -23,7 +23,6 @@ jobs:
         run: |
           python3 - <<'PYEOF'
           import os, re
-          from datetime import datetime, timezone
 
           PROPOSAL_DIR = "proposals"
           OUTPUT_FILE  = "AIP_INDEX.md"
@@ -88,14 +87,10 @@ jobs:
 
           proposals.sort(key=lambda x: x["aip"])
 
-          now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-
           lines = []
           lines.append("# AIP Index")
           lines.append("")
-          lines.append(f"_Last updated: {now}_")
-          lines.append("")
-          lines.append("**Canonical specification:** [docs/aip-spec.md](docs/aip-spec.md)  ")
+          lines.append("**Canonical specification:** [docs/aip-spec.md](docs/aip-spec.md)")
           lines.append("**Proposal lifecycle:** [GOVERNANCE.md § 4](GOVERNANCE.md#4-proposal-lifecycle)")
           lines.append("")
 
