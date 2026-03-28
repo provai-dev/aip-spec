@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://provai.dev/schemas/aip/principal-token/latest",
-  "$comment": "This schema is normatively defined in docs/aip-spec.md Section 4.2. Do not modify this file without updating the RFC document accordingly.",
+  "$comment": "Normatively defined in AIP spec §4.2.4. Principal Tokens are JWTs — they use standard JWT header signing, not a custom canonicalization order. The JWT signing covers the compact base64url(header).base64url(payload) string. Delegation rules D-1 through D-5 are defined in AIP spec §8.",
   "title": "AIP Principal Token",
-  "description": "A signed JWT payload encoding one delegation link in the AIP principal chain. Defined in AIP-CORE-v0.1 §4.3. These tokens are embedded as compact-serialised JWTs in the aip_chain array of a Credential Token — they are not transmitted as standalone objects. Each element in aip_chain is a complete JWT (header.payload.signature) whose payload conforms to this schema.",
+  "description": "A signed JWT payload encoding one delegation link in the AIP principal chain. Defined in AIP spec §4.2.4. These tokens are embedded as compact-serialised JWTs in the aip_chain array of a Credential Token — they are not transmitted as standalone objects. Each element in aip_chain is a complete JWT (header.payload.signature) whose payload conforms to this schema.",
   "type": "object",
   "required": [
     "sub",
@@ -57,14 +57,14 @@
       "type": "integer",
       "minimum": 0,
       "maximum": 10,
-      "description": "Position of this token in the delegation chain. MUST equal the array index of this token in aip_chain (0 for root, 1 for first sub-delegation, etc.). Enforced by Validation Algorithm Rule D-4. Hard maximum 10."
+      "description": "Position of this token in the delegation chain. MUST equal the array index of this token in aip_chain (0 for root, 1 for first sub-delegation, etc.). Enforced by Validation Algorithm Rule D-4 (AIP spec §8). Hard maximum 10."
     },
     "max_delegation_depth": {
       "type": "integer",
       "minimum": 0,
       "maximum": 10,
       "default": 3,
-      "description": "Maximum total delegation depth permitted from this chain's root. Set by the root principal in aip_chain[0] and MUST NOT be increased by any agent in the chain (Rule D-2). A value of 0 means the authorised agent is a leaf — it cannot spawn sub-agents. Default when absent: 3. Hard maximum: 10. Only the value from aip_chain[0] governs the entire chain — values in subsequent tokens are informational only."
+      "description": "Maximum total delegation depth permitted from this chain's root. Set by the root principal in aip_chain[0] and MUST NOT be increased by any agent in the chain (Rule D-2, AIP spec §8). A value of 0 means the authorised agent is a leaf — it cannot spawn sub-agents. Default when absent: 3. Hard maximum: 10. Only the value from aip_chain[0] governs the entire chain — values in subsequent tokens are informational only."
     },
     "issued_at": {
       "type": "string",
@@ -94,18 +94,18 @@
           "description": "Null when this delegation is not associated with a specific task."
         }
       ],
-      "description": "OPTIONAL for personal, enterprise, service, orchestrator agents. REQUIRED (non-null, non-empty) for ephemeral agents. Links this delegation to a specific task in the audit trail. Validated during registration (check 11 in §11.5)."
+      "description": "OPTIONAL for personal, enterprise, service, orchestrator agents. REQUIRED (non-null, non-empty) for ephemeral agents. Links this delegation to a specific task in the audit trail. Validated during registration (AIP spec §5.2 Check 11)."
     },
     "scope": {
       "type": "array",
       "items": {
         "type": "string",
         "pattern": "^[a-z_]+([.][a-z_]+)*$",
-        "description": "A scope string in dot-notation format. Defined values listed in AIP-CORE-v0.1 §5.2."
+        "description": "A scope string in dot-notation format. Defined values listed in AIP spec §4.3."
       },
       "minItems": 1,
       "uniqueItems": true,
-      "description": "The capability scopes being delegated by this token. MUST be a subset of the delegating party's own Capability Manifest scopes (scope inheritance rule, §5.4). Duplicate entries are prohibited."
+      "description": "The capability scopes being delegated by this token. MUST be a subset of the delegating party's own Capability Manifest scopes (scope inheritance rule, AIP spec §4.3). Duplicate entries are prohibited."
     }
   },
   "if": {
@@ -127,6 +127,5 @@
       "delegated_by": { "type": "null" }
     },
     "description": "When delegation_depth == 0, delegated_by MUST be null (issued directly by the root principal)."
-  },
-  "$comment": "Principal Tokens are JWTs — they use standard JWT header signing, not a custom canonicalization order. The JWT signing covers the compact base64url(header).base64url(payload) string. See AIP-CORE-v0.1 §4.3 and §4.4 for delegation rules D-1 through D-5."
+  }
 }

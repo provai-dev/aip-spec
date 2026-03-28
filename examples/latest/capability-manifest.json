@@ -1,0 +1,30 @@
+{
+  "_comment": "Example AIP Capability Manifest — AIP spec §4.2.2. In production, 'signature' is a real base64url EdDSA signature over the canonical field order with signature set to '' during signing.",
+  "manifest_id": "cm:a1b2c3d4-e5f6-4789-8abc-def012345678",
+  "aid": "did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3",
+  "granted_by": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2do7",
+  "version": 1,
+  "issued_at": "2026-03-22T10:00:00Z",
+  "expires_at": "2026-06-22T10:00:00Z",
+  "capabilities": {
+    "email": {
+      "read": true,
+      "write": true,
+      "send": true,
+      "delete": false,
+      "max_recipients_per_send": 10
+    },
+    "calendar": {
+      "read": true,
+      "write": true,
+      "delete": false
+    },
+    "web": {
+      "browse": true,
+      "forms_submit": false,
+      "download": false,
+      "max_requests_per_hour": 500
+    }
+  },
+  "signature": "base64url-encoded-eddsa-signature-placeholder"
+}
