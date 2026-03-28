@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://provai.dev/schemas/aip/registration-envelope/latest",
-  "$comment": "This schema is normatively defined in docs/aip-spec.md Section 4.2. Do not modify this file without updating the RFC document accordingly.",
+  "$comment": "Normatively defined in AIP spec §5.1. The registration envelope is the outermost container for POST /v1/agents. It is NOT signed as a whole — each sub-document (capability_manifest, principal_token) carries its own signature. See AIP spec §5.2 for the full ordered validation algorithm.",
   "title": "AIP Registration Envelope",
-  "description": "The request body submitted to POST /v1/agents to register a new AIP agent. Defined in AIP-CORE-v0.1 §11.5. Contains three top-level fields: identity (the Core Identity Object), capability_manifest (the initial Capability Manifest), and principal_token (a compact JWT encoding the root delegation from the principal to this agent). The Registry validates all three before persisting the agent.",
+  "description": "The request body submitted to POST /v1/agents to register a new AIP agent. Defined in AIP spec §5.1. Contains three top-level fields: identity (the Core Identity Object), capability_manifest (the initial Capability Manifest), and principal_token (a compact JWT encoding the root delegation from the principal to this agent). The Registry validates all three before persisting the agent.",
   "type": "object",
   "required": [
     "identity",
@@ -23,13 +23,12 @@
     "principal_token": {
       "type": "string",
       "pattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$",
-      "description": "A compact-serialised signed JWT (header.payload.signature) encoding the root delegation Principal Token that authorises this agent. The JWT payload MUST conform to principal-token.schema.json with delegation_depth=0 and delegated_by=null. The sub field MUST equal identity.aid. The JWT MUST be signed by the root principal identified in principal.id. Validated by AIP-CORE-v0.1 §11.5 Registration Checks 8–11."
+      "description": "A compact-serialised signed JWT (header.payload.signature) encoding the root delegation Principal Token that authorises this agent. The JWT payload MUST conform to principal-token.schema.json with delegation_depth=0 and delegated_by=null. The JWT header MUST have typ='JWT' and alg='EdDSA'. The sub field MUST equal identity.aid. The JWT MUST be signed by the root principal identified in principal.id. Validated by AIP spec §5.2 Registration Checks 8–11."
     }
   },
   "$defs": {
     "registration_checks": {
-      "$comment": "AIP-CORE-v0.1 §11.5 Registration Checks (validated by the Registry in order): 1) identity MUST be present and valid JSON. 2) identity.aid MUST match did:aip ABNF. 3) identity.type MUST match namespace of identity.aid. 4) identity.aid MUST NOT already be registered (CodeAlreadyRegistered). 5) identity.public_key MUST be OKP/Ed25519 with 43-char x. 6) capability_manifest.expires_at MUST be in the future. 7) capability_manifest.aid MUST equal identity.aid. 8) principal_token MUST be a valid 3-part compact JWT. 9) principal_token header MUST have typ=AIP+JWT and alg=EdDSA. 10) principal_token payload sub MUST equal identity.aid. 11) For ephemeral agents, principal_token payload task_id MUST be non-null and non-empty. 12) capability_manifest.signature MUST verify using the granted_by public key. 13) If identity.version >= 2, identity.previous_key_signature MUST verify using the previous key."
+      "$comment": "AIP spec §5.2 Registration Checks (validated by the Registry in order): 1) identity MUST be present and valid JSON. 2) identity.aid MUST match did:aip ABNF. 3) identity.type MUST match namespace of identity.aid. 4) identity.aid MUST NOT already be registered (CodeAlreadyRegistered). 5) identity.public_key MUST be OKP/Ed25519 with 43-char x. 6) capability_manifest.expires_at MUST be in the future. 7) capability_manifest.aid MUST equal identity.aid. 8) principal_token MUST be a valid 3-part compact JWT. 9) principal_token header MUST have typ=JWT and alg=EdDSA. 10) principal_token payload sub MUST equal identity.aid. 11) For ephemeral agents, principal_token payload task_id MUST be non-null and non-empty. 12) capability_manifest.signature MUST verify using the granted_by public key. 13) If identity.version >= 2, identity.previous_key_signature MUST verify using the previous key."
     }
-  },
-  "$comment": "The registration envelope is the outermost container for POST /v1/agents. It is NOT signed as a whole — each sub-document (capability_manifest, principal_token) carries its own signature. See AIP-CORE-v0.1 §11.5 for the full ordered validation algorithm."
+  }
 }

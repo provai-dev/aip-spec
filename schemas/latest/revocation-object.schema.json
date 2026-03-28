@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://provai.dev/schemas/aip/revocation-object/latest",
-  "$comment": "This schema is normatively defined in docs/aip-spec.md Section 4.2. Do not modify this file without updating the RFC document accordingly.",
+  "$comment": "Normatively defined in AIP spec §9.1. Canonical signing field order: revocation_id, target_aid, type, issued_by, reason, timestamp, propagate_to_children, scopes_revoked, signature (set to '' during signing). See AIP spec §9.1 and AIP spec §16.8.",
   "title": "AIP Revocation Object",
-  "description": "A signed object submitted to the Registry to revoke or modify an agent's credentials. Defined in AIP-CORE-v0.1 §9.1. Registries MUST verify the signature before processing. Signing canonical field order: (revocation_id, target_aid, type, issued_by, reason, timestamp, propagate_to_children, scopes_revoked, signature) with signature set to empty string during signing.",
+  "description": "A signed object submitted to the Registry to revoke or modify an agent's credentials. Defined in AIP spec §9.1. Registries MUST verify the signature before processing. Signing canonical field order: (revocation_id, target_aid, type, issued_by, reason, timestamp, propagate_to_children, scopes_revoked, signature) with signature set to empty string during signing.",
   "type": "object",
   "required": [
     "revocation_id",
@@ -70,11 +70,11 @@
       "items": {
         "type": "string",
         "pattern": "^[a-z_]+([.][a-z_]+)*$",
-        "description": "A scope identifier in dot-notation format as defined in AIP-CORE-v0.1 §5.2."
+        "description": "A scope identifier in dot-notation format as defined in AIP spec §4.3."
       },
       "minItems": 1,
       "uniqueItems": true,
-      "description": "REQUIRED when type is scope_revoke. MUST NOT be present for any other revocation type (enforced by the else clause below — setting this field schema to false actively prohibits its presence for non-scope_revoke types). Each entry MUST be a defined scope identifier from §5.2. Scope revocation does NOT invalidate outstanding tokens — it removes scopes from future Capability Manifest lookups only."
+      "description": "REQUIRED when type is scope_revoke. MUST NOT be present for any other revocation type (enforced by the else clause below — setting this field schema to false actively prohibits its presence for non-scope_revoke types). Each entry MUST be a defined scope identifier from AIP spec §4.3. Scope revocation does NOT invalidate outstanding tokens — it removes scopes from future Capability Manifest lookups only."
     },
     "signature": {
       "type": "string",
@@ -98,14 +98,13 @@
   },
   "$defs": {
     "revocation_tiers": {
-      "$comment": "Revocation check tiers (AIP-CORE-v0.1 §9.2): Tier 1 (standard scopes): CRL checked at issuance, TTL max 3600s. Tier 2 (transactions.*, communicate.*, filesystem.execute): real-time Registry check on every request, TTL max 300s, MUST deny on Registry unavailability. Tier 3 (enterprise): mTLS + OCSP supplementing Tier 2."
+      "$comment": "Revocation check tiers (AIP spec §9.2): Tier 1 (standard scopes): CRL checked at issuance, TTL max 3600s. Tier 2 (transactions.*, communicate.*, filesystem.execute): real-time Registry check on every request, TTL max 300s, MUST deny on Registry unavailability. Tier 3 (enterprise): mTLS + OCSP supplementing Tier 2."
     },
     "propagation_sla": {
-      "$comment": "Propagation SLA (AIP-CORE-v0.1 §9.4): authoritative Registry completes recursive child propagation within 15s. Replica Registries sync within 45s. Combined end-to-end: max 60s."
+      "$comment": "Propagation SLA (AIP spec §9.2): authoritative Registry completes recursive child propagation within 15s. Replica Registries sync within 45s. Combined end-to-end: max 60s."
     },
     "scope_revoke_semantics": {
-      "$comment": "scope_revoke has delayed effect (AIP-CORE-v0.1 §9.3): Credential Tokens are signed artefacts whose aip_scope field cannot be altered post-issuance. scope_revoke updates future Capability Manifest lookups only. Outstanding tokens remain valid until TTL expiry. For immediate scope removal: use full_revoke then re-register with reduced manifest."
+      "$comment": "scope_revoke has delayed effect (AIP spec §9.3): Credential Tokens are signed artefacts whose aip_scope field cannot be altered post-issuance. scope_revoke updates future Capability Manifest lookups only. Outstanding tokens remain valid until TTL expiry. For immediate scope removal: use full_revoke then re-register with reduced manifest."
     }
-  },
-  "$comment": "Canonical signing field order: revocation_id, target_aid, type, issued_by, reason, timestamp, propagate_to_children, scopes_revoked, signature (set to '' during signing). See AIP-CORE-v0.1 §9.1 and AIP-SECURITY-v0.1 §10. Implementation note: propagate_to_children is OPTIONAL (defaults false) — v0.1 schema incorrectly listed it as required."
+  }
 }

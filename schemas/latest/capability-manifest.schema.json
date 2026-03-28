@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://provai.dev/schemas/aip/capability-manifest/latest",
-  "$comment": "This schema is normatively defined in docs/aip-spec.md Section 4.2. Do not modify this file without updating the RFC document accordingly.",
+  "$comment": "Normatively defined in AIP spec §4.2.2. Canonical signing field order: manifest_id, aid, granted_by, version, issued_at, expires_at, capabilities, signature (set to '' during signing). Scope-to-manifest mapping for validation is in AIP spec §7.3 Step 9d.",
   "title": "AIP Capability Manifest",
-  "description": "A versioned, signed document stored in the AIP Registry declaring exactly what an agent is permitted to do. Defined in AIP-CORE-v0.1 §5.3. Signing canonical field order: (manifest_id, aid, granted_by, version, issued_at, expires_at, capabilities, signature) with signature set to empty string during signing.",
+  "description": "A versioned, signed document stored in the AIP Registry declaring exactly what an agent is permitted to do. Defined in AIP spec §4.2.2. Signing canonical field order: (manifest_id, aid, granted_by, version, issued_at, expires_at, capabilities, signature) with signature set to empty string during signing.",
   "type": "object",
   "required": [
     "manifest_id",
@@ -297,6 +297,5 @@
       "pattern": "^[A-Za-z0-9_-]+$",
       "description": "Base64url-encoded EdDSA signature of this manifest. Computed by: serialise the manifest to JSON in canonical field order (manifest_id, aid, granted_by, version, issued_at, expires_at, capabilities, signature) with signature set to empty string '', then sign with the granted_by party's current Ed25519 private key. Verifiers retrieve the granted_by DID's public key and verify against this value. Validation Algorithm Step 9a returns manifest_invalid on failure."
     }
-  },
-  "$comment": "Canonical signing field order: manifest_id, aid, granted_by, version, issued_at, expires_at, capabilities, signature (set to '' during signing). See AIP-CORE-v0.1 §5.3. Scope-to-manifest mapping for validation is in §7 Step 9d."
+  }
 }
