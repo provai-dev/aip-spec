@@ -324,7 +324,10 @@ Authors' Addresses
 
  This procedure is equivalent to the JSON Canonicalization Scheme
  (JCS) defined in [RFC8785]. Implementations SHOULD use an RFC8785-
- conformant library to ensure correctness.
+ conformant library to ensure correctness. When this procedure is
+ used to compute Action Hashes (Section 4.6.7), implementations
+ MUST use an RFC8785-conformant library; custom serializer
+ implementations MUST NOT be used for that purpose.
 
  EXAMPLE (informative):
 ```
@@ -1365,8 +1368,22 @@ Authors' Addresses
  The `action_hash` MUST be computed as follows:
 
 ```
- action_hash = "sha256:" + HEX( SHA-256( UTF8( canonical_json(action_parameters) ) ) )
+ action_hash = "sha256:" + LCHEX( SHA-256( JCS( action_parameters ) ) )
 ```
+
+ Where:
+
+ - `JCS( x )` denotes serialization of JSON value `x` per the JSON
+   Canonicalization Scheme [RFC8785], producing a UTF-8 byte sequence
+   with no BOM.
+ - `SHA-256( b )` is the SHA-256 hash of byte sequence `b` per
+   [FIPS-180-4].
+ - `LCHEX( h )` is the lowercase hexadecimal encoding of hash `h`
+   using digits `0-9` and `a-f` only.
+ - `"sha256:"` is a literal 7-byte ASCII prefix.
+
+ The resulting `action_hash` value MUST match the pattern
+ `^sha256:[0-9a-f]{64}$`.
 
  Where `action_parameters` is a JSON object containing:
 
@@ -1379,9 +1396,25 @@ Authors' Addresses
  | `action_type` | The `action_type` |
  | `parameters` | A JSON object with all action-specific parameters (e.g., `{"amount": 42.99, "currency": "GBP", "recipient": "amazon.co.uk"}`) |
 
- `canonical_json` MUST produce output per the canonical JSON
- serialization procedure defined in Section 2.1. This is the same
- canonicalization used for signing non-JWT AIP objects.
+ Implementations MUST use an RFC8785-conformant library for JCS
+ serialization (per Section 2.1). The following language-native
+ serializers are NOT RFC8785-conformant and MUST NOT be used
+ directly for this computation: Python `json.dumps`, Go
+ `encoding/json`, Rust `serde_json` (without explicit JCS mode).
+ Using a non-conformant serializer produces silently incorrect
+ hashes that will cause legitimate step claims to fail with
+ `approval_step_action_mismatch` with no diagnostic indication of
+ the root cause.
+
+ NOTE (informative): Recommended RFC8785-conformant libraries:
+ Go: `github.com/cyberphone/json-canonicalization`; Python: `jcs`
+ (PyPI); Rust: `json-canon` crate; JavaScript: `canonicalize`
+ (npm); Java: `json-canonicalization` (Cyberphone).
+
+ Financial amounts and other numeric values in the `parameters`
+ object MUST be represented as JSON numbers (not strings) so that
+ RFC8785 §3.2.2 number canonicalization applies deterministically
+ across implementations.
 
  The `parameters` object is application-defined. It MUST contain all
  values that are material to the action's effect and that the principal
