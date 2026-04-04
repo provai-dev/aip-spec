@@ -85,6 +85,7 @@
 6. Agent Resolution
  6.1. DID Resolution
  6.2. DID Document Structure
+ 6.3. Registry Genesis
 7. Credential Tokens
  7.1. Token Structure
  7.2. Token Issuance
@@ -514,6 +515,14 @@ Authors' Addresses
  | `service` | A persistent agent providing a capability as a service |
  | `ephemeral` | An agent created for a single task; revoked on completion |
  | `orchestrator` | An agent whose primary function is spawning child agents |
+ | `registry` | An AIP Registry instance; at most one active AID per deployment |
+
+ A `registry`-namespace AID MUST NOT be registered via the standard
+ `POST /v1/agents` endpoint. It MUST be created exclusively via the
+ Registry Genesis procedure (Section 6.3). Validators resolving a
+ Step Execution Token `iss` claim whose AID uses the `registry`
+ namespace MUST treat that AID as a trusted root and MUST NOT
+ attempt to validate its principal delegation chain.
 
  Compound typed identifiers use prefixed UUID v4 values:
 
@@ -1671,6 +1680,76 @@ Authors' Addresses
  | Update | `PUT /v1/agents/{aid}` for key rotation only |
  | Deactivate | `POST /v1/revocations` with `full_revoke` object |
 
+### 6.3. Registry Genesis
+
+ Registry Genesis is the one-time initialisation procedure by which a
+ new AIP Registry creates and persists its own `did:aip` Agent
+ Identity (the Registry AID). It MUST be performed before the
+ Registry serves any requests.
+
+#### 6.3.1. Key Generation
+
+ The Registry MUST generate a fresh Ed25519 keypair at first boot.
+ The private key MUST be stored encrypted at rest (AES-256-GCM or
+ equivalent). The public key is used to construct the Registry's DID
+ Document and to sign CRL documents (Section 9.2) and Step Execution
+ Tokens (Section 4.6.8).
+
+#### 6.3.2. AID Construction
+
+ The Registry MUST construct its AID using the `registry` namespace
+ (Section 4.1):
+
+```
+ did:aip:registry:<32-hex-character unique-id>
+```
+
+ The `unique-id` MUST be generated as a cryptographically random
+ 32-character lowercase hexadecimal string. At most one Registry AID
+ MUST be active per Registry deployment at any time.
+
+#### 6.3.3. Self-Registration Exemption
+
+ The Registry AID MUST NOT be created via `POST /v1/agents`. Instead,
+ the Registry MUST persist its AID and keypair directly to its own
+ data store during genesis. The following Registration Envelope
+ checks (Section 5.2) are explicitly inapplicable to the Registry AID:
+
+ - **Check 10** (`principal_token` validation) — the Registry has no
+   human principal and MUST NOT carry a principal delegation chain.
+ - **Check 4** (duplicate AID rejection) — genesis is idempotent; if
+   a Registry AID already exists in the data store the existing record
+   MUST be used and genesis MUST NOT overwrite it.
+
+#### 6.3.4. Well-Known Publication
+
+ The Registry MUST publish its DID Document and public key at:
+
+```
+ GET /.well-known/aip-registry
+```
+
+ The response MUST be a JSON object containing at minimum:
+
+ | Field | Type | Description |
+ |----------------|--------|-----------------------------------------------|
+ | `registry_aid` | string | The Registry's `did:aip` AID |
+ | `public_key` | object | JWK representation of the Registry's Ed25519 public key |
+ | `aip_version` | string | The `aip_version` this Registry conforms to |
+
+ Validators bootstrapping trust in a Registry MUST fetch and pin the
+ Registry's public key from this endpoint before processing any Step
+ Execution Tokens or CRL documents signed by that Registry. Cached
+ values MUST NOT be used beyond 300 seconds without revalidation.
+
+#### 6.3.5. Single-Instance Constraint
+
+ Each Registry deployment MUST have exactly one active Registry AID.
+ Provisioning a second Registry AID within the same deployment
+ MUST be treated as a fatal configuration error. Horizontal scaling
+ and high-availability deployments MUST share a single Registry AID
+ and keypair (stored in a shared secrets manager).
+
 ---
 
 ## 7. Credential Tokens
@@ -1683,7 +1762,7 @@ Authors' Addresses
  EXAMPLE (informative):
 ```
  Authorization: AIP <token>
- X-AIP-Version: 2
+ X-AIP-Version: 0.2
 ```
 
  For interactions requiring Proof-of-Possession:
@@ -1692,8 +1771,14 @@ Authors' Addresses
 ```
  Authorization: AIP <token>
  DPoP: <dpop-proof>
- X-AIP-Version: 2
+ X-AIP-Version: 0.2
 ```
+
+ The `X-AIP-Version` HTTP header MUST carry the full protocol version
+ string, identical to the `aip_version` JWT claim (Section 4.2.3).
+ For this specification, the value MUST be `"0.2"`. Implementations
+ MUST reject requests where the `X-AIP-Version` header carries a
+ version value that does not match a supported `aip_version`.
 
 ### 7.2. Token Issuance
 
@@ -2445,7 +2530,8 @@ Authors' Addresses
 
  Breaking changes from v0.1:
  - `aip_version` is now `"0.2"` for conforming implementations.
- - `X-AIP-Version: 2` replaces `X-AIP-Version: 1`.
+ - `X-AIP-Version: 0.2` replaces `X-AIP-Version: 0.1`. The header
+   value MUST be the full semver string, identical to `aip_version`.
  - Validation Step 5f now requires `aip_version` to be present.
 
  Implementations MUST NOT silently accept tokens from unsupported
