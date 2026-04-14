@@ -163,7 +163,10 @@ jobs:
           # Per AIP-0001, normative content lives under spec/vMAJOR.MINOR/.
           # schemas/latest/ and examples/latest/ no longer exist. docs/aip-spec.md
           # is a non-normative stub and MUST NOT contain spec content.
-          changed=$(git diff --name-only HEAD~1 HEAD -- \
+          # --diff-filter=AM: only flag Additions and Modifications.
+          # Renames/deletions that move files OUT of legacy paths (e.g. the
+          # AIP-0001 one-time migration) are intentional and must not be blocked.
+          changed=$(git diff --name-only --diff-filter=AM HEAD~1 HEAD -- \
             'schemas/latest/' 'examples/latest/' 'spec/latest/' 2>/dev/null || true)
           if [ -n "$changed" ]; then
             echo "❌ Modifications detected to legacy paths that no longer exist:"
