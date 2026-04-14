@@ -7,7 +7,8 @@ protocol design flaws that could allow impersonation, privilege escalation, toke
 forgery, delegation abuse, revocation bypass, or cryptographic weaknesses.
 
 **In scope:**
-- Flaws in the AIP protocol design documented in `docs/aip-spec.md`
+- Flaws in the AIP protocol design documented in the current working-draft
+  `spec/vMAJOR.MINOR/aip-spec.md`
 - Weaknesses in the cryptographic requirements (MTI or optional suites)
 - Attacks against the delegation chain or capability manifest model
 - Revocation bypass or race conditions in the revocation model
@@ -32,7 +33,8 @@ Use GitHub's private Security Advisory mechanism:
    this repository.
 2. Click **"Report a vulnerability"**.
 3. Fill in the form with as much detail as possible:
-   - The spec section(s) affected (reference `docs/aip-spec.md` section numbers)
+   - The spec section(s) affected (reference the current working-draft
+     `spec/vMAJOR.MINOR/aip-spec.md` section numbers)
    - A description of the vulnerability and its impact
    - A proof-of-concept or attack scenario, if available
    - Any suggested mitigations
@@ -101,6 +103,6 @@ may request to remain anonymous.
 
 ## Reference
 
-The protocol-level threat model is documented in `docs/aip-spec.md`
-§ Security Considerations. Implementers building AIP systems should review
-that section in full.
+The protocol-level threat model is documented in the current working-draft
+`spec/vMAJOR.MINOR/aip-spec.md` § Security Considerations. Implementers
+building AIP systems should review that section in full.

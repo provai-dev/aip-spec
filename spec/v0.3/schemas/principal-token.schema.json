@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provai.dev/schemas/aip/principal-token/latest",
+  "$comment": "Normatively defined in AIP spec §4.2.4. Principal Tokens are JWTs — they use standard JWT header signing, not a custom canonicalization order. The JWT signing covers the compact base64url(header).base64url(payload) string. Delegation rules D-1 through D-5 are defined in AIP spec §8.",
+  "title": "AIP Principal Token",
+  "description": "A signed JWT payload encoding one delegation link in the AIP principal chain. Defined in AIP spec §4.2.4. These tokens are embedded as compact-serialised JWTs in the aip_chain array of a Credential Token — they are not transmitted as standalone objects. Each element in aip_chain is a complete JWT (header.payload.signature) whose payload conforms to this schema.",
+  "type": "object",
+  "required": [
+    "sub",
+    "principal",
+    "delegation_depth",
+    "max_delegation_depth",
+    "issued_at",
+    "expires_at",
+    "scope"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "sub": {
+      "type": "string",
+      "pattern": "^did:aip:[a-z][a-z0-9]*(-[a-z0-9]+)*:[0-9a-f]{32}$",
+      "description": "AID of the agent this token authorises. The agent identified here is the one being granted the scopes listed in this token."
+    },
+    "principal": {
+      "type": "object",
+      "required": ["type", "id"],
+      "additionalProperties": false,
+      "description": "The root principal — the human or organisation ultimately responsible for this agent's actions. This object is carried unchanged through every link in the delegation chain.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["human", "organisation"],
+          "description": "Whether the root principal is a human individual or an organisational entity."
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^did:[a-z][a-z0-9]*:.+$",
+          "description": "W3C DID of the ROOT principal — the human or organisation at the top of the entire delegation chain. CRITICAL: This field MUST be byte-for-byte identical across every Principal Token in the same aip_chain array. It always identifies the originating human or organisation — never an intermediate delegating agent. Relying parties MUST reject chains where this value differs between any two elements. MUST NOT use the did:aip method (root principals are humans or organisations, never AIP agents)."
+        }
+      }
+    },
+    "delegated_by": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^did:aip:[a-z][a-z0-9]*(-[a-z0-9]+)*:[0-9a-f]{32}$",
+          "description": "AID of the parent agent that issued this delegation. REQUIRED when delegation_depth > 0. Validation Algorithm Step 8e verifies that this value equals the sub field of the previous chain element (aip_chain[i-1].sub)."
+        },
+        {
+          "type": "null",
+          "description": "MUST be null when delegation_depth is 0 — this token was issued directly by the root principal, with no intermediate agent."
+        }
+      ],
+      "description": "AID of the parent agent that issued this delegation. Null when the root principal issued directly. The chain linkage rule: delegated_by in token at index i MUST equal sub in token at index i-1."
+    },
+    "delegation_depth": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10,
+      "description": "Position of this token in the delegation chain. MUST equal the array index of this token in aip_chain (0 for root, 1 for first sub-delegation, etc.). Enforced by Validation Algorithm Rule D-4 (AIP spec §8). Hard maximum 10."
+    },
+    "max_delegation_depth": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10,
+      "default": 3,
+      "description": "Maximum total delegation depth permitted from this chain's root. Set by the root principal in aip_chain[0] and MUST NOT be increased by any agent in the chain (Rule D-2, AIP spec §8). A value of 0 means the authorised agent is a leaf — it cannot spawn sub-agents. Default when absent: 3. Hard maximum: 10. Only the value from aip_chain[0] governs the entire chain — values in subsequent tokens are informational only."
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC datetime string when this delegation was issued (e.g., 2026-03-22T10:00:00Z). Note: Principal Token timestamps are ISO 8601 strings; Credential Token timestamps (iat/exp) are Unix integers. When comparing during chain validation, parse ISO 8601 to Unix timestamp. Clock skew tolerance: 30 seconds."
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC datetime string after which this delegation is invalid. MUST be strictly after issued_at — zero-duration and back-dated delegations are rejected by Validation Algorithm Step 8h with chain_token_expired."
+    },
+    "purpose": {
+      "type": "string",
+      "maxLength": 128,
+      "description": "OPTIONAL. Human-readable description of this agent's intended purpose. Not machine-enforced — informational only for audit and transparency."
+    },
+    "task_id": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "description": "Unique identifier for the specific task this delegation authorises."
+        },
+        {
+          "type": "null",
+          "description": "Null when this delegation is not associated with a specific task."
+        }
+      ],
+      "description": "OPTIONAL for personal, enterprise, service, orchestrator agents. REQUIRED (non-null, non-empty) for ephemeral agents. Links this delegation to a specific task in the audit trail. Validated during registration (AIP spec §5.2 Check 11)."
+    },
+    "scope": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z_]+([.][a-z_]+)*$",
+        "description": "A scope string in dot-notation format. Defined values listed in AIP spec §4.3."
+      },
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "The capability scopes being delegated by this token. MUST be a subset of the delegating party's own Capability Manifest scopes (scope inheritance rule, AIP spec §4.3). Duplicate entries are prohibited."
+    }
+  },
+  "if": {
+    "properties": { "delegation_depth": { "minimum": 1 } },
+    "required": ["delegation_depth"]
+  },
+  "then": {
+    "properties": {
+      "delegated_by": {
+        "type": "string",
+        "pattern": "^did:aip:[a-z][a-z0-9]*(-[a-z0-9]+)*:[0-9a-f]{32}$"
+      }
+    },
+    "required": ["delegated_by"],
+    "description": "When delegation_depth >= 1, delegated_by MUST be a non-null did:aip AID."
+  },
+  "else": {
+    "properties": {
+      "delegated_by": { "type": "null" }
+    },
+    "description": "When delegation_depth == 0, delegated_by MUST be null (issued directly by the root principal)."
+  }
+}

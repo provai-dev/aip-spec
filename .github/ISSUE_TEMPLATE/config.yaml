@@ -4,8 +4,8 @@ contact_links:
     url: https://github.com/provai-dev/aip-spec/discussions
     about: Open-ended questions and community conversation
   - name: "\U0001F4D6 AIP Canonical Specification"
-    url: https://github.com/provai-dev/aip-spec/blob/main/docs/aip-spec.md
-    about: Read the canonical AIP specification (docs/aip-spec.md)
+    url: https://github.com/provai-dev/aip-spec/blob/main/spec/v0.3/aip-spec.md
+    about: Read the current working-draft AIP specification
   - name: "\U0001F512 Security Vulnerability (Private)"
     url: https://github.com/provai-dev/aip-spec/security/advisories/new
     about: Report a vulnerability privately — do not use public issues

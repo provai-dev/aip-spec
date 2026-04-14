@@ -11,12 +11,22 @@ opening an issue or pull request.
 
 ## 1. Canonical Specification
 
-`docs/aip-spec.md` is the single canonical AIP specification. All contributions
-that change normative spec content MUST modify `docs/aip-spec.md` directly.
+Every spec version lives under `spec/vMAJOR.MINOR/`. The current working draft
+is the highest-numbered directory whose `aip-spec.md` preamble declares
+`Status: Draft`. All contributions that change normative spec content MUST
+modify files under that working-draft directory, never under a released
+version's directory (which is immutable per `VERSIONING.md` § 5).
 
-The files under `spec/latest/` are deprecated working drafts. Do not modify
-them (except an Editor maintaining their deprecation notices). Do not cite them
-in proposals or implementations.
+Per AIP-0001, the following paths are retired and MUST NOT be modified:
+
+- `docs/aip-spec.md` — non-normative redirect stub only
+- `schemas/latest/` — removed
+- `examples/latest/` — removed
+- `spec/latest/` — removed
+
+Proposals and implementations MUST cite the version-qualified path — for
+example, `spec/v0.3/aip-spec.md § 7.3` — when referring to specific spec
+content.
 
 ---
 
@@ -177,15 +187,16 @@ blocking issues.
 
 **Step 6 — Acceptance and integration**
 After Last Call with no blocking objections, an Editor merges the proposal and
-integrates it into `docs/aip-spec.md`. Your work becomes part of the canonical
-spec.
+integrates it into the current working-draft `spec/vMAJOR.MINOR/aip-spec.md`.
+Your work becomes part of the canonical spec.
 
 ---
 
 ## 7. How to Submit an Editorial Fix
 
-Small fixes (typos, grammar, broken links, formatting in `docs/aip-spec.md`)
-may be submitted as a PR directly without an Idea issue.
+Small fixes (typos, grammar, broken links, formatting in the current
+working-draft `spec/vMAJOR.MINOR/aip-spec.md`) may be submitted as a PR
+directly without an Idea issue.
 
 - Title MUST start with `[EDITORIAL]`
 - A single Editor can review and merge without Last Call

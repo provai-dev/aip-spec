@@ -28,7 +28,8 @@ body:
     attributes:
       label: Relevant Spec Sections
       description: >
-        Which sections of docs/aip-spec.md are relevant to your question?
+        Which sections of the current working-draft spec/vMAJOR.MINOR/aip-spec.md
+        are relevant to your question?
         (Optional, but helps Editors route your question.)
 
   - type: textarea

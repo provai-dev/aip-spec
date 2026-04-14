@@ -4,9 +4,19 @@
 
 AIP uses Semantic Versioning: `MAJOR.MINOR.PATCH`
 
-The current canonical specification is `docs/aip-spec.md`. The preamble of
-that file states the current version. Frozen snapshots of each released version
-live at `spec/vMAJOR.MINOR/` and `docs/aip-spec-vMAJOR.MINOR.md`.
+Every spec version — released or working — lives under its own directory
+`spec/vMAJOR.MINOR/`, containing `aip-spec.md`, `schemas/`, and `examples/`
+for that version. The `aip-spec.md` preamble of each version directory
+declares that version's number and status (Draft, Last Call, or Released).
+Released versions are immutable per § 5.
+
+Per AIP-0001, the legacy paths `docs/aip-spec.md`, `schemas/latest/`,
+`examples/latest/`, and `docs/aip-spec-vMAJOR.MINOR.md` are retired:
+- `docs/aip-spec.md` persists as a non-normative redirect stub for
+  external inbound-link compatibility only.
+- `schemas/latest/` and `examples/latest/` no longer exist.
+- No separate `docs/aip-spec-vMAJOR.MINOR.md` snapshot is produced; the
+  directory `spec/vMAJOR.MINOR/` is itself the snapshot.
 
 ---
 
@@ -17,13 +27,13 @@ independent identifiers.
 
 - **AIP numbers** identify proposals. They are sequential, permanent, and never
   reused — even if a proposal is rejected or withdrawn.
-- **Spec versions** identify releases of `docs/aip-spec.md`. A single spec
-  version may incorporate multiple accepted AIPs.
+- **Spec versions** identify releases of `spec/vMAJOR.MINOR/aip-spec.md`. A
+  single spec version may incorporate multiple accepted AIPs.
 
-Multiple AIPs may land in one spec version. The `docs/aip-spec.md` preamble
-includes a "Changes in this version" section listing which AIPs were
-integrated. The `AIP_INDEX.md` records the spec version in which each AIP was
-integrated.
+Multiple AIPs may land in one spec version. The preamble of each version's
+`spec/vMAJOR.MINOR/aip-spec.md` includes a "Changes in this version" section
+listing which AIPs were integrated. The `AIP_INDEX.md` records the spec
+version in which each AIP was integrated.
 
 ---
 
@@ -62,12 +72,14 @@ integrated.
 
 A version is cut by the Editor body by opening a PR that:
 
-1. Updates the version number in the `docs/aip-spec.md` preamble
-2. Adds a "Changes in this version" section listing integrated AIPs
-3. Creates a frozen snapshot: `spec/vMAJOR.MINOR/` (copies of spec source files)
-4. Generates `docs/aip-spec-vMAJOR.MINOR.md` as a versioned RFC snapshot
-5. Updates `AIP_INDEX.md` with the spec version column for integrated AIPs
-6. Adds a CHANGELOG.md entry (see § 7)
+1. Updates the preamble of `spec/vMAJOR.MINOR/aip-spec.md` from `Draft` to
+   `Released` and stamps the release date.
+2. Confirms the "Changes in this version" section lists every integrated AIP.
+3. Creates the next working-draft directory `spec/vMAJOR.(MINOR+1)/` as a
+   byte-identical copy of the newly-released directory; the new copy's
+   preamble declares `Draft`.
+4. Updates `AIP_INDEX.md` with the spec version column for integrated AIPs.
+5. Adds a CHANGELOG.md entry (see § 7).
 
 The version-cut PR requires at least two Editor approvals. Declaration of v1.0
 stability requires a two-thirds super-majority per GOVERNANCE.md § 6.
@@ -76,13 +88,12 @@ stability requires a two-thirds super-majority per GOVERNANCE.md § 6.
 
 ## 5. Immutability Rule
 
-Once a version is released, `spec/vMAJOR.MINOR/` and
-`docs/aip-spec-vMAJOR.MINOR.md` are **immutable**. They MUST NOT be modified
-for any reason. Any correction requires a new version.
+Once a version is released, the entire `spec/vMAJOR.MINOR/` directory is
+**immutable**. No file under it — `aip-spec.md`, any schema, any example —
+may be modified for any reason. Any correction requires a new version.
 
-`docs/aip-spec.md` always reflects the latest version but is not authoritative
-for a specific released version. Implementations MUST pin to a specific version
-snapshot.
+Implementations MUST pin to a specific `spec/vMAJOR.MINOR/` directory. Pinning
+to "the latest version" or any other floating identifier is not supported.
 
 ---
 

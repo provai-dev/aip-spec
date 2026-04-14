@@ -44,7 +44,8 @@ Community Group, IETF, or equivalent) as AIP matures.
 - Transport protocols below the HTTP layer
 - Application-level authorisation policies beyond the capability model
 - Prompt injection prevention (AIP bounds the blast radius; it does not prevent
-  the initial attack — see `docs/aip-spec.md` § Non-Goals)
+  the initial attack — see the current working-draft
+  `spec/vMAJOR.MINOR/aip-spec.md` § Non-Goals)
 - Specific Registry implementations (AIP specifies behaviour, not code)
 
 Scope questions are resolved by the Editor body per the process in
@@ -118,7 +119,8 @@ AIP builds on and is designed to interoperate with:
 
 AIP does not compete with OAuth 2.0, OIDC, SPIFFE, or MCP. It provides the
 agent identity layer that those protocols assume but do not define. See
-`docs/aip-spec.md` § Relationship to Existing Standards for detail.
+the current working-draft `spec/vMAJOR.MINOR/aip-spec.md` § Relationship to
+Existing Standards for detail.
 
 ---
 
@@ -145,4 +147,4 @@ at the time the PR is opened, so the community has visibility.
 - [EDITORS.md](EDITORS.md) — current Editor and Reviewer roster
 - [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) — community standards
 - [SECURITY.md](SECURITY.md) — responsible disclosure policy
-- [docs/aip-spec.md](docs/aip-spec.md) — canonical specification
+- [spec/](spec/) — versioned specification directories (canonical)
