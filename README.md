@@ -40,7 +40,7 @@ uniformly, across vendors, models, and runtimes. It defines:
 | 1 | **Agent Identity (AID)** | A W3C DID (`did:aip`) that uniquely names an agent |
 | 2 | **Principal Chain** | Cryptographic proof of the authorising human/org and every delegation step |
 | 3 | **Capability Manifest** | Fine-grained, principal-signed scopes — what the agent may do |
-| 4 | **Credential Token** | Short-lived signed JWT validated by a deterministic 12-step algorithm |
+| 4 | **Credential Token** | Short-lived signed JWT validated by the deterministic validation algorithm (§7.3) |
 | 5 | **Revocation** | Kill switch that propagates to every relying party |
 | 6 | **Reputation** | Endorsement data for trust accumulation across engagements |
 
@@ -154,7 +154,7 @@ flowchart LR
 - **Agent domain** — the agent and any orchestrators it runs. Agents hold
   their own signing key and mint their own short-lived Credential Tokens.
 - **AEP layer** — the AIP Enforcement Point is the Relying Party's gate.
-  It executes the 12-step validation algorithm (§7.3), applies policy
+  It executes the validation algorithm (§7.3), applies policy
   against the live Capability Manifest, and forwards only authorised
   calls to the MCP tool host.
 - **Registry** — the source of truth for DID documents, capability state,
@@ -203,8 +203,8 @@ flowchart TD
 
     Ag-->|"4. Request + JWT + DPoP"|AEP
     AEP-->|"5. Validate sig / claims / DPoP"|PDP
-    PDP-.->|"Read-only sync"|Cache
-    Cache-.->|"Warm cache"|Reg
+    Reg-.->|"Warms cache"|Cache
+    Cache-.->|"Read-only sync"|PDP
     PDP-->|"ALLOW"|AEP
     AEP-->|"6. Execute (sandboxed)"|Tools
     Tools-->|"Result"|AEP
@@ -222,7 +222,7 @@ principal-signed material resolved from the Registry.
 
 ## Key Flows
 
-### 1. Principal grants capability to an agent
+### 1. Principal grants capability to an agent (G2 — Direct Deployer flow)
 
 ```mermaid
 sequenceDiagram
@@ -234,7 +234,7 @@ sequenceDiagram
     P->>W: Review AIP-GRANT request<br/>(requested_capabilities, mcp.* info)
     W->>R: Create / update Agent Identity<br/>(did:aip, DID Doc)
     R-->>W: Identity registered
-    W->>R: Register Capability Manifest<br/>(capabilities, mcp.allowedServers,<br/>mcp.allowedToolPatterns, ...)
+    W->>R: Register Capability Manifest<br/>(capabilities, mcp.allowedServers,<br/>mcp.allowedToolPatterns, grant_tier: G2)
     R-->>W: Manifest accepted
     W-->>A: Principal Token + Capability Manifest<br/>(AIP Credential Token chain)
 
@@ -320,13 +320,13 @@ sequenceDiagram
     end
 
     rect rgb(255,245,240)
-    note over P,W: 2. Principal approves workflow
-    Reg-->>W: Notify pending Approval Envelope
+    note over P,W: 2. Principal approves workflow (§4.6.3 notification_uri)
+    Reg-->>W: POST notification_uri<br/>(approval_id, description, review_uri)
     W->>P: Show workflow steps (human-readable)
     P->>W: Approve / reject
-    W->>Reg: Record decision
-    Reg-->>AEP: Updated status
-    AEP-->>Orch: declare_workflow result<br/>{ status: approved, approval_id }
+    W->>Reg: POST /v1/approvals/{id}/approve<br/>(principal_signature over JCS envelope)
+    Orch->>Reg: Poll GET /v1/approvals/{id}
+    Reg-->>Orch: { status: approved, approval_id }
     end
 
     rect rgb(240,255,255)
@@ -446,8 +446,9 @@ version) if it:
 
 1. Generates Agent IDs conforming to the `did:aip` DID method syntax
    defined in that version's `aip-spec.md` § 4.1.
-2. Issues and verifies Credential Tokens according to the 12-step
-   validation algorithm in § 7.3 (including v0.3 Steps 6a, 6b, 9e).
+2. Issues and verifies Credential Tokens according to the validation
+   algorithm in § 7.3 (Steps 1–12, with conditional sub-steps 6a, 6b,
+   9e, and 10a added in v0.3).
 3. Implements the mandatory-to-implement (MTI) cryptographic suites in
    § 17.2.
 4. Enforces Capability Manifest scope intersection during delegation as

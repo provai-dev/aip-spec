@@ -14,8 +14,8 @@
  framework for autonomous AI agents. AIP specifies a W3C DID-
  conformant agent identifier (`did:aip`), a cryptographically
  verifiable principal delegation chain, a fine-grained Capability
- Manifest, a signed Credential Token format and deterministic 12-step
- validation algorithm, a standardised revocation mechanism, a
+ Manifest, a signed Credential Token format and deterministic multi-step
+ validation algorithm (§7.3), a standardised revocation mechanism, a
  reputation data format, a principal authorization protocol (AIP-
  GRANT), and a chained workflow approval mechanism. Two independent
  implementations conforming to this specification are required to
@@ -68,6 +68,7 @@
  4.5.6. Principal Token Construction from Grant
  4.5.7. Sub-Agent Delegation Flow
  4.5.8. AIP-GRANT Error Codes
+ 4.5.9. G1: Registry-Mediated Grant Flow
  4.6. Chained Approval Envelopes
  4.6.1. Motivation: The Cascading Approval Problem
  4.6.2. The Token-Expiry-While-Pending Problem
@@ -89,6 +90,7 @@
  6.1. DID Resolution
  6.2. DID Document Structure
  6.3. Registry Genesis
+ 6.3.6. Registry Key Rotation (Interim Procedure)
 7. Credential Tokens
  7.1. Token Structure
  7.2. Token Issuance
@@ -736,7 +738,7 @@ Authors' Addresses
  | `aip_chain` | array | REQUIRED | minItems: 1; maxItems: 11; each element is a compact-serialised signed Principal Token JWT |
  | `aip_registry`| string | OPTIONAL | URI of AIP Registry; format: uri |
  | `aip_approval_id` | string | OPTIONAL | pattern: `^apr:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`; REQUIRED when token is a step-claim token (see Section 4.6.8) |
- | `aip_approval_step` | integer | OPTIONAL | Non-negative integer (0-indexed step position); REQUIRED when `aip_approval_id` is present; MUST correspond to a valid step index in the referenced Approval Envelope (see Section 4.6.8) |
+ | `aip_approval_step` | integer | OPTIONAL | Positive integer (≥ 1); REQUIRED when `aip_approval_id` is present; MUST equal the `step_index` value of the claimed step as stored in the Approval Envelope (1-based, per Section 4.6.4); the path parameter `{n}` in `GET /v1/approvals/{id}/steps/{n}` MUST equal this value verbatim |
  | `aip_engagement_id` | string | OPTIONAL | pattern: `^eng:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`; present when token is scoped to an Engagement Object (see Section 4.8) |
 
  If `aip_approval_step` is present without `aip_approval_id`, or
@@ -780,6 +782,14 @@ Authors' Addresses
  | `purpose` | string | OPTIONAL | maxLength: 128 |
  | `task_id` | string/null | OPTIONAL; REQUIRED for ephemeral agents | minLength: 1, maxLength: 256 when non-null |
  | `scope` | array | REQUIRED | minItems: 1; uniqueItems: true; each item matches `^[a-z_]+([.][a-z_]+)*$` |
+ | `acr` | string | OPTIONAL; REQUIRED when grant ceremony is G3 | Authentication context class reference; SHOULD use a value from the Registry's `acr_values_supported` list (Section 15.5) |
+ | `amr` | array | OPTIONAL; REQUIRED when grant ceremony is G3 | Authentication method reference values per [RFC8176]; minItems: 1; each element is a string |
+
+ NOTE: Validators processing tokens from G3 grant ceremonies MUST verify
+ that `acr` is present and satisfies the minimum identity-proofing level
+ required for the scopes in the token. When `acr` is absent and the
+ token contains Tier 2 scopes, the validator MUST apply the Registry's
+ `identity_proofing_required_for_tier2` policy (Section 15.5).
 
  The `iss` claim identifies the party whose private key signs this
  Principal Token. At `delegation_depth` 0, the issuer is the root
@@ -811,6 +821,7 @@ Authors' Addresses
  | `identity` | object | REQUIRED | MUST conform to agent-identity schema; `version` MUST be 1; `previous_key_signature` MUST NOT be present |
  | `capability_manifest`| object | REQUIRED | MUST conform to capability-manifest schema; `version` MUST be 1; `aid` MUST equal `identity.aid` |
  | `principal_token` | string | REQUIRED | Compact JWT (header.payload.signature); pattern: `^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$`; `delegation_depth` MUST be 0; `delegated_by` MUST be null |
+ | `grant_tier` | string | REQUIRED | enum: `["G1", "G2", "G3"]`; MUST be consistent with the principal_token's `delegation_depth` and the scopes in `capability_manifest`: G1 or G2 are permitted when all scopes are Tier 1; G2 or G3 are required when any scope is Tier 2; G3 is required when any scope is Tier 3 |
 
 #### 4.2.6. Revocation Object
 
@@ -861,8 +872,14 @@ Authors' Addresses
  filesystem.execute filesystem.delete web.browse
  web.forms_submit web.download transactions
  communicate.whatsapp communicate.telegram communicate.sms
- communicate.voice spawn_agents
+ communicate.voice spawn_agents.create spawn_agents.manage
 ```
+
+ NOTE: The bare scope `spawn_agents` is retired as of v0.3 and is NOT
+ a defined scope identifier. Validators MUST reject tokens containing
+ `spawn_agents` without a sub-scope qualifier with `invalid_scope`
+ (see Section 3). `spawn_agents.create` and `spawn_agents.manage` are
+ Tier 2 scopes with a maximum TTL of 300 seconds; DPoP is REQUIRED.
 
  Where this document references `transactions.*` or `communicate.*`,
  this means the bare capability key OR any scope beginning with that
@@ -1237,17 +1254,32 @@ Authors' Addresses
 
  1. Verify requested child capabilities are a strict subset of its own
  Capability Manifest (Rule D-1).
- 2. Construct and sign the child's Principal Token with:
+ 2. Generate a fresh Ed25519 keypair for the child agent. The parent
+ MUST generate this keypair independently from its own key material.
+ 3. Construct and sign the child's Principal Token with:
  - `iss`: the parent's AID (MUST equal `delegated_by`)
- - `sub`: the child's AID
+ - `sub`: the child's AID (derived from the freshly generated keypair)
  - `delegated_by`: the parent's AID
  - `delegation_depth`: parent's depth + 1
  - `max_delegation_depth`: ≤ parent's remaining depth
  - `scope`: the granted subset
  - `principal.id`: the root principal's DID (unchanged)
  - Signed with the parent's private key
- 3. Construct the Registration Envelope for the child.
- 4. Submit the Registration Envelope to the Registry.
+ 4. Construct the Registration Envelope for the child.
+ 5. Submit the Registration Envelope to the Registry.
+ 6. Provision the child's private key to the child through a secure,
+ authenticated, confidential channel before the child begins operation.
+
+ The parent MUST NOT retain the child's private key after successful
+ provisioning. Retaining the child's private key enables the parent to
+ forge Credential Tokens in the child's name and constitutes a
+ violation of the principle of least privilege (Section 1.2).
+
+ Implementations SHOULD use in-process memory injection for
+ co-deployed agents, or a hardware security module or key management
+ service for separately deployed agents. The specific provisioning
+ channel is outside the scope of this specification; see Section 17.4
+ for private key storage requirements applicable to the provisioned key.
 
 #### 4.5.8. AIP-GRANT Error Codes
 
@@ -1256,9 +1288,112 @@ Authors' Addresses
  | `grant_request_expired` | `request_expires_at` has passed |
  | `grant_request_replayed` | `grant_request_id` seen before |
  | `grant_request_invalid` | GrantRequest malformed or signature failed |
- | `grant_rejected_by_principal` | Principal declined |
+ | `grant_rejected_by_principal` | Principal declined or approved a subset below minimum required |
  | `grant_nonce_mismatch` | GrantResponse nonce does not match |
- | `grant_capability_exceeds_principal` | Requested capabilities exceed principal policy |
+
+ NOTE: The `grant_capability_exceeds_principal` error code previously
+ proposed for this section has been deferred to v0.4. It requires a
+ Principal Policy Document resource that is not defined in this
+ version. Capability over-grant is handled at the consent level:
+ a principal who declines to grant the requested capabilities triggers
+ `grant_rejected_by_principal`. A v0.4 AIP will define a normative
+ Principal Policy Document and the deterministic check required to
+ produce this error code.
+
+#### 4.5.9. G1: Registry-Mediated Grant Flow
+
+ The G1 (Registry-Mediated) grant profile is designed for consumer
+ deployments where the agent deployer does not operate its own
+ Principal Wallet integration. The AIP Registry brokers the consent
+ ceremony on the deployer's behalf.
+
+ **Actors:** Agent Deployer, AIP Registry, Principal (via
+ Registry-hosted or redirected wallet consent UI).
+
+ **G1 Grant Flow:**
+
+```
+ Agent Deployer AIP Registry Principal
+ | | |
+ |-- POST /v1/grants -------> | |
+ | (GrantRequest + | |
+ | callback_uri) | |
+ |<-- 201 grant_id + ---------- | |
+ | wallet_redirect_uri | |
+ | | |
+ | [redirect principal to wallet_redirect_uri]
+ | | |
+ | |<-- principal authenticates |
+ | |<-- approves / declines --|
+ | | |
+ | [Registry constructs + signs Principal Token] |
+ | [Registry stores GrantResponse internally] |
+ | | |
+ |<-- POST callback_uri ------- | |
+ | (GrantResponse) | |
+ | -- OR -- | |
+ |-- GET /v1/grants/{id} ---> | |
+ |<-- GrantResponse ---------- | |
+```
+
+ **Step-by-step definition:**
+
+ 1. The deployer generates the agent's Ed25519 keypair and constructs
+ a GrantRequest object (Section 4.5.2). For G1, `callback_uri` is
+ REQUIRED and MUST be an HTTPS URI the Registry may POST to.
+
+ 2. The deployer calls `POST /v1/grants` with the GrantRequest as the
+ request body. The request MUST be signed with the deployer's
+ Ed25519 key. The Registry responds HTTP 201:
+
+```json
+ {
+   "grant_id": "gr:<uuid>",
+   "wallet_redirect_uri": "https://registry.example.com/consent?grant_id=gr:<uuid>",
+   "expires_at": "<ISO 8601 UTC>"
+ }
+```
+
+ 3. The deployer redirects the principal's user agent to
+ `wallet_redirect_uri`. The Registry presents a consent UI
+ conforming to the display requirements of Section 4.5.3. The
+ principal authenticates to the Registry (mechanism is Registry-
+ implementation-defined) and approves or declines the grant.
+
+ 4. On approval, the Registry MUST:
+ a. Construct the Principal Token per Section 4.5.6, signed using
+    the principal's DID private key (which the principal
+    authenticated in step 3).
+ b. Construct the GrantResponse object (Section 4.5.4) with
+    `status: "approved"` and the signed `principal_token`.
+ c. Store the GrantResponse internally indexed by `grant_id`.
+ d. Deliver the GrantResponse via HTTP POST to `callback_uri`.
+    If delivery fails, the deployer may retrieve it at
+    `GET /v1/grants/{grant_id}`.
+
+ 5. The deployer receives the GrantResponse (via callback or polling)
+ and validates it per the deployer validation steps in Section 4.5.4.
+
+ 6. The deployer submits the Registration Envelope to `POST /v1/agents`
+ with `grant_tier: "G1"`.
+
+ **`GET /v1/grants/{grant_id}` authorisation:** Only the deployer
+ whose `deployer_did` appears in the original GrantRequest MUST be
+ permitted to retrieve the GrantResponse. If the requesting party's
+ DID does not match `deployer_did`, the Registry MUST return HTTP 403
+ with error `grant_deployer_mismatch`.
+
+ **`grant_not_found`:** If `grant_id` does not exist or has expired,
+ the Registry MUST return HTTP 404 with error `grant_not_found`.
+ Grant records MUST be retained for at least 72 hours after creation.
+
+ **Principal authentication method:** The mechanism by which the
+ principal authenticates to the Registry in step 3 is Registry-
+ implementation-defined. Registries MUST document the authentication
+ methods they support in their `/.well-known/aip-registry` response.
+ Registries MUST NOT complete the G1 consent ceremony without
+ verifying that the authenticating identity controls the DID declared
+ as `principal_id` in the GrantRequest.
 
 ---
 
@@ -1346,14 +1481,17 @@ Authors' Addresses
  | `compensation_steps` | array | OPTIONAL | Compensation steps for SAGA rollback |
  | `total_value` | number | OPTIONAL | Total financial value; minimum: 0 |
  | `currency` | string | OPTIONAL | ISO 4217; pattern: `^[A-Z]{3}$` |
+ | `notification_uri` | string | OPTIONAL | HTTPS URI; when present the Registry MUST POST a signed notification payload to this URI after transitioning to `pending_approval`; payload MUST include `approval_id`, `description`, `principal_id`, and a `review_uri` linking to the approval consent UI |
  | `creator_signature` | string | REQUIRED | base64url EdDSA of `created_by` AID's key |
  | `status` | string | READ-ONLY | Set by Registry; see Section 4.6.6 |
- | `principal_signature` | string | CONDITIONAL | base64url EdDSA; set by the Registry after principal approves via their Principal Wallet |
+ | `principal_signature` | string | CONDITIONAL | base64url EdDSA signature by the `principal_id`'s private key over the JCS-canonical envelope (with `principal_signature` set to the empty string `""`); submitted by the Principal Wallet and stored by the Registry upon approval; REQUIRED once envelope status is `approved` |
 
  `total_value` and `currency` MUST both be present or both absent.
  When present, `total_value` MUST equal the sum of `value` fields
- across all required forward steps. The Registry MUST enforce this
- constraint at submission time.
+ across ALL steps — both `required: true` and `required: false` — that
+ carry a `value` field. This represents the maximum financial exposure
+ of the workflow. The Registry MUST enforce this constraint at
+ submission time.
 
 #### 4.6.4. Step Schema
 
@@ -1369,7 +1507,7 @@ Authors' Addresses
  | `action_hash` | string | REQUIRED | `sha256:<64-hex>`; see Section 4.6.7 for computation |
  | `description` | string | REQUIRED | minLength: 1; maxLength: 256; displayed to principal during approval |
  | `required` | boolean | REQUIRED | When false, step is optional; envelope can complete without it |
- | `triggered_by` | integer/null | REQUIRED | null for steps with no prerequisite; step_index of the prerequisite step otherwise |
+ | `triggered_by` | integer/null | REQUIRED | null for steps with no prerequisite; positive integer (≥ 1) referencing an existing `step_index` within the same `steps` array otherwise; a value of 0 is explicitly forbidden |
  | `value` | number | OPTIONAL | Financial value of this step; minimum: 0 |
  | `currency` | string | OPTIONAL | ISO 4217; MUST match envelope `currency` when `total_value` is present |
  | `compensation_index` | integer/null | OPTIONAL | Index into `compensation_steps` array (0-based) of the compensation action for this step |
@@ -1552,7 +1690,7 @@ Authors' Addresses
  have status `completed`.
  e. The AID in the Credential Token's `iss` claim matches the step's
  `actor` field.
- f. The Credential Token passes the standard 12-step validation
+ f. The Credential Token passes the standard validation algorithm (Section 7.3)
  (Section 7.3).
  g. The recomputed action_hash from the presented `action_parameters`
  matches the stored `action_hash` for this step.
@@ -1590,7 +1728,7 @@ Authors' Addresses
 
  **Step 2 - Execute:** The agent presents the Step Execution Token to
  the Relying Party and executes the action. The Relying Party validates
- the Step Execution Token using the standard 12-step algorithm PLUS the
+ the Step Execution Token using the standard validation algorithm (Section 7.3) PLUS the
  Approval Envelope step verification described above.
 
  **Step 3 - Complete or Fail:** After execution, the agent MUST call
@@ -1635,8 +1773,9 @@ Authors' Addresses
  1. `principal_id` begins with `did:aip:`.
  2. `steps` contains circular dependencies in `triggered_by` fields.
  3. `steps` contains duplicate `step_index` values.
- 4. When `total_value` is present: the sum of `value` fields across all
- `required: true` steps does not equal `total_value`.
+ 4. When `total_value` is present: the sum of `value` fields across ALL
+ steps (both `required: true` and `required: false`) that carry a
+ `value` field does not equal `total_value`.
  5. When `total_value` is present: any step with a `value` field uses
  a `currency` different from the envelope's `currency`.
  6. `approval_window_expires_at` is in the past at submission time.
@@ -1646,6 +1785,9 @@ Authors' Addresses
  registered public key.
  9. The `created_by` agent is revoked.
  10. `steps` contains more than 20 elements.
+ 11. Any `triggered_by` value in `steps` is non-null and is either 0
+ or does not reference an existing `step_index` within the same
+ `steps` array.
 
  The Registry MUST also reject Approval Envelopes from agents whose
  Capability Manifest does not include `spawn_agents.create` or at
@@ -1862,6 +2004,13 @@ Authors' Addresses
  `identity.previous_key_signature` MUST be present and MUST verify
  using the key at the previous version.
 
+ Check 14. `grant_tier` MUST be present and MUST be one of `"G1"`,
+ `"G2"`, or `"G3"`. If any scope in `capability_manifest.capabilities`
+ is a Tier 2 scope (per Section 3), `grant_tier` MUST be `"G2"` or
+ `"G3"`. If any scope is Tier 3, `grant_tier` MUST be `"G3"`. If
+ `grant_tier` is absent, the Registry MUST reject with
+ `registration_invalid`.
+
  The Registry MUST record the `delegated_by` field from the decoded
  `principal_token` payload (or the principal's DID if `delegated_by`
  is null) in the parent-child delegation index, for use in revocation
@@ -2038,6 +2187,40 @@ Authors' Addresses
  and high-availability deployments MUST share a single Registry AID
  and keypair (stored in a shared secrets manager).
 
+#### 6.3.6. Registry Key Rotation (Interim Procedure)
+
+ Full in-band Registry key rotation is deferred to a future minor
+ version. Until that protocol is defined, the following interim
+ procedure applies to operators who must rotate the Registry key
+ (e.g., in response to suspected key compromise).
+
+ **Interim procedure:**
+
+ 1. Registry key rotation MUST be treated as a Registry instance
+    migration: the existing Registry AID is deprecated, a new Registry
+    is initialised via Registry Genesis (Section 6.3) with a new AID
+    and keypair, and agents are re-registered or migrated to the new
+    Registry.
+
+ 2. Relying Parties that have pinned the existing Registry's public key
+    (step 3 of Section 6.3.4 bootstrapping) and subsequently receive a
+    `/.well-known/aip-registry` document whose `public_key` does not
+    match the pinned key MUST treat this as a potential MITM attack.
+    They MUST NOT use the new key automatically. They MUST halt
+    Registry-dependent operations and require out-of-band verification
+    that the key change is legitimate before re-pinning.
+
+ 3. Historical Step Execution Tokens and CRL documents signed by the
+    previous Registry key remain valid for their stated `exp` period
+    only. Relying Parties MUST verify historical tokens against the
+    key that was pinned at issuance time; they MUST NOT re-verify them
+    against a newly pinned key.
+
+ 4. A future minor version will define an in-band key succession
+    protocol using a `previous_registry_key_signature` mechanism
+    analogous to agent key rotation (Section 4.2.1), allowing Relying
+    Parties to verify key transitions without out-of-band communication.
+
 ---
 
 ## 7. Credential Tokens
@@ -2083,10 +2266,19 @@ Authors' Addresses
  restrictive TTL applies. Zero-duration and negative-duration tokens
  (where `exp <= iat`) MUST be rejected.
 
+ REMINDER: A token's Tier is determined by its highest-risk scope
+ (Section 3). A token containing one Tier 2 scope and any number of
+ Tier 1 scopes is a Tier 2 token in its entirety. Implementations
+ MUST NOT derive Tier from the majority of scopes or from the first
+ scope in the array.
+
 ### 7.3. Token Validation
 
- A Relying Party MUST execute the following 12 steps in order. The
+ A Relying Party MUST execute the following steps in order. The
  Relying Party MUST reject the token at the first step that fails.
+ Steps 6a, 6b, 9e, and 10a are conditional sub-steps introduced in
+ v0.3; they are part of the numbered step at which they appear and do
+ not change the base numbering.
 
  **Step 1 - Parse.** Parse as JWT. Fail: `invalid_token`.
 
@@ -2184,9 +2376,26 @@ Authors' Addresses
  used. For Tier 1: may be cached up to 60 seconds.
  a) Verify manifest `signature`. Fail: `manifest_invalid`.
  b) Verify manifest `expires_at` in future. Fail: `manifest_expired`.
- c) For delegated agents: verify scope inheritance up to
- `max_delegation_depth` ancestor fetches. Fail: `insufficient_scope`
- or `manifest_invalid`.
+ c) For delegated agents: verify scope inheritance by executing
+ the following three sub-steps for each scope `s` in `aip_scope`:
+
+ 9c-i. Retrieve the Capability Manifest for each AID appearing
+ in `aip_chain` (up to `max_delegation_depth` fetches, root
+ to leaf). If any manifest is unavailable, Fail:
+ `manifest_invalid`.
+
+ 9c-ii. Verify that scope `s` is present in every manifest in
+ the chain. If `s` is absent at any level, Fail:
+ `insufficient_scope`.
+
+ 9c-iii. Verify that for each constraint field `f` of scope `s`,
+ the value in manifest `i+1` (child) is no less restrictive
+ than the value in manifest `i` (parent), per the Scope
+ Inheritance Rule (Section 8.2). For numeric limits (e.g.,
+ `max_single_transaction`), the child value MUST be ≤ the
+ parent value. For boolean enables, the child value MUST NOT
+ be `true` when the parent value is `false`. If any constraint
+ is violated, Fail: `insufficient_scope`.
  d) Verify each scope in `aip_scope` per the exhaustive scope-to-
  manifest mapping (see full table in `schemas/v0.3/`). Fail:
  `insufficient_scope`.
@@ -2197,7 +2406,9 @@ Authors' Addresses
  `insufficient_scope`. Verify the overlay signature. Fail:
  `overlay_signature_invalid`.
 
- **Step 10 - DPoP (conditional).** If any scope is `transactions`,
+ **Step 10 - DPoP (conditional).** REMINDER: A token's Tier is
+ determined by its highest-risk scope (Section 3); a single Tier 2
+ scope makes the entire token Tier 2. If any scope is `transactions`,
  `transactions.*`, `communicate.*`, `filesystem.execute`,
  `spawn_agents.create`, or `spawn_agents.manage`: verify
  DPoP proof per Section 17.3. Fail: `dpop_proof_required`.
@@ -2205,11 +2416,12 @@ Authors' Addresses
  **Step 10a - Approval Envelope step verification (conditional).**
  If `aip_approval_id` and `aip_approval_step` are present in the
  token (Step Execution Token case): the Relying Party MUST call
- `GET /v1/approvals/{aip_approval_id}/steps/{aip_approval_step}` and
- verify: (i) step status is `claimed`; (ii) step `actor` matches
- token `sub`; (iii) step `relying_party_uri` matches the current
- request URL host; (iv) the recomputed action_hash matches. Fail:
- `approval_step_invalid`.
+ `GET /v1/approvals/{aip_approval_id}/steps/{n}` where `{n}` MUST
+ equal `aip_approval_step` verbatim (a 1-based step index per Section
+ 4.6.4; MUST NOT be decremented or adjusted). Verify: (i) step status
+ is `claimed`; (ii) step `actor` matches token `sub`; (iii) step
+ `relying_party_uri` matches the current request URL host; (iv) the
+ recomputed action_hash matches. Fail: `approval_step_invalid`.
 
  **Step 11 - Tier 3 (conditional).** For Tier 3 enterprise deployments:
  verify mTLS client certificate maps to `iss`. Perform OCSP check.
@@ -2364,7 +2576,7 @@ Authors' Addresses
 
  The Registry (as OAuth AS) MUST:
 
- 1. Validate the `subject_token` using the full 12-step algorithm
+ 1. Validate the `subject_token` using the full validation algorithm (Section 7.3)
     (Section 7.3).
  2. Verify the DPoP proof binds to the agent's public key.
  3. Verify the requested `scope` is a subset of the
@@ -2427,8 +2639,13 @@ Authors' Addresses
  Ancestor Manifest Fetch Limits: implementations MUST NOT fetch more
  ancestor manifests than the `max_delegation_depth` value of the
  chain's root token (defaulting to 3). Ancestor manifests MAY be
- cached for a maximum of 60 seconds. If an ancestor manifest is
- unavailable, the Relying Party MUST return `manifest_invalid`.
+ cached for a maximum of 60 seconds for Tier 1 operations. For Tier 2
+ operations, the no-cache requirement in Step 9 (Section 7.3) applies
+ to ALL manifests in the delegation chain — including ancestor
+ manifests — not only the leaf agent's manifest. The 60-second ancestor
+ cache MUST NOT be used for any manifest in a Tier 2 validation. If an
+ ancestor manifest is unavailable, the Relying Party MUST return
+ `manifest_invalid`.
 
 ---
 
@@ -2462,6 +2679,12 @@ Authors' Addresses
  infrastructure.
 
 ### 9.3. Revocation Checking
+
+ REMINDER: A token's Tier is determined by its highest-risk scope
+ (Section 3). A token containing one Tier 2 scope and any number of
+ Tier 1 scopes is a Tier 2 token and MUST be validated using Tier 2
+ revocation checks. Implementations MUST NOT classify a token as Tier 1
+ based on the majority or the first scope.
 
  **Tier 1 — Bounded-staleness (threat-model declaration).**
  TTL ≤ 3600s. Validate against CRL at issuance time. CRL MUST be
@@ -2522,7 +2745,7 @@ Authors' Addresses
  | Field | Type | Required | Constraints |
  |---|---|---|---|
  | `subscriber_did` | string | REQUIRED | DID of the subscribing RP; MUST be `did:web` or `did:aip` |
- | `event_types` | array | REQUIRED | One or more of: `full_revoke`, `scope_revoke`, `delegation_revoke`, `engagement_participant_removed`, `engagement_gate_approved`, `engagement_terminated` |
+ | `event_types` | array | REQUIRED | One or more of: `full_revoke`, `scope_revoke`, `delegation_revoke`, `engagement_participant_removed`, `engagement_gate_approved`, `engagement_terminated`, `approval_pending` |
  | `scope_filter` | string | REQUIRED | One of: `"aid"`, `"principal"`, `"all"` |
  | `targets` | array | CONDITIONAL | REQUIRED when `scope_filter` is `"aid"` or `"principal"` |
  | `webhook_uri` | string | REQUIRED | HTTPS URI; the RP's event receiver endpoint |
@@ -2532,6 +2755,19 @@ Authors' Addresses
  The subscription request MUST be authenticated via DPoP proof
  binding `subscriber_did` to the request. The Registry MUST reject
  unsigned subscription requests with `subscription_auth_required`.
+
+ **`scope_filter: "all"` access control:** Registries MAY restrict the
+ `"all"` scope filter to subscribers authenticated as Registry
+ operators or Tier 3 principals. Public Registries SHOULD reject
+ `scope_filter: "all"` from unauthenticated or Tier 1 subscribers with
+ HTTP 403 and error `subscription_scope_forbidden`. Registries that
+ permit `"all"` subscriptions MUST enforce a maximum event-delivery
+ rate per subscriber and SHOULD document this limit in their well-known
+ configuration.
+
+ When `event_types` includes `approval_pending`, the `targets` array
+ MUST contain only principal DIDs controlled by the subscriber.
+ Registries MUST verify this ownership at subscription time.
 
 #### 9.4.3. Push Event Payload
 
@@ -2722,6 +2958,7 @@ Authors' Addresses
  | `change_log_immutable` | 400 | Attempt to modify change log entry |
  | `change_log_sequence_invalid` | 400 | Out-of-sequence change log append |
  | `subscription_auth_required` | 401 | RPNP subscription without DPoP |
+ | `subscription_scope_forbidden` | 403 | `scope_filter: "all"` rejected by Registry policy |
  | `invalid_webhook_uri` | 400 | Webhook URI not HTTPS |
  | `subscription_limit_exceeded` | 429 | RPNP subscription limit reached |
  | `invalid_target` | 400 | Token exchange resource not registered |
@@ -2862,6 +3099,16 @@ Authors' Addresses
  subjected to a `full_revoke` or `principal_revoke` RevocationObject
  in the Registry. A revoked principal MUST NOT be permitted to
  register new agents.
+
+ For the purposes of this check, a **revoked principal** is defined as
+ a principal DID (`principal_token.principal.id`) against which a
+ `principal_revoke` Revocation Object has been submitted to this
+ Registry. The Registry MUST maintain an index of principal DIDs
+ associated with `principal_revoke` revocations and MUST reject new
+ Registration Envelopes where `principal_token.principal.id` matches a
+ DID in this index, unless the `principal_revoke` object explicitly
+ scopes the revocation to a specific agent AID other than the one being
+ registered.
 
  **Registration flood from shared principals:** If a single
  principal DID registers more than 1,000 agents (across all time),
@@ -3037,9 +3284,14 @@ Authors' Addresses
  **`POST /v1/approvals/{id}/approve` flow:** This endpoint is called
  by the Principal Wallet after the principal completes the signing
  ceremony. The request body MUST contain the `principal_signature`
- (base64url EdDSA signature of the envelope's `approval_id`, signed
- by the `principal_id`'s private key). The Registry MUST verify this
- signature before transitioning the envelope to `approved`.
+ field: a base64url EdDSA signature computed by the principal's wallet
+ over the JCS-canonical serialisation of the full Approval Envelope
+ with `principal_signature` set to the empty string `""` before
+ serialisation — identical to the pattern used for `creator_signature`
+ (Section 4.6.3). The signing key MUST be the private key of
+ `principal_id`. The Registry MUST verify this signature against the
+ `principal_id`'s resolved public key before transitioning the envelope
+ to `approved`.
 
  **Atomicity requirement for step claim:** The Registry MUST implement
  step-claim operations atomically (e.g., using optimistic locking or
@@ -3192,11 +3444,21 @@ Authors' Addresses
 
 ### 16.1. Tier Conformance
 
- | Tier | Revocation | DPoP | mTLS | `grant_tier` | Principal DID |
- |------|------------|------|------|-------------|---------------|
- | 1 | CRL (15 min) | NOT REQUIRED | NOT REQUIRED | G1 or G2 | Any |
- | 2 | Real-time | REQUIRED | NOT REQUIRED | G2 or G3 | `did:web` or `did:aip` |
- | 3 | Real-time + OCSP | REQUIRED | REQUIRED | G3 | `did:web` or `did:aip` |
+ | Tier | Revocation | DPoP | mTLS | `grant_tier` | Principal DID Method |
+ |------|------------|------|------|-------------|---------------------|
+ | 1 | CRL (15 min) | NOT REQUIRED | NOT REQUIRED | G1 or G2 | Any [1] |
+ | 2 | Real-time | REQUIRED | NOT REQUIRED | G2 or G3 | `did:web` [2] |
+ | 3 | Real-time + OCSP | REQUIRED | REQUIRED | G3 | `did:web` [2] |
+
+ [1] For Tier 1, the principal MAY use any W3C DID method. Principals
+ using `did:key` are permitted for Tier 1 only; see note [2].
+
+ [2] `did:aip` is NEVER a valid Principal DID method for Tier 2 or
+ Tier 3. The `principal.id` field MUST NOT use the `did:aip` method
+ (Section 4.2.4). Principals using `did:key` for Tier 2 agents MUST
+ be rejected with `principal_did_method_forbidden`; the `did:key`
+ method does not support a DID Document with the `AIPRegistry` service
+ entry required by Section 6.2.
 
 ---
 
