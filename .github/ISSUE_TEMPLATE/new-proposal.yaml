@@ -48,7 +48,8 @@ body:
     attributes:
       label: Affected Spec Sections
       description: >
-        Which section(s) of docs/aip-spec.md would this proposal modify?
+        Which section(s) of the current working-draft spec/vMAJOR.MINOR/aip-spec.md
+        would this proposal modify?
         (Leave blank if unknown at this stage.)
 
   - type: textarea

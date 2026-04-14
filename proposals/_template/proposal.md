@@ -29,8 +29,8 @@ Supersedes: ~
 
 <!-- Define every new term introduced by this proposal using RFC 2119 style.
      If no new terms are introduced, write:
-     "This proposal introduces no new terms beyond those defined in
-     docs/aip-spec.md Section 3." -->
+     "This proposal introduces no new terms beyond those defined in the
+     current working-draft spec/vMAJOR.MINOR/aip-spec.md Section 3." -->
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
 "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this
@@ -40,7 +40,7 @@ and only when, they appear in all capitals, as shown here.
 ## Specification
 
 <!-- The normative content. Use RFC 2119 keywords throughout.
-     Structure subsections to mirror the layout of docs/aip-spec.md so that
+     Structure subsections to mirror the layout of spec/vMAJOR.MINOR/aip-spec.md so that
      integration is mechanical.
 
      For schema changes: include the full field table and a diff.
@@ -59,7 +59,7 @@ and only when, they appear in all capitals, as shown here.
 ### Failure Conditions
 
 <!-- Map each failure condition to the relevant AIP error code.
-     Reference docs/aip-spec.md Section 13 (Error Handling). -->
+     Reference spec/vMAJOR.MINOR/aip-spec.md Section 13 (Error Handling). -->
 
 | Condition | Error Code | HTTP Status |
 |-----------|-----------|-------------|
@@ -67,15 +67,15 @@ and only when, they appear in all capitals, as shown here.
 
 ### Schema Changes
 
-<!-- If this proposal modifies any file in schemas/latest/, show the diff and
-     include the updated $id version if the change is breaking. -->
+<!-- If this proposal modifies any schema in spec/vMAJOR.MINOR/schemas/, show
+     the diff and include the updated $id version if the change is breaking. -->
 
 ## Security Considerations
 
 <!-- Required for all Standards Track proposals. Address:
      (a) New threat vectors introduced by this change
      (b) Existing threats this proposal mitigates
-     (c) Interaction with the AIP threat model in docs/aip-spec.md
+     (c) Interaction with the AIP threat model in spec/vMAJOR.MINOR/aip-spec.md
 
      If this proposal has no security impact, write:
      "This proposal introduces no new threat vectors and does not alter any

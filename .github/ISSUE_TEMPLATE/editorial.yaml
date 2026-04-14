@@ -1,7 +1,7 @@
 name: "\u270F\uFE0F Editorial Fix"
 description: >
   Report a typo, broken link, formatting issue, or other editorial problem
-  in docs/aip-spec.md or any governance document.
+  in spec/vMAJOR.MINOR/aip-spec.md or any governance document.
   No proposal process required — editorial fixes can be submitted as a PR directly.
 title: "[EDITORIAL] "
 labels: ["editorial"]
@@ -18,7 +18,7 @@ body:
     attributes:
       label: File and Section
       description: Which file and section contains the issue?
-      placeholder: "e.g., docs/aip-spec.md § 4.2"
+      placeholder: "e.g., spec/v0.3/aip-spec.md § 4.2"
     validations:
       required: true
 

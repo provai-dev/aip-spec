@@ -121,10 +121,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check JSON schemas are valid JSON
+      - name: Check JSON schemas are valid JSON (all spec versions)
         run: |
           errors=0
-          for f in schemas/latest/*.json; do
+          shopt -s nullglob
+          for f in spec/v*/schemas/*.json; do
             if python3 -m json.tool "$f" > /dev/null 2>&1; then
               echo "✅ $f"
             else
@@ -134,10 +135,11 @@ jobs:
           done
           [ $errors -eq 0 ] || exit 1
 
-      - name: Check examples are valid JSON
+      - name: Check examples are valid JSON (all spec versions)
         run: |
           errors=0
-          for f in examples/latest/*.json; do
+          shopt -s nullglob
+          for f in spec/v*/examples/*.json; do
             if python3 -m json.tool "$f" > /dev/null 2>&1; then
               echo "✅ $f"
             else
@@ -147,30 +149,41 @@ jobs:
           done
           [ $errors -eq 0 ] || exit 1
 
-  # ── Job 4: spec/latest/ deprecation guard ───────────────────────────────────
-  deprecation-guard:
-    name: Deprecation Guard
+  # ── Job 4: Legacy path guard ────────────────────────────────────────────────
+  legacy-path-guard:
+    name: Legacy Path Guard
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
 
-      - name: Warn if spec/latest/ is modified
+      - name: Reject modifications to legacy paths
         run: |
-          changed=$(git diff --name-only HEAD~1 HEAD -- 'spec/latest/' 2>/dev/null || true)
+          # Per AIP-0001, normative content lives under spec/vMAJOR.MINOR/.
+          # schemas/latest/ and examples/latest/ no longer exist. docs/aip-spec.md
+          # is a non-normative stub and MUST NOT contain spec content.
+          changed=$(git diff --name-only HEAD~1 HEAD -- \
+            'schemas/latest/' 'examples/latest/' 'spec/latest/' 2>/dev/null || true)
           if [ -n "$changed" ]; then
-            echo "⚠️  WARNING: The following deprecated files were modified:"
+            echo "❌ Modifications detected to legacy paths that no longer exist:"
             echo "$changed"
             echo ""
-            echo "spec/latest/ files are deprecated. Normative changes go in docs/aip-spec.md."
-            echo "See GOVERNANCE.md § 3 — Authoritative Source of Truth."
-            echo ""
-            echo "If this is intentional (e.g., updating deprecation notices), this warning"
-            echo "can be ignored. The check does not fail the build during the transition period."
-          else
-            echo "✅ No deprecated spec/latest/ files modified"
+            echo "Per AIP-0001, all spec content lives under spec/vMAJOR.MINOR/."
+            exit 1
           fi
+          docs_changed=$(git diff HEAD~1 HEAD -- 'docs/aip-spec.md' 2>/dev/null || true)
+          if [ -n "$docs_changed" ]; then
+            # Only allow changes if the file is still a non-normative stub
+            # (fewer than 50 lines and contains the "Redirect notice" heading).
+            lines=$(wc -l < docs/aip-spec.md)
+            if [ "$lines" -gt 50 ] || ! grep -q '^# Redirect notice' docs/aip-spec.md; then
+              echo "❌ docs/aip-spec.md is a redirect stub per AIP-0001."
+              echo "   Normative content MUST live under spec/vMAJOR.MINOR/aip-spec.md."
+              exit 1
+            fi
+          fi
+          echo "✅ No legacy path violations"
 
   # ── Job 5: Internal cross-reference check ───────────────────────────────────
   cross-refs:
@@ -179,34 +192,39 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check internal Markdown links in docs/aip-spec.md
+      - name: Check internal Markdown links in every spec/v*/aip-spec.md
         run: |
           python3 - <<'PYEOF'
-          import re, sys
+          import glob, re, sys
 
-          with open("docs/aip-spec.md") as f:
-            content = f.read()
+          total_broken = 0
+          for spec_path in sorted(glob.glob("spec/v*/aip-spec.md")):
+            with open(spec_path) as f:
+              content = f.read()
 
-          # collect all heading anchors GitHub generates
-          anchors = set()
-          for heading in re.findall(r'^#{1,6}\s+(.+)$', content, re.MULTILINE):
-            anchor = heading.lower()
-            anchor = re.sub(r'[^\w\s-]', '', anchor)
-            anchor = re.sub(r'[\s]+', '-', anchor.strip())
-            anchors.add(anchor)
+            # collect all heading anchors GitHub generates
+            anchors = set()
+            for heading in re.findall(r'^#{1,6}\s+(.+)$', content, re.MULTILINE):
+              anchor = heading.lower()
+              anchor = re.sub(r'[^\w\s-]', '', anchor)
+              anchor = re.sub(r'[\s]+', '-', anchor.strip())
+              anchors.add(anchor)
 
-          # find all internal links (#...)
-          broken = []
-          for link in re.findall(r'\[.*?\]\(#([\w-]+)\)', content):
-            if link not in anchors:
-              broken.append(f"#{link}")
+            # find all internal links (#...)
+            broken = []
+            for link in re.findall(r'\[.*?\]\(#([\w-]+)\)', content):
+              if link not in anchors:
+                broken.append(f"#{link}")
 
-          if broken:
-            print("❌ Broken internal links in docs/aip-spec.md:")
-            for b in broken:
-              print(f"   {b}")
-            # warn only — do not fail, anchors vary by renderer
-            print("(warning only — anchor generation may differ across renderers)")
-          else:
-            print("✅ No broken internal links detected")
+            if broken:
+              print(f"❌ Broken internal links in {spec_path}:")
+              for b in broken:
+                print(f"   {b}")
+              total_broken += len(broken)
+            else:
+              print(f"✅ {spec_path}: no broken internal links detected")
+
+          if total_broken:
+            # warn only — anchors vary by renderer
+            print(f"(warning only — {total_broken} links total; anchor generation may differ across renderers)")
           PYEOF

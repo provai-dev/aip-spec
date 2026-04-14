@@ -10,8 +10,9 @@ body:
       value: |
         Errata reports are how the specification improves. Thank you for the careful reading.
 
-        **Reference document:** All references should be to [`docs/aip-spec.md`](../../docs/aip-spec.md)
-        using section numbers (e.g., "Section 7.3, paragraph 2").
+        **Reference document:** All references should be to the current working-draft
+        [`spec/v0.3/aip-spec.md`](../../spec/v0.3/aip-spec.md) using section numbers
+        (e.g., "§ 7.3, paragraph 2").
 
         Technical errata (normative behaviour changes) may trigger a PATCH version bump
         per [VERSIONING.md](../../VERSIONING.md).
@@ -20,7 +21,7 @@ body:
     id: spec_section
     attributes:
       label: Spec Section
-      description: Section number and title in docs/aip-spec.md
+      description: Section number and title in the current working-draft spec/vMAJOR.MINOR/aip-spec.md
       placeholder: "e.g., Section 7.3 — Token Validation"
     validations:
       required: true

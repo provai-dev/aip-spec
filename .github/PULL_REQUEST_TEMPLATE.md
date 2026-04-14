@@ -2,10 +2,10 @@
 
 <!-- Check all that apply -->
 - [ ] Proposal document (new or updated `proposals/XXXX-slug/`)
-- [ ] Proposal-to-spec integration (merging an Accepted AIP into `docs/aip-spec.md`)
-- [ ] Normative spec change (direct edit to `docs/aip-spec.md`)
+- [ ] Proposal-to-spec integration (merging an Accepted AIP into `spec/vMAJOR.MINOR/aip-spec.md`)
+- [ ] Normative spec change (direct edit to `spec/vMAJOR.MINOR/aip-spec.md`)
 - [ ] Editorial (`[EDITORIAL]` prefix — no normative impact)
-- [ ] JSON Schema change (`schemas/latest/`)
+- [ ] JSON Schema change (`spec/vMAJOR.MINOR/schemas/`)
 - [ ] Test vector / conformance suite
 - [ ] Governance / process document
 - [ ] CI / tooling
@@ -37,20 +37,20 @@ Closes #<!-- issue number — required for all non-editorial PRs -->
 
 ## Spec Sections Affected
 
-<!-- List every section of docs/aip-spec.md that is normatively changed.
-     Use section numbers: e.g., "Section 7.3 — Token Validation"
+<!-- List every section of spec/vMAJOR.MINOR/aip-spec.md that is normatively
+     changed. Use section numbers: e.g., "Section 7.3 — Token Validation"
      Leave blank for editorial-only PRs. -->
 
 ---
 
 ## Normative-Language Checklist
 
-> Required for any PR that modifies normative content in `docs/aip-spec.md`.
+> Required for any PR that modifies normative content in `spec/vMAJOR.MINOR/aip-spec.md`.
 
 - [ ] All new requirements use RFC 2119 / BCP 14 keywords correctly (MUST / SHOULD / MAY)
 - [ ] No new requirement conflicts with an existing normative statement
 - [ ] All new MUST statements reference the relevant AIP error code from
-      `docs/aip-spec.md` Section 13 (Error Handling)
+      `spec/vMAJOR.MINOR/aip-spec.md` Section 13 (Error Handling)
 - [ ] If a MUST is added, a corresponding test vector is included in the proposal
       or an issue is filed to track it
 
@@ -58,12 +58,12 @@ Closes #<!-- issue number — required for all non-editorial PRs -->
 
 ## Schema Checklist
 
-> Required when `schemas/latest/` files are modified.
+> Required when `spec/vMAJOR.MINOR/schemas/` files are modified.
 
 - [ ] Schema `$id` is unchanged for backwards-compatible additions
 - [ ] Breaking schema changes bump the `$id` version
-- [ ] The corresponding spec section in `docs/aip-spec.md` references the
-      updated schema path
+- [ ] The corresponding spec section in `spec/vMAJOR.MINOR/aip-spec.md`
+      references the updated schema path
 - [ ] `additionalProperties: false` is preserved where the spec requires it
 - [ ] `$comment` field updated if the schema description changed
 
@@ -74,8 +74,8 @@ Closes #<!-- issue number — required for all non-editorial PRs -->
 > Required for any change affecting authentication, cryptography, DPoP,
 > delegation, revocation, or key management.
 
-- [ ] Change reviewed against the AIP threat model (`docs/aip-spec.md`
-      Section 16 — Security Considerations)
+- [ ] Change reviewed against the AIP threat model (`spec/vMAJOR.MINOR/aip-spec.md`
+      § 16 — Security Considerations)
 - [ ] DPoP proof-of-possession construction and validation are unaffected or
       explicitly updated
 - [ ] No algorithm agility holes introduced; prohibited algorithms remain
@@ -98,9 +98,9 @@ Closes #<!-- issue number — required for all non-editorial PRs -->
 
 ## Spec Consistency
 
-- [ ] All internal section cross-references in `docs/aip-spec.md` still
-      resolve after this change
-- [ ] Table of Contents in `docs/aip-spec.md` updated if sections were added
+- [ ] All internal section cross-references in `spec/vMAJOR.MINOR/aip-spec.md`
+      still resolve after this change
+- [ ] Table of Contents in `spec/vMAJOR.MINOR/aip-spec.md` updated if sections were added
       or renamed
 - [ ] `AIP_INDEX.md` reflects current proposal status (CI will verify)
 - [ ] README.md links are still accurate

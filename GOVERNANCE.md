@@ -72,15 +72,18 @@ that remaining Editor must immediately begin an appointment process.
 
 ## 3. Authoritative Source of Truth
 
-`docs/aip-spec.md` is the **canonical AIP specification**.
+Every spec version lives under `spec/vMAJOR.MINOR/` and each such directory
+contains the **canonical AIP specification** for that version
+(`spec/vMAJOR.MINOR/aip-spec.md`, `schemas/`, `examples/`).
 
-The files in `spec/latest/` are deprecated working drafts retained for
-historical reference only. They MUST NOT be modified (except to maintain their
-deprecation notices) and MUST NOT be cited as normative references in proposals
-or implementations.
+Per AIP-0001, the legacy paths `docs/aip-spec.md`, `schemas/latest/`,
+`examples/latest/`, `spec/latest/`, and any `docs/aip-spec-vMAJOR.MINOR.md`
+file are retired. `docs/aip-spec.md` persists only as a non-normative
+redirect stub and MUST NOT be cited as a normative reference.
 
-All proposals, PRs, and normative references MUST cite section numbers from
-`docs/aip-spec.md`.
+All proposals, PRs, and normative references MUST cite version-qualified
+section numbers — for example `spec/v0.3/aip-spec.md § 7.3` — not the
+retired paths.
 
 ---
 
@@ -140,8 +143,9 @@ Last Call may be declared by any Editor or Reviewer when:
 After Last Call expires with no unresolved blocking objections:
 
 1. An Editor updates the `Status` frontmatter to `Accepted` and merges the PR.
-2. The Editor integrates the proposal text into `docs/aip-spec.md` in the same
-   commit or a fast-follow PR opened within 7 days.
+2. The Editor integrates the proposal text into the current working-draft
+   `spec/vMAJOR.MINOR/aip-spec.md` in the same commit or a fast-follow PR
+   opened within 7 days.
 3. CI regenerates `AIP_INDEX.md`.
 
 ### 4.5 Rejected
@@ -269,6 +273,6 @@ Version cuts are announced in GitHub Discussions and documented in CHANGELOG.md.
 - [CONTRIBUTING.md](CONTRIBUTING.md) — how to participate
 - [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) — community standards
 - [SECURITY.md](SECURITY.md) — responsible disclosure
-- [docs/aip-spec.md](docs/aip-spec.md) — canonical specification
+- [spec/](spec/) — versioned specification directories (canonical)
 - [RFC 7282](https://www.rfc-editor.org/rfc/rfc7282) — On Consensus and Humming
   in the IETF (informative — basis for the consensus model)
