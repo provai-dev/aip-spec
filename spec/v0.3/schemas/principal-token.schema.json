@@ -6,6 +6,7 @@
   "description": "A signed JWT payload encoding one delegation link in the AIP principal chain. Defined in AIP spec §4.2.4. These tokens are embedded as compact-serialised JWTs in the aip_chain array of a Credential Token — they are not transmitted as standalone objects. Each element in aip_chain is a complete JWT (header.payload.signature) whose payload conforms to this schema.",
   "type": "object",
   "required": [
+    "iss",
     "sub",
     "principal",
     "delegation_depth",
@@ -16,6 +17,10 @@
   ],
   "additionalProperties": false,
   "properties": {
+    "iss": {
+      "type": "string",
+      "description": "Issuer identifier — the DID of the party that issued and signed this Principal Token. For root tokens (delegation_depth=0) this MUST equal principal.id (the root principal's DID). For delegated tokens (delegation_depth>0) this MUST equal the AID of the delegating agent (i.e., the sub of the prior chain element). Added in AIP spec v0.3 (Appendix B). MUST NOT use the did:aip method when delegation_depth=0."
+    },
     "sub": {
       "type": "string",
       "pattern": "^did:aip:[a-z][a-z0-9]*(-[a-z0-9]+)*:[0-9a-f]{32}$",
@@ -106,6 +111,20 @@
       "minItems": 1,
       "uniqueItems": true,
       "description": "The capability scopes being delegated by this token. MUST be a subset of the delegating party's own Capability Manifest scopes (scope inheritance rule, AIP spec §4.3). Duplicate entries are prohibited."
+    },
+    "acr": {
+      "type": "string",
+      "description": "OPTIONAL for G1/G2; REQUIRED for G3. Authentication Context Class Reference — the level of identity assurance used when the root principal authenticated to the issuing Principal Wallet. Values follow RFC 8176 / NIST SP 800-63 level conventions (e.g., 'urn:mace:incommon:iap:silver'). Validated by G3 relying parties per AIP spec §4.2.4."
+    },
+    "amr": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "OPTIONAL for G1/G2; REQUIRED for G3. Authentication Methods References — array of identifiers for the authentication methods used (per RFC 8176, e.g., ['pwd', 'otp']). REQUIRED when acr is present. Validated by G3 relying parties per AIP spec §4.2.4."
     }
   },
   "if": {

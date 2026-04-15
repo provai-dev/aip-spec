@@ -1,0 +1,61 @@
+{
+  "_comment": "Example AIP Grant Response — AIP spec §4.5.4. Constructed and signed by the Principal Wallet after Alice approves the grant ceremony. Delivered via POST to the callback_uri in the GrantRequest. The principal_token is a compact JWT whose payload conforms to principal-token.schema.json. Signature placeholder.",
+  "grant_request_id": "gr:1a2b3c4d-5e6f-4789-8abc-def012345678",
+  "nonce": "7Xk9mN3pQ2rS8tU1vW4yZ6bC",
+  "state": "sess_abc123_csrf_xyz789",
+  "status": "approved",
+  "principal_id": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2do7",
+  "principal_token": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCIsImtpZCI6ImRpZDprZXk6ejZNa2hhWGdCWkR2b3REa0w1MjU3ZmFpenRpR2lDMlF0S0xHcGJubkVHdGEyZG83I2tleS0xIn0.eyJpc3MiOiJkaWQ6a2V5Ono2TWtoYVhnQlpEdm90RGtMNTI1N2ZhaXp0aUdpQzJRdEtMR3Bibm5FR3RhMmRvNyIsInN1YiI6ImRpZDphaXA6cGVyc29uYWw6OWYzYTFjODJiNGU2ZDdmMGEyYjVjOGUxZDRmN2EwYjMiLCJwcmluY2lwYWwiOnsidHlwZSI6Imh1bWFuIiwiaWQiOiJkaWQ6a2V5Ono2TWtoYVhnQlpEdm90RGtMNTI1N2ZhaXp0aUdpQzJRdEtMR3Bibm5FR3RhMmRvNyJ9LCJkZWxlZ2F0ZWRfYnkiOm51bGwsImRlbGVnYXRpb25fZGVwdGgiOjAsIm1heF9kZWxlZ2F0aW9uX2RlcHRoIjowLCJpc3N1ZWRfYXQiOiIyMDI2LTA0LTE0VDEwOjMwOjAwWiIsImV4cGlyZXNfYXQiOiIyMDI2LTA3LTEzVDEwOjMwOjAwWiIsInNjb3BlIjpbImVtYWlsLnJlYWQiLCJlbWFpbC53cml0ZSIsImVtYWlsLnNlbmQiLCJjYWxlbmRhci5yZWFkIiwiY2FsZW5kYXIud3JpdGUiXX0.example-signature-placeholder",
+  "_principal_token_decoded": {
+    "_note": "Decoded for reference only — not part of the actual GrantResponse object.",
+    "header": {
+      "alg": "EdDSA",
+      "typ": "JWT",
+      "kid": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2do7#key-1"
+    },
+    "payload": {
+      "iss": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2do7",
+      "sub": "did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3",
+      "principal": {
+        "type": "human",
+        "id": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2do7"
+      },
+      "delegated_by": null,
+      "delegation_depth": 0,
+      "max_delegation_depth": 0,
+      "issued_at": "2026-04-14T10:30:00Z",
+      "expires_at": "2026-07-13T10:30:00Z",
+      "scope": [
+        "email.read",
+        "email.write",
+        "email.send",
+        "calendar.read",
+        "calendar.write"
+      ]
+    }
+  },
+  "approved_capabilities": {
+    "email": {
+      "read": true,
+      "write": true,
+      "send": true,
+      "delete": false,
+      "max_recipients_per_send": 10
+    },
+    "calendar": {
+      "read": true,
+      "write": true,
+      "delete": false
+    }
+  },
+  "approved_delegation_valid_for_seconds": 7776000,
+  "approved_max_delegation_depth": 0,
+  "signed_at": "2026-04-14T10:30:00Z",
+  "_notes": {
+    "deployer_validation": "On receipt the deployer MUST: (1) verify grant_request_id matches original, (2) verify nonce matches — mismatch = forgery, (3) status is 'approved' so proceed, (4) verify signed_at is plausible (not future, not >24h past), (5) decode and verify principal_token JWT signature against did:key:z6Mkha...do7 public key, (6) verify principal_token.sub = agent's AID, (7) use approved_capabilities to construct Capability Manifest.",
+    "full_approval": "status='approved' means principal approved all requested capabilities. approved_capabilities matches requested_capabilities from the GrantRequest.",
+    "partial_example": "If Alice had declined email.delete capability, status would be 'partial' and approved_capabilities would omit email.delete. The deployer MUST handle 'partial' without assuming full approval.",
+    "next_step": "The deployer constructs the Registration Envelope using identity (pre-generated), capability_manifest (from approved_capabilities, signed by principal), principal_token (from this response), and grant_tier: 'G2', then submits to POST /v1/agents.",
+    "iss_field": "principal_token.payload.iss = principal.id for root tokens (delegation_depth=0). The iss field was added in AIP spec v0.3."
+  }
+}

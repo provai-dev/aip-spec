@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provai.dev/schemas/aip/grant-request/latest",
+  "$comment": "Normatively defined in AIP spec §4.5.2. The GrantRequest is constructed by the Agent Deployer and transmitted to the Principal Wallet via one of the transport bindings (§4.5.5): Web Redirect, QR Code, or SDK In-Process. When using the Web Redirect or QR Code bindings, the request MUST be signed with the deployer's Ed25519 key. The nonce MUST contain at least 128 bits of entropy.",
+  "title": "AIP Grant Request",
+  "description": "The request object constructed by an Agent Deployer and presented to the Principal Wallet to initiate the AIP-GRANT signing ceremony. Defined in AIP spec §4.5.2. The wallet validates, displays the consent UI, and returns a GrantResponse.",
+  "type": "object",
+  "required": [
+    "grant_request_id",
+    "aip_version",
+    "agent_aid",
+    "agent_name",
+    "agent_type",
+    "model",
+    "requested_capabilities",
+    "purpose",
+    "delegation_valid_for_seconds",
+    "nonce",
+    "request_expires_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "grant_request_id": {
+      "type": "string",
+      "pattern": "^gr:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "description": "Unique identifier for this grant request. Format: 'gr:' prefix followed by UUID v4 in canonical lowercase hyphenated form. The Principal Wallet MUST maintain a record of seen grant_request_id values for at least 30 days and MUST reject replays with grant_request_replayed."
+    },
+    "aip_version": {
+      "type": "string",
+      "enum": ["0.3"],
+      "description": "AIP protocol version. MUST be '0.3' for this spec."
+    },
+    "agent_aid": {
+      "type": "string",
+      "pattern": "^did:aip:[a-z][a-z0-9]*(-[a-z0-9]+)*:[0-9a-f]{32}$",
+      "description": "The AID of the agent being authorised. The deployer MUST generate the agent's keypair and AID before constructing the GrantRequest so that the resulting Principal Token correctly names the agent's AID in its sub field."
+    },
+    "agent_name": {
+      "type": "string",
+      "maxLength": 64,
+      "description": "Human-readable agent name. Displayed verbatim in the consent UI (mandatory display element 1 per §4.5.3)."
+    },
+    "agent_type": {
+      "type": "string",
+      "description": "Registered AIP agent type namespace (e.g., 'personal', 'enterprise', 'service', 'orchestrator', 'ephemeral'). Displayed in the consent UI."
+    },
+    "model": {
+      "type": "object",
+      "required": ["provider", "model_id"],
+      "additionalProperties": false,
+      "description": "AI model information. Displayed in the consent UI (mandatory display element 2 per §4.5.3).",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "description": "AI model provider name (e.g., 'Anthropic', 'OpenAI', 'Google'). Displayed as '<provider> — <model_id>'."
+        },
+        "model_id": {
+          "type": "string",
+          "description": "AI model identifier (e.g., 'claude-sonnet-4-6'). Displayed together with provider."
+        }
+      }
+    },
+    "requested_capabilities": {
+      "type": "object",
+      "description": "The capability set being requested. Uses the same schema as the Capability Manifest 'capabilities' sub-object. The Principal Wallet generates consent UI text from this object — NOT from any deployer-supplied display string. The principal MAY approve a strict subset (partial approval).",
+      "additionalProperties": true
+    },
+    "purpose": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "description": "Plain-language description of why this agent needs the requested capabilities. Displayed verbatim in the consent UI (mandatory display element 3 per §4.5.3). MUST accurately describe the agent's intended use."
+    },
+    "delegation_valid_for_seconds": {
+      "type": "integer",
+      "minimum": 300,
+      "maximum": 31536000,
+      "description": "Requested delegation validity window in seconds. Minimum: 300 seconds (5 minutes). Maximum: 31536000 seconds (1 year). The issued Principal Token's expires_at will be issued_at + approved_delegation_valid_for_seconds (from GrantResponse)."
+    },
+    "max_delegation_depth": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10,
+      "default": 0,
+      "description": "OPTIONAL. Maximum sub-delegation depth permitted for this agent. Default: 0 (leaf agent, cannot spawn sub-agents). When > 0, the consent UI MUST display a clear sub-delegation notice (mandatory display element 7 per §4.5.3)."
+    },
+    "task_id": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "OPTIONAL for personal/enterprise/service/orchestrator agents. REQUIRED (non-null, non-empty) for ephemeral agents. Links this grant to a specific task in the audit trail."
+    },
+    "deployer_did": {
+      "type": "string",
+      "pattern": "^did:[a-z][a-z0-9]*:.+$",
+      "description": "OPTIONAL. W3C DID of the deploying organisation or individual. Displayed in the consent UI. Absent signals 'Deployer identity unverified' warning to the principal."
+    },
+    "deployer_name": {
+      "type": "string",
+      "maxLength": 128,
+      "description": "OPTIONAL. Human-readable name of the deployer. Displayed in the consent UI alongside deployer_did."
+    },
+    "nonce": {
+      "type": "string",
+      "minLength": 22,
+      "description": "Cryptographically random nonce. MUST contain at least 128 bits of entropy (minLength 22 for base64url encoding). Echoed in GrantResponse — mismatch MUST be treated as a forgery attempt."
+    },
+    "request_expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp after which this grant request is invalid. RECOMMENDED: 15 minutes to 24 hours. The Principal Wallet MUST check this before showing the consent UI and MUST reject with grant_request_expired if passed."
+    },
+    "callback_uri": {
+      "type": "string",
+      "format": "uri",
+      "description": "CONDITIONAL. REQUIRED for Web Redirect and QR Code transport bindings. MUST use HTTPS. The Principal Wallet POSTs the GrantResponse to this URI. Absent for SDK In-Process binding."
+    },
+    "state": {
+      "type": "string",
+      "maxLength": 512,
+      "description": "OPTIONAL. Opaque state value generated by the deployer. Echoed unchanged in the GrantResponse. Used for CSRF protection and session correlation."
+    },
+    "deployer_public_key": {
+      "type": "object",
+      "description": "OPTIONAL. JWK of the deployer's signing key. The Principal Wallet SHOULD verify the deployer's signature over the GrantRequest if this field is present.",
+      "additionalProperties": true
+    }
+  }
+}
