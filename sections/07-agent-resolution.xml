@@ -89,8 +89,9 @@
     <name>Registry Genesis</name>
     
     <t>
-      Registry Genesis is the one-time initialisation procedure by which a new AIP Registry creates and persists its own
-      <tt>did:aip</tt> Agent Identity (the Registry AID). It MUST be performed before the Registry serves any requests.
+      Registry Genesis is the one-time initialisation procedure by which a new AIP Registry establishes its
+      stable service identifier, generates its initial trust keys, and publishes discovery and trust metadata.
+      It MUST be performed before the Registry serves any requests.
     </t>
 
     <!-- 7.3.1 Key Generation -->
@@ -98,27 +99,36 @@
       <name>Key Generation</name>
       
       <t>
-        The Registry MUST generate a fresh Ed25519 keypair at first boot. The private key MUST be stored encrypted at rest
-        (AES-256-GCM or equivalent). The public key is used to construct the Registry's DID Document and to sign CRL
-        documents (Section 11.2) and Step Execution Tokens.
+        The Registry MUST generate a fresh Ed25519 trust keypair at first
+        boot. The private key MUST be stored encrypted at rest (AES-256-GCM
+        or equivalent). The corresponding public key is published in the
+        initial Registry Trust Record. Separate active verification keys for
+        CRL documents (Section 11.2) and Step Execution Tokens are
+        RECOMMENDED so that routine operational-key rotation does not
+        require trust-root rotation.
       </t>
     </section>
 
-    <!-- 7.3.2 AID Construction -->
+    <!-- 7.3.2 Registry ID Establishment -->
     <section anchor="registry-genesis-aid-construction">
-      <name>AID Construction</name>
+      <name>Registry ID Establishment</name>
       
       <t>
-        The Registry MUST construct its AID using the <tt>registry</tt> namespace:
+        The Registry MUST establish a stable <tt>registry_id</tt> for the
+        Registry service. The <tt>registry_id</tt> MUST be an HTTPS URI
+        under the Registry operator's control. The RECOMMENDED value is the
+        origin that serves <tt>/.well-known/aip-registry</tt>.
       </t>
 
       <artwork type="text"><![CDATA[
-  did:aip:registry:<32-hex-character unique-id>
+  https://registry.example.com
       ]]></artwork>
 
       <t>
-        The <tt>unique-id</tt> MUST be generated as a cryptographically random 32-character lowercase hexadecimal string.
-        At most one Registry AID MUST be active per Registry deployment at any time.
+        The <tt>registry_id</tt> identifies the Registry service, not a
+        single signing key. It MUST remain stable across planned key
+        rotation. At most one active <tt>registry_id</tt> MUST exist per
+        Registry deployment at any time.
       </t>
     </section>
 
@@ -127,9 +137,11 @@
       <name>Self-Registration Exemption</name>
       
       <t>
-        The Registry AID MUST NOT be created via <tt>POST /v1/agents</tt>. Instead, the Registry MUST persist its AID and
-        keypair directly to its own data store during genesis. The following Registration Envelope checks (Section 6.2) are
-        explicitly inapplicable to the Registry AID:
+        The Registry service identifier MUST NOT be created via
+        <tt>POST /v1/agents</tt>. Instead, the Registry MUST persist its
+        <tt>registry_id</tt> and trust keys directly to its own data store
+        during genesis. The following Registration Envelope checks
+        (Section 6.2) are explicitly inapplicable to the Registry service:
       </t>
       <ul>
         <li>
@@ -137,7 +149,10 @@
           NOT carry a principal delegation chain.
         </li>
         <li>
-          <strong>Check 4</strong> (duplicate AID rejection) — genesis is idempotent; if a Registry AID already exists in the data store the existing record MUST be used and genesis MUST NOT overwrite it.
+          <strong>Check 4</strong> (duplicate AID rejection) — genesis is
+          idempotent; if a <tt>registry_id</tt> already exists in the data
+          store the existing record MUST be used and genesis MUST NOT
+          overwrite it.
         </li>
       </ul>
     </section>
@@ -147,7 +162,7 @@
       <name>Well-Known Publication</name>
       
       <t>
-        The Registry MUST publish its DID Document and public key at:
+        The Registry MUST publish discovery metadata at:
       </t>
       <artwork type="text"><![CDATA[
 GET /.well-known/aip-registry
@@ -161,12 +176,11 @@ GET /.well-known/aip-registry
           <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
         </thead>
         <tbody>
-          <tr><td><tt>registry_aid</tt></td><td>string</td><td>REQUIRED</td><td>The Registry's <tt>did:aip</tt> AID</td></tr>
+          <tr><td><tt>registry_id</tt></td><td>string</td><td>REQUIRED</td><td>Stable HTTPS identifier for the Registry service</td></tr>
           <tr><td><tt>registry_name</tt></td><td>string</td><td>REQUIRED</td><td>Human-readable Registry name (maxLength: 128)</td></tr>
           <tr><td><tt>aip_version</tt></td><td>string</td><td>REQUIRED</td><td>The <tt>aip_version</tt> this Registry conforms to</td></tr>
-          <tr><td><tt>public_key</tt></td><td>object</td><td>REQUIRED</td><td>JWK representation of the Registry's Ed25519 public key</td></tr>
+          <tr><td><tt>registry_trust_uri</tt></td><td>string</td><td>REQUIRED</td><td>URI of the current Registry Trust Record</td></tr>
           <tr><td><tt>endpoints</tt></td><td>object</td><td>REQUIRED</td><td>Map of service names to relative or absolute URI paths</td></tr>
-          <tr><td><tt>signature</tt></td><td>string</td><td>REQUIRED</td><td>Base64url EdDSA signature of the canonical JSON (RFC 8785 JCS) of the document excluding the <tt>signature</tt> field</td></tr>
         </tbody>
       </table>
 
@@ -186,29 +200,83 @@ GET /.well-known/aip-registry
       </table>
 
       <t>
-        Self-signature verification: Relying Parties MUST verify the <tt>signature</tt> field against the <tt>public_key</tt>
-        in the same document. This ensures the well-known document has not been tampered with in transit. The signature is
-        computed over the RFC 8785 JCS canonical serialisation of the document with the <tt>signature</tt> field removed.
-      </t>
-
-      <t>
         First-contact bootstrapping: On first contact with a Registry, Relying Parties MUST:
       </t>
       <ul>
         <li>Fetch <tt>/.well-known/aip-registry</tt> over HTTPS.</li>
-        <li>Verify the self-signature.</li>
-        <li>Pin the <tt>public_key</tt> and <tt>registry_aid</tt> locally.</li>
-        <li>On subsequent contacts, verify that the pinned key matches.</li>
+        <li>Verify that the response <tt>registry_id</tt> matches the Registry URI established via the root principal DID Document when such a DID binding is available. Unless otherwise specified, this comparison MUST use origin comparison per <xref target="RFC6454"/> (scheme + host + port).</li>
+        <li>Fetch the Registry Trust Record from <tt>registry_trust_uri</tt>.</li>
+        <li>Pin the <tt>registry_id</tt>, the trusted Registry Trust Record version, and the trust keys from that record locally.</li>
+        <li>On subsequent contacts, use the versioned trust-update procedure in Section 7.3.6 before updating the local trust state.</li>
       </ul>
 
       <t>
-        Key rotation for Registry keys is an administrative operation that requires out-of-band communication to Relying
-        Parties. A future AIP will define the Registry key rotation protocol (see Section 17.9).
+        The <tt>registry_id</tt> identifies the Registry instance and MUST remain stable across planned Registry key rotation.
+        Planned key rotation updates the Registry Trust Record and the Registry's active verification keys while preserving
+        the same <tt>registry_id</tt>. Emergency compromise recovery is handled separately under Section 7.3.6.
       </t>
 
       <t>
-        Validators bootstrapping trust in a Registry MUST fetch and pin the Registry's public key from this endpoint before
-        processing any Step Execution Tokens or CRL documents signed by that Registry. Cached values MUST NOT be used beyond 300 seconds without revalidation.
+        The well-known document is discovery metadata. The canonical trust state for a Registry is defined by its Registry Trust
+        Record, not by the well-known document itself.
+      </t>
+    </section>
+
+    <section anchor="registry-genesis-trust-record" numbered="true">
+      <name>Registry Trust Record</name>
+      <t>
+        A Registry Trust Record is the canonical versioned trust metadata
+        object for a Registry. It MUST be published at:
+      </t>
+      <table>
+        <thead>
+          <tr><th>Method</th><th>Path</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>GET</td><td>/v1/registry-trust/current</td><td>Current Registry Trust Record</td></tr>
+          <tr><td>GET</td><td>/v1/registry-trust/{version}</td><td>Immutable Registry Trust Record for the specified version</td></tr>
+        </tbody>
+      </table>
+
+      <t>
+        The Registry Trust Record MUST use a detached-signature structure
+        consisting of a <tt>signed</tt> object and a <tt>signatures</tt>
+        array. The <tt>signed</tt> object MUST include at minimum:
+      </t>
+      <ul>
+        <li><tt>registry_id</tt></li>
+        <li><tt>version</tt></li>
+        <li><tt>issued_at</tt></li>
+        <li><tt>expires_at</tt></li>
+        <li><tt>discovery_uri</tt></li>
+        <li><tt>endpoints</tt></li>
+        <li><tt>trust_signature_threshold</tt></li>
+        <li><tt>trusted_keys</tt></li>
+        <li><tt>active_verification_keys</tt></li>
+      </ul>
+
+      <t>
+        The canonical signing input is the RFC 8785 JCS serialisation of the
+        <tt>signed</tt> object only. Signature verification MUST ignore the
+        <tt>signatures</tt> array except as the container for detached
+        signatures over that <tt>signed</tt> object.
+      </t>
+
+      <t>
+        Verifiers use the latest trusted Registry Trust Record for current
+        Registry interactions. For historical verification of Step
+        Execution Tokens, CRLs, or signed notifications, verifiers MUST use
+        the Registry Trust Record version that was current at artifact
+        issuance time. The <tt>trusted_keys</tt> set governs trust-record
+        acceptance, while <tt>active_verification_keys</tt> governs which
+        runtime keys are valid for Registry-signed artifacts issued under
+        that trust-record version.
+      </t>
+
+      <t>
+        Historical Registry Trust Records MUST remain retrievable for at
+        least the maximum lifetime of Step Execution Tokens and CRL
+        artifacts plus a 30-day audit margin.
       </t>
     </section>
 
@@ -217,44 +285,148 @@ GET /.well-known/aip-registry
       <name>Single-Instance Constraint</name>
       
       <t>
-        Each Registry deployment MUST have exactly one active Registry AID. Provisioning a second Registry AID within the same deployment
-        MUST be treated as a fatal configuration error. Horizontal scaling and high-availability deployments MUST share a single Registry AID
-        and keypair (stored in a shared secrets manager).
+        Each Registry deployment MUST have exactly one active Registry ID. Provisioning a second Registry ID within the same deployment
+        MUST be treated as a fatal configuration error. Horizontal scaling and high-availability deployments MUST share a single Registry ID
+        and trust state.
       </t>
     </section>
 
-    <!-- 7.3.6 Registry Key Rotation (Interim Procedure) -->
+    <!-- 7.3.6 Registry Key Rotation -->
     <section anchor="registry-genesis-registry-key-rotation">
-      <name>Registry Key Rotation (Interim Procedure)</name>
+      <name>Registry Key Rotation</name>
       
       <t>
-        Full in-band Registry key rotation is deferred to a future minor version. Until that protocol is defined, the following interim
-        procedure applies to operators who must rotate the Registry key (e.g., in response to suspected key compromise).
+        AIP defines two Registry key rotation paths:
       </t>
-
-      <ol>
-        <li>
-          Registry key rotation MUST be treated as a Registry instance migration: the existing Registry AID is deprecated, a new Registry
-          is initialised via Registry Genesis with a new AID and keypair, and agents are re-registered or migrated to the new
-          Registry.
-        </li>
-        <li>
-          Relying Parties that have pinned the existing Registry's public key (step 3 of Section 7.3.4 bootstrapping) and subsequently
-          receive a <tt>/.well-known/aip-registry</tt> document whose <em>public_key</em> does not match the pinned key MUST treat this as a potential MITM attack. They MUST NOT use the new key automatically. They MUST halt Registry-dependent operations and require out-of-band verification that the key change is legitimate before re-pinning.
-        </li>
-        <li>
-          Historical Step Execution Tokens and CRL documents signed by the previous Registry key remain valid for their stated <em>exp</em> period only. Relying Parties MUST verify historical tokens against the key that was pinned at issuance time; they MUST NOT re-verify them against a newly pinned key.
-        </li>
-        <li>
-          A future minor version will define an in-band key succession protocol using a <em>previous_registry_key_signature</em> mechanism
-          analogous to agent key rotation, allowing Relying Parties to verify key transitions without out-of-band communication. See Open Issue in Section 17.9.
-        </li>
-      </ol>
+      <ul>
+        <li><strong>Planned rotation:</strong> continuity-preserving rotation in which the Registry keeps the same <tt>registry_id</tt> and publishes a new Registry Trust Record version.</li>
+        <li><strong>Emergency re-bootstrap:</strong> continuity-breaking recovery for suspected key compromise or loss of the retiring private key.</li>
+      </ul>
 
       <t>
-        Validators bootstrapping trust in a Registry MUST fetch and pin the Registry's public key from this endpoint before processing any
-        Step Execution Tokens or CRL documents signed by that Registry. Cached values MUST NOT be used beyond 300 seconds without revalidation.
+        Validators bootstrapping trust in a Registry MUST fetch and pin the current Registry Trust Record before processing any
+        Step Execution Tokens or CRL documents signed by that Registry. Cached trust state MUST NOT be used beyond the
+        trust record's <tt>expires_at</tt> without refresh.
       </t>
+
+      <section anchor="registry-genesis-registry-key-rotation-planned">
+        <name>Planned Rotation</name>
+        <t>
+          During planned rotation, the Registry MUST publish a new immutable
+          Registry Trust Record whose <tt>signed.version</tt> is exactly one
+          greater than the previously trusted version and whose
+          <tt>signed.registry_id</tt> matches the existing pinned
+          <tt>registry_id</tt>.
+        </t>
+
+        <t>
+          The <tt>signed.trust_signature_threshold</tt> value defines the
+          minimum number of signatures from <tt>signed.trusted_keys</tt>
+          required for ordinary acceptance of a Registry Trust Record.
+          Implementations MAY require a higher threshold than 1 for
+          high-assurance deployments, but they MUST still preserve the
+          overlapping-signature rule below during planned rotation.
+        </t>
+
+        <t>
+          Planned rotation MUST use overlapping trust signatures. A new
+          Registry Trust Record version MUST satisfy the threshold rules in
+          both the currently pinned and the candidate new trust record. At
+          a minimum, a planned rotation update MUST be signed by:
+        </t>
+        <ol>
+          <li>at least one key trusted in the currently pinned Registry Trust Record; and</li>
+          <li>at least one key trusted in the new Registry Trust Record.</li>
+        </ol>
+
+        <t>
+          If the discovery document's <tt>registry_trust_uri</tt> does not
+          share the same origin as <tt>registry_id</tt>, the Relying Party
+          MUST treat the Registry as untrusted unless an explicit trust
+          policy permits that alternate trust-record origin.
+        </t>
+
+        <t>
+          A Relying Party that has pinned trust version <tt>N</tt> MUST
+          update sequentially. It MUST fetch and validate version
+          <tt>N+1</tt> before accepting version <tt>N+2</tt> or later.
+        </t>
+        <t>
+          This sequential trust-update model is intentionally similar to
+          repository root update patterns in The Update Framework
+          <xref target="TUF"/>,
+          where clients advance trust state one version at a time to resist
+          rollback and mix-and-match attacks.
+        </t>
+        <ol>
+          <li>The fetched record's <tt>signed.registry_id</tt> MUST match the pinned value.</li>
+          <li>The fetched record's <tt>signed.version</tt> MUST equal the pinned version plus exactly 1.</li>
+          <li>The fetched record's signatures MUST satisfy the overlapping-signature rule above.</li>
+          <li>The fetched record's <tt>expires_at</tt> MUST be in the future.</li>
+          <li>The fetched record MUST NOT be older than or equal to any previously accepted version for that <tt>registry_id</tt>.</li>
+        </ol>
+
+        <t>
+          If all checks succeed, the Relying Party MAY replace its pinned
+          trust state with the new Registry Trust Record while retaining the
+          prior trust records for historical verification.
+        </t>
+
+        <t>
+          Historical Step Execution Tokens and CRL documents signed before
+          the rotation remain valid for their stated <em>exp</em> period
+          only. Relying Parties MUST verify such historical artifacts
+          against the Registry Trust Record version that was current at
+          issuance time; they MUST NOT re-verify them against the newest
+          trust record automatically.
+        </t>
+      </section>
+
+      <section anchor="registry-genesis-registry-key-rotation-emergency">
+        <name>Emergency Re-Bootstrap</name>
+        <t>
+          If a Registry Trust Record update cannot satisfy the planned
+          rotation checks, or if the retiring trust key is suspected
+          compromised or unavailable, the event MUST be treated as an
+          emergency re-bootstrap.
+        </t>
+        <t>
+          This distinction between planned rollover and emergency
+          continuity-breaking recovery is similar in spirit to DNSSEC trust
+          anchor rollover guidance in <xref target="RFC5011"/>, where
+          automated trust continuity and exceptional recovery are treated as
+          different operational cases.
+        </t>
+
+        <ol>
+        <li>
+          Relying Parties that have pinned Registry trust state and
+          subsequently receive discovery or trust metadata that does not
+          satisfy the planned-rotation checks above MUST treat this as a
+          potential MITM condition.
+        </li>
+        <li>
+          Relying Parties MUST NOT use the new trust state automatically.
+          They MUST halt Registry-dependent operations and require explicit
+          re-bootstrap or out-of-band operator confirmation before
+          re-pinning.
+        </li>
+        <li>
+          Emergency re-bootstrap is continuity-breaking by design.
+          Automatic verifier acceptance rules for planned rotation do not
+          apply.
+        </li>
+        <li>
+          Historical Step Execution Tokens and CRL documents signed by the
+          previous Registry trust state remain valid for their stated
+          <em>exp</em> period only. Relying Parties MUST verify historical
+          artifacts against the trust record version that was current at
+          issuance time; they MUST NOT re-verify them against the emergency
+          replacement trust state.
+        </li>
+        </ol>
+      </section>
+
     </section>
   </section>
 </section>

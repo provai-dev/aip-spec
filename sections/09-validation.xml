@@ -228,6 +228,11 @@ categories, the most restrictive limit applies.
         If revoked, reject with <tt>agent_revoked</tt>. If the Registry is
         unreachable, reject with <tt>registry_unavailable</tt>.</li>
     </ul>
+    <t>
+      The Relying Party MUST verify the Registry trust state used for this
+      revocation check using the Registry Trust Record procedure in Section
+      7.3.6 before treating Registry responses as authoritative.
+    </t>
   </section>
 
   <section anchor="validation-step-8" numbered="true">

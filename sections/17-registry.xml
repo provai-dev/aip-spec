@@ -42,7 +42,9 @@
         <tr><td>POST</td><td>/v1/oauth/authorize</td><td>G3 authorization endpoint</td></tr>
         <tr><td>POST</td><td>/v1/oauth/token</td><td>G3 token endpoint / token exchange</td></tr>
         <tr><td>GET</td><td>/.well-known/oauth-authorization-server</td><td>AS Metadata <xref target="RFC8414"/></td></tr>
-        <tr><td>GET</td><td>/.well-known/aip-registry</td><td>Retrieve Registry configuration</td></tr>
+        <tr><td>GET</td><td>/.well-known/aip-registry</td><td>Retrieve Registry discovery metadata</td></tr>
+        <tr><td>GET</td><td>/v1/registry-trust/current</td><td>Retrieve current Registry Trust Record</td></tr>
+        <tr><td>GET</td><td>/v1/registry-trust/{version}</td><td>Retrieve immutable Registry Trust Record by version</td></tr>
       </tbody>
     </table>
   </section>
@@ -88,7 +90,7 @@ did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3
     <t>**`POST /v1/approvals` validation:** The Registry MUST perform all checks defined in Section 13.10 before accepting an Approval Envelope. The Registry MUST return HTTP 201 with the stored envelope (including the Registry-assigned `status: "pending_approval"`) on success.</t>
     <t>**`POST /v1/approvals/{id}/approve` flow:** This endpoint is called by the Principal Wallet after the principal completes the signing ceremony. The request body MUST contain the `principal_signature` field: a base64url EdDSA signature computed by the principal's wallet over the JCS-canonical serialisation of the full Approval Envelope with `principal_signature` set to the empty string `""` before serialisation — identical to the pattern used for `creator_signature`. The signing key MUST be the private key of `principal_id`. The Registry MUST verify this signature against the `principal_id`'s resolved public key before transitioning the envelope to `approved`.</t>
     <t>**Atomicity requirement for step claim:** The Registry MUST implement step-claim operations atomically (e.g., using optimistic locking or a distributed lock) to prevent two actors from claiming the same step simultaneously. Only one claim MUST succeed; the other MUST receive `approval_step_already_claimed`.</t>
-    <t>**Step Execution Token format:** The Step Execution Token returned by `POST .../steps/{n}/claim` is a JWT signed by the Registry's administrative key with the claims described in Section 13.8. Its TTL MUST comply with normal TTL rules for the scopes involved.</t>
+    <t>**Step Execution Token format:** The Step Execution Token returned by `POST .../steps/{n}/claim` is a JWT signed by a key referenced in `active_verification_keys.step_execution` of the Registry Trust Record version current at issuance time, with the claims described in Section 13.8. Its TTL MUST comply with normal TTL rules for the scopes involved.</t>
   </section>
 
   <section anchor="oauth-registry" numbered="true">
@@ -114,6 +116,7 @@ did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3
           <tr><th>Field</th><th>Type</th><th>Description</th></tr>
         </thead>
         <tbody>
+          <tr><td>`registry_trust_uri`</td><td>string</td><td>URI of the current Registry Trust Record</td></tr>
           <tr><td>`grant_tiers_supported`</td><td>array</td><td>Supported grant tiers: `["G1", "G2", "G3"]`</td></tr>
           <tr><td>`acr_values_supported`</td><td>array</td><td>Supported `acr` values</td></tr>
           <tr><td>`amr_values_supported`</td><td>array</td><td>Supported `amr` values</td></tr>
@@ -199,12 +202,13 @@ URIs with `invalid_webhook_uri`.</t>
   </section>
 
   <section anchor="registry-key-management" numbered="true">
-    <name>Key Management and Rotation (Open Issue)</name>
+    <name>Key Management and Rotation</name>
     <t>
-      Full in-band Registry key rotation is an open issue in AIP v0.3.
-      Current implementations MUST follow the interim procedure defined in
-      Section 7.3.6. A future minor version will define an interoperable
-      rotation protocol using cryptographic succession proofs.
+      Registry trust evolution is defined in Section 7.3.6. Planned
+      rotation preserves the same <tt>registry_id</tt> and uses versioned
+      Registry Trust Records with overlapping signatures, expiry, and
+      rollback checks. Emergency compromise recovery uses explicit
+      re-bootstrap and MUST NOT be accepted automatically.
     </t>
   </section>
 </section>

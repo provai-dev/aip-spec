@@ -93,9 +93,11 @@ LOHEXDIG   = DIGIT / "a" / "b" / "c" / "d" / "e" / "f"
         1 hour).</dd>
 
       <dt><tt>registry</tt>:</dt>
-      <dd>An AIP Registry instance. Created via the Registry Genesis
-        procedure. A Registry AID MUST use the <tt>registry</tt>
-        namespace.</dd>
+      <dd>The <tt>registry</tt> namespace is reserved for Registry-owned
+        agent identities when a Registry deployment exposes agent-like
+        actors. It MUST NOT be used as the stable Registry service
+        identifier. The stable Registry service identifier is
+        <tt>registry_id</tt> as defined in Section 7.3.4.</dd>
     </dl>
     <t>
       Custom namespaces MAY be registered with the W3C and the AIP registry.

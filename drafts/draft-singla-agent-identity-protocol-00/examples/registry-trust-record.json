@@ -1,0 +1,45 @@
+{
+  "_comment": "Example Registry Trust Record for trust version 2.",
+  "signed": {
+    "registry_id": "https://registry.provai.dev",
+    "version": 2,
+    "issued_at": "2026-04-17T12:00:00Z",
+    "expires_at": "2026-05-17T12:00:00Z",
+    "discovery_uri": "https://registry.provai.dev/.well-known/aip-registry",
+    "endpoints": {
+      "agents": "/v1/agents",
+      "crl": "/v1/crl",
+      "revocations": "/v1/revocations"
+    },
+    "trust_signature_threshold": 1,
+    "trusted_keys": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "J9Z0zK0K8W4nNf8j2Lq7nR4uY6gM3cQ1tV5xB2pH9sA",
+        "keyid": "https://registry.provai.dev#trust-key-2"
+      }
+    ],
+    "active_verification_keys": {
+      "step_execution": [
+        "https://registry.provai.dev#step-key-2"
+      ],
+      "crl": [
+        "https://registry.provai.dev#crl-key-2"
+      ],
+      "notifications": [
+        "https://registry.provai.dev#notify-key-2"
+      ]
+    }
+  },
+  "signatures": [
+    {
+      "keyid": "https://registry.provai.dev#trust-key-1",
+      "sig": "retiring-trust-key-signature-placeholder"
+    },
+    {
+      "keyid": "https://registry.provai.dev#trust-key-2",
+      "sig": "new-trust-key-signature-placeholder"
+    }
+  ]
+}

@@ -13,7 +13,7 @@
     <li>The bare <tt>spawn_agents</tt> scope is retired; use <tt>spawn_agents.create</tt> and <tt>spawn_agents.manage</tt> (Section 3.1).</li>
     <li>Registration Envelopes MUST include <tt>grant_tier</tt>.</li>
     <li>Principal DID Documents for Tier 2 agents MUST include an <tt>AIPRegistry</tt> service entry.</li>
-    <li>The <tt>/.well-known/aip-registry</tt> response MUST include <tt>signature</tt>, <tt>registry_name</tt>, and <tt>endpoints</tt>.</li>
+    <li>The <tt>/.well-known/aip-registry</tt> response MUST include <tt>registry_id</tt>, <tt>registry_trust_uri</tt>, <tt>registry_name</tt>, and <tt>endpoints</tt>. Registry Trust Records are versioned separately and MUST support sequential updates.</li>
     <li>§19.6 backoff formula corrected (Section 19.6).</li>
   </ul>
   <t>

@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parent.parent
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 EXAMPLE_SCHEMA_MAP = {
+    "aip-registry.json": "aip-registry.schema.json",
     "approval-envelope.json": "approval-envelope.schema.json",
     "capability-manifest.json": "capability-manifest.schema.json",
     "capability-overlay.json": "capability-overlay.schema.json",
@@ -26,6 +27,7 @@ EXAMPLE_SCHEMA_MAP = {
     "grant-response.json": "grant-response.schema.json",
     "personal-agent.json": "agent-identity.schema.json",
     "registration-envelope.json": "registration-envelope.schema.json",
+    "registry-trust-record.json": "registry-trust-record.schema.json",
     "revocation.json": "revocation-object.schema.json",
     "step-execution-token.json": "credential-token.schema.json",
 }

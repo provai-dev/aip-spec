@@ -49,7 +49,10 @@
       The Registry MUST expose a CRL at GET /v1/crl. The CRL
       MUST be updated within 15 minutes of a new Revocation
       Object being accepted. The CRL endpoint MUST be served
-      from a CDN or distributed infrastructure.
+      from a CDN or distributed infrastructure. CRL documents
+      MUST be signed by a key referenced in
+      <tt>active_verification_keys.crl</tt> of the Registry
+      Trust Record version current at issuance time.
     </t>
   </section>
 
@@ -121,7 +124,7 @@
 
       <ul>
         <li>Registry MUST deliver push events within 5 seconds</li>
-        <li>Push payloads MUST be signed by the Registry's administrative key</li>
+        <li>Push payloads MUST be signed by a key referenced in <tt>active_verification_keys.notifications</tt> of the Registry Trust Record version current at issuance time</li>
         <li>Subscriber authentication MUST be verified at subscription time</li>
       </ul>
 
@@ -199,7 +202,9 @@
       <t>
         Push events are delivered as HTTP POST to the subscriber's
         webhook_uri. The body is a compact-serialised JWT signed
-        by the Registry's administrative key.
+        by a key referenced in
+        <tt>active_verification_keys.notifications</tt> of the
+        Registry Trust Record version current at issuance time.
       </t>
 
                         <table>
@@ -221,7 +226,7 @@
                 </tr>
                 <tr>
                   <td>kid</td>
-                  <td>Registry AID key ID</td>
+                  <td>Registry notification key ID</td>
                 </tr>
               </tbody>
             </table>
@@ -237,7 +242,7 @@
               <tbody>
                 <tr>
                   <td>iss</td>
-                  <td>Registry AID</td>
+                  <td>Registry ID</td>
                 </tr>
                 <tr>
                   <td>sub</td>

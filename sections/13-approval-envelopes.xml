@@ -366,12 +366,15 @@ action_hash = "sha256:"
     </ol>
 
     <t>
-      If all checks pass, the Registry returns a Step Execution Token:
+      If all checks pass, the Registry returns a Step Execution Token
+      signed by a key referenced in
+      <tt>active_verification_keys.step_execution</tt> of the
+      Registry Trust Record version current at issuance time:
     </t>
 
     <artwork type="example"><![CDATA[
 {
-  "iss": "<Registry AID>",
+  "iss": "<Registry ID>",
   "sub": "<actor AID>",
   "aud": "<relying_party_uri>",
   "iat": <now>,

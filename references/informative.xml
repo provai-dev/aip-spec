@@ -18,4 +18,14 @@
     <front><title>Digital Identity Guidelines</title><author><organization>Temoshok, D., Fenton, J., Choong, Y., Lefkovitz, N., Regenscheid, A., and J. Richer</organization></author><date month="July" year="2025"/></front>
     <seriesInfo name="NIST Special Publication" value="800-63-4"/>
   </reference>
+  <reference anchor="RFC5011">
+    <front><title>Automated Updates of DNS Security (DNSSEC) Trust Anchors</title><author><organization>StJohns, M.</organization></author><date month="September" year="2007"/></front>
+    <seriesInfo name="RFC" value="5011"/>
+    <seriesInfo name="DOI" value="10.17487/RFC5011"/>
+  </reference>
+  <reference anchor="TUF">
+    <front><title>The Update Framework Specification</title><author><organization>The Update Framework Authors</organization></author><date year="2024"/></front>
+    <seriesInfo name="Version" value="1.0.26"/>
+    <seriesInfo name="URI" value="https://theupdateframework.github.io/specification/latest/"/>
+  </reference>
 </references>
