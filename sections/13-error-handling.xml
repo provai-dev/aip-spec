@@ -1,0 +1,84 @@
+<section anchor="error-handling">
+  <name>Error Handling</name>
+
+  <section anchor="error-response-format">
+    <name>Error Response Format</name>
+    <t>EXAMPLE (informative):</t>
+    <artwork type="json"><![CDATA[
+{
+  "error": "<error_code>",
+  "error_description": "<human-readable description>",
+  "error_uri": "https://provai.dev/errors/<error_code>"
+}
+    ]]></artwork>
+    <t>Implementations MUST use exact string values for `error`.</t>
+    <t>Implementations MUST NOT return HTTP 200 for error conditions.</t>
+  </section>
+
+  <section anchor="error-codes">
+    <name>Standard Error Codes</name>
+    <dl newline="false">
+      <dt><tt>invalid_token</tt></dt><dd><t>HTTP 401. Token malformed, invalid signature, or invalid claims.</t></dd>
+      <dt><tt>token_expired</tt></dt><dd><t>HTTP 401. Token <tt>exp</tt> is in the past.</t></dd>
+      <dt><tt>token_replayed</tt></dt><dd><t>HTTP 401. Token <tt>jti</tt> seen before within validity window.</t></dd>
+      <dt><tt>dpop_proof_required</tt></dt><dd><t>HTTP 401. DPoP proof absent or invalid.</t></dd>
+      <dt><tt>delegation_chain_refresh_required</tt></dt><dd><t>HTTP 401. Principal Token in chain has expired; agent must re-establish delegation.</t></dd>
+      <dt><tt>agent_revoked</tt></dt><dd><t>HTTP 403. The AID has been revoked.</t></dd>
+      <dt><tt>insufficient_scope</tt></dt><dd><t>HTTP 403. Operation not within granted scopes.</t></dd>
+      <dt><tt>invalid_delegation_depth</tt></dt><dd><t>HTTP 403. <tt>delegation_depth</tt> mismatch or exceeds <tt>max_delegation_depth</tt>.</t></dd>
+      <dt><tt>chain_token_expired</tt></dt><dd><t>HTTP 403. Principal Token in <tt>aip_chain</tt> expired.</t></dd>
+      <dt><tt>delegation_chain_invalid</tt></dt><dd><t>HTTP 403. Structural error in delegation chain.</t></dd>
+      <dt><tt>manifest_invalid</tt></dt><dd><t>HTTP 403. Capability Manifest signature failed or unavailable.</t></dd>
+      <dt><tt>manifest_expired</tt></dt><dd><t>HTTP 403. Capability Manifest <tt>expires_at</tt> passed.</t></dd>
+      <dt><tt>approval_envelope_invalid</tt></dt><dd><t>HTTP 400. Approval Envelope malformed, circular dependencies, or hash mismatch.</t></dd>
+      <dt><tt>approval_envelope_expired</tt></dt><dd><t>HTTP 403. <tt>approval_window_expires_at</tt> has passed.</t></dd>
+      <dt><tt>approval_not_found</tt></dt><dd><t>HTTP 404. Approval Envelope ID not found.</t></dd>
+      <dt><tt>approval_step_prerequisites_unmet</tt></dt><dd><t>HTTP 403. <tt>triggered_by</tt> step not yet completed.</t></dd>
+      <dt><tt>approval_step_already_claimed</tt></dt><dd><t>HTTP 409. Step already claimed by another actor.</t></dd>
+      <dt><tt>approval_step_action_mismatch</tt></dt><dd><t>HTTP 403. Presented <tt>action_parameters</tt> hash does not match stored <tt>action_hash</tt>.</t></dd>
+      <dt><tt>approval_step_invalid</tt></dt><dd><t>HTTP 403. Step Execution Token verification against Registry failed.</t></dd>
+      <dt><tt>grant_request_expired</tt></dt><dd><t>HTTP 400. AIP-GRANT <tt>request_expires_at</tt> passed.</t></dd>
+      <dt><tt>grant_request_replayed</tt></dt><dd><t>HTTP 400. AIP-GRANT <tt>grant_request_id</tt> seen before.</t></dd>
+      <dt><tt>grant_request_invalid</tt></dt><dd><t>HTTP 400. GrantRequest malformed or signature failed.</t></dd>
+      <dt><tt>grant_rejected_by_principal</tt></dt><dd><t>HTTP 403. Principal declined the grant.</t></dd>
+      <dt><tt>grant_nonce_mismatch</tt></dt><dd><t>HTTP 400. GrantResponse nonce does not match.</t></dd>
+      <dt><tt>unknown_aid</tt></dt><dd><t>HTTP 404. AID not registered in any accessible Registry.</t></dd>
+      <dt><tt>registry_unavailable</tt></dt><dd><t>HTTP 503. Registry could not be reached.</t></dd>
+      <dt><tt>rate_limit_exceeded</tt></dt><dd><t>HTTP 429. Rate limit for this operation exceeded; see Section 14.</t></dd>
+      <dt><tt>revocation_stale</tt></dt><dd><t>HTTP 403. Tier 2 operation with cached revocation status.</t></dd>
+      <dt><tt>dpop_required</tt></dt><dd><t>HTTP 401. Tier 2 operation without DPoP proof.</t></dd>
+      <dt><tt>mtls_required</tt></dt><dd><t>HTTP 403. Tier 3 operation without mTLS.</t></dd>
+      <dt><tt>invalid_scope</tt></dt><dd><t>HTTP 400. Token contains retired bare <tt>spawn_agents</tt> scope.</t></dd>
+      <dt><tt>principal_did_method_forbidden</tt></dt><dd><t>HTTP 403. Principal uses <tt>did:key</tt> for Tier 2 scope.</t></dd>
+      <dt><tt>identity_proofing_insufficient</tt></dt><dd><t>HTTP 403. G3 identity proofing below requested <tt>acr_values</tt>.</t></dd>
+      <dt><tt>grant_not_found</tt></dt><dd><t>HTTP 404. G1 <tt>grant_id</tt> not found or expired.</t></dd>
+      <dt><tt>grant_deployer_mismatch</tt></dt><dd><t>HTTP 403. G1 <tt>grant_id</tt> does not match deployer.</t></dd>
+      <dt><tt>pkce_required</tt></dt><dd><t>HTTP 400. G3 authorization request missing PKCE.</t></dd>
+      <dt><tt>registry_untrusted</tt></dt><dd><t>HTTP 403. Registry does not match principal DID-Document-declared Registry.</t></dd>
+      <dt><tt>overlay_exceeds_manifest</tt></dt><dd><t>HTTP 400. Overlay violates CO-1 attenuation rule.</t></dd>
+      <dt><tt>overlay_issuer_invalid</tt></dt><dd><t>HTTP 400. Overlay issuer uses <tt>did:key</tt>.</t></dd>
+      <dt><tt>overlay_version_conflict</tt></dt><dd><t>HTTP 409. Overlay version not strictly increasing.</t></dd>
+      <dt><tt>overlay_signature_invalid</tt></dt><dd><t>HTTP 400. Overlay signature verification failure.</t></dd>
+      <dt><tt>engagement_terminated</tt></dt><dd><t>HTTP 403. Engagement has been terminated or completed.</t></dd>
+      <dt><tt>engagement_suspended</tt></dt><dd><t>HTTP 403. Engagement is currently suspended.</t></dd>
+      <dt><tt>engagement_participant_removed</tt></dt><dd><t>HTTP 403. Agent removed from engagement.</t></dd>
+      <dt><tt>engagement_gate_pending</tt></dt><dd><t>HTTP 403. Required approval gate not yet approved.</t></dd>
+      <dt><tt>engagement_not_found</tt></dt><dd><t>HTTP 404. Engagement ID not found.</t></dd>
+      <dt><tt>engagement_countersign_required</tt></dt><dd><t>HTTP 400. Missing required countersignature.</t></dd>
+      <dt><tt>change_log_immutable</tt></dt><dd><t>HTTP 400. Attempt to modify change log entry.</t></dd>
+      <dt><tt>change_log_sequence_invalid</tt></dt><dd><t>HTTP 400. Out-of-sequence change log append.</t></dd>
+      <dt><tt>subscription_auth_required</tt></dt><dd><t>HTTP 401. RPNP subscription without DPoP.</t></dd>
+      <dt><tt>subscription_scope_forbidden</tt></dt><dd><t>HTTP 403. <tt>scope_filter: "all"</tt> rejected by Registry policy.</t></dd>
+      <dt><tt>invalid_webhook_uri</tt></dt><dd><t>HTTP 400. Webhook URI not HTTPS.</t></dd>
+      <dt><tt>subscription_limit_exceeded</tt></dt><dd><t>HTTP 429. RPNP subscription limit reached.</t></dd>
+      <dt><tt>invalid_target</tt></dt><dd><t>HTTP 400. Token exchange resource not registered.</t></dd>
+    </dl>
+  </section>
+
+  <section anchor="error-detail-types">
+    <name>Error Detail Types</name>
+    <t>For `registry_unavailable` (503): SHOULD include `Retry-After` per <xref target="RFC9110"/>.</t>
+    <t>For `rate_limit_exceeded` (429): MUST include `Retry-After` per <xref target="RFC6585"/> Section 4 and rate limit headers per Section 14.1.</t>
+    <t>For `delegation_chain_refresh_required` (401): the response SHOULD include an `error_description` indicating which delegation depth's Principal Token has expired, to help the agent identify which delegation level to renew.</t>
+  </section>
+</section>

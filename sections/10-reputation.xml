@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<section anchor="reputation">
+  <name>Reputation and Endorsements</name>
+  <section anchor="endorsement-object">
+    <name>Endorsement Object</name>
+    <t>Any Relying Party or agent MAY submit a signed Endorsement Object to the Registry after a completed interaction. The schema is in Section 4.2.8.</t>
+    <t>The Registry MUST verify every submitted Endorsement Object signature. Only <tt>success</tt> and <tt>partial</tt> outcomes increment <tt>endorsement_count</tt>. <tt>failure</tt> increments <tt>incident_count</tt>.</t>
+    <t>Completed Approval Envelope steps SHOULD generate Endorsement Objects. When an Approval Envelope reaches <tt>completed</tt> status, the orchestrator SHOULD submit an Endorsement Object for each agent that executed a step successfully.</t>
+  </section>
+  <section anchor="reputation-scoring">
+    <name>Reputation Scoring</name>
+    <t>The Registry MUST expose reputation data for every registered AID at <tt>GET /v1/agents/{aid}/reputation</tt>. Required fields: <tt>registration_date</tt>, <tt>task_count</tt>, <tt>successful_task_count</tt>, <tt>endorsement_count</tt>, <tt>incident_count</tt>, <tt>revocation_history</tt>, <tt>last_active</tt>.</t>
+    <t>The Registry MAY expose a reference advisory score labelled <tt>advisory_only: true</tt>. Relying Parties MUST NOT treat it as normative. AIP standardises reputation inputs, not the scoring formula.</t>
+    <t>Reputation Non-Transferability: Reputation is bound to a specific AID. Implementations MUST NOT transfer reputation from revoked to new AIDs. Endorsements from AIDs with current <tt>full_revoke</tt> or <tt>principal_revoke</tt> status MUST NOT be weighted.</t>
+  </section>
+</section>

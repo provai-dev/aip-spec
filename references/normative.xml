@@ -1,0 +1,113 @@
+<references>
+  <name>Normative References</name>
+
+  <reference anchor="RFC2119">
+    <front><title>Key words for use in RFCs</title><author><organization>Bradner, S.</organization></author><date month="March" year="1997"/></front>
+    <seriesInfo name="BCP" value="14"/>
+  </reference>
+  <reference anchor="RFC3986">
+    <front><title>URI Generic Syntax</title><author><organization>Berners-Lee et al.</organization></author><date month="January" year="2005"/></front>
+    <seriesInfo name="STD" value="66"/>
+  </reference>
+  <reference anchor="RFC5234">
+    <front><title>ABNF</title><author><organization>Crocker &amp; Overell</organization></author><date month="January" year="2008"/></front>
+    <seriesInfo name="STD" value="68"/>
+  </reference>
+  <reference anchor="RFC5280">
+    <front><title>X.509 PKI Certificate Profile</title><author><organization>Cooper et al.</organization></author><date month="May" year="2008"/></front>
+  </reference>
+  <reference anchor="RFC6585">
+    <front><title>Additional HTTP Status Codes</title><author><organization>Nottingham &amp; Fielding</organization></author><date month="April" year="2012"/></front>
+  </reference>
+  <reference anchor="RFC7515">
+    <front><title>JSON Web Signature (JWS)</title><author><organization>Jones, M., Bradley, J., and N. Sakimura</organization></author><date month="May" year="2015"/></front>
+    <seriesInfo name="RFC" value="7515"/>
+    <seriesInfo name="DOI" value="10.17487/RFC7515"/>
+  </reference>
+  <reference anchor="RFC7517">
+    <front><title>JSON Web Key (JWK)</title><author><organization>Jones, M.</organization></author><date month="May" year="2015"/></front>
+  </reference>
+  <reference anchor="RFC7518">
+    <front><title>JSON Web Algorithms (JWA)</title><author><organization>Jones, M.</organization></author><date month="May" year="2015"/></front>
+  </reference>
+  <reference anchor="RFC7519">
+    <front><title>JSON Web Token (JWT)</title><author><organization>Jones, M., Bradley, J., and N. Sakimura</organization></author><date month="May" year="2015"/></front>
+    <seriesInfo name="RFC" value="7519"/>
+    <seriesInfo name="DOI" value="10.17487/RFC7519"/>
+  </reference>
+  <reference anchor="RFC7748">
+    <front><title>Elliptic Curves for Security</title><author><organization>Langley et al.</organization></author><date month="January" year="2016"/></front>
+  </reference>
+  <reference anchor="RFC8032">
+    <front><title>Edwards-Curve Digital Signature Algorithm (EdDSA)</title><author><organization>Josefsson, S. and I. Liusvaara</organization></author><date month="January" year="2017"/></front>
+    <seriesInfo name="RFC" value="8032"/>
+    <seriesInfo name="DOI" value="10.17487/RFC8032"/>
+  </reference>
+  <reference anchor="RFC8037">
+    <front><title>CFRG Elliptic Curves for JOSE</title><author><organization>Liusvaara, I.</organization></author><date month="January" year="2017"/></front>
+  </reference>
+  <reference anchor="RFC8174">
+    <front><title>Ambiguity of Uppercase in RFC 2119</title><author><organization>Leiba, B.</organization></author><date month="May" year="2017"/></front>
+    <seriesInfo name="BCP" value="14"/>
+  </reference>
+  <reference anchor="RFC8259">
+    <front><title>JSON Data Interchange Format</title><author><organization>Bray, T.</organization></author><date month="December" year="2017"/></front>
+    <seriesInfo name="STD" value="90"/>
+  </reference>
+  <reference anchor="RFC8785">
+    <front><title>JSON Canonicalization Scheme (JCS)</title><author><organization>Rundgren, A., Jordan, B., and S. Erdtman</organization></author><date month="June" year="2020"/></front>
+    <seriesInfo name="RFC" value="8785"/>
+    <seriesInfo name="DOI" value="10.17487/RFC8785"/>
+  </reference>
+  <reference anchor="RFC9110">
+    <front><title>HTTP Semantics</title><author><organization>Fielding, R., Ed., Nottingham, M., Ed., and J. Reschke, Ed.</organization></author><date month="June" year="2022"/></front>
+    <seriesInfo name="STD" value="97"/>
+    <seriesInfo name="RFC" value="9110"/>
+    <seriesInfo name="DOI" value="10.17487/RFC9110"/>
+  </reference>
+  <reference anchor="RFC9449">
+    <front><title>OAuth 2.0 Demonstrating Proof of Possession (DPoP)</title><author><organization>Fett, D., Campbell, B., Bradley, J., Lodderstedt, T., Jones, M., and D. Waite</organization></author><date month="September" year="2023"/></front>
+    <seriesInfo name="RFC" value="9449"/>
+    <seriesInfo name="DOI" value="10.17487/RFC9449"/>
+  </reference>
+  <reference anchor="W3C-DID">
+    <front><title>Decentralized Identifiers (DIDs) v1.0</title><author><organization>Sporny, M., Longley, D., Sabadello, M., Reed, D., Steele, O., and C. Allen</organization></author><date month="July" year="2022"/></front>
+  </reference>
+  <reference anchor="RFC6454">
+    <front><title>The Web Origin Concept</title><author><organization>Barth, A.</organization></author><date month="December" year="2011"/></front>
+    <seriesInfo name="RFC" value="6454"/>
+  </reference>
+  <reference anchor="RFC6960">
+    <front><title>X.509 Internet Public Key Infrastructure Online Certificate Status Protocol - OCSP</title><author><organization>Santesson, S., Myers, M., Ankney, R., Malpani, A., Galperin, S., and C. Adams</organization></author><date month="June" year="2013"/></front>
+    <seriesInfo name="RFC" value="6960"/>
+  </reference>
+  <reference anchor="RFC7636">
+    <front><title>Proof Key for Code Exchange by OAuth Public Clients</title><author><organization>Sakimura, N., Ed., Bradley, J., and N. Agarwal</organization></author><date month="September" year="2015"/></front>
+    <seriesInfo name="RFC" value="7636"/>
+  </reference>
+  <reference anchor="RFC8176">
+    <front><title>Authentication Method Reference Values</title><author><organization>Jones, M., Hunt, P., and A. Nadalin</organization></author><date month="June" year="2017"/></front>
+    <seriesInfo name="RFC" value="8176"/>
+  </reference>
+  <reference anchor="RFC8414">
+    <front><title>OAuth 2.0 Authorization Server Metadata</title><author><organization>Jones, M., Sakimura, N., and J. Bradley</organization></author><date month="June" year="2018"/></front>
+    <seriesInfo name="RFC" value="8414"/>
+  </reference>
+  <reference anchor="RFC8693">
+    <front><title>OAuth 2.0 Token Exchange</title><author><organization>Jones, M., Nadalin, A., Campbell, B., Bradley, J., and C. Mortimore</organization></author><date month="January" year="2020"/></front>
+    <seriesInfo name="RFC" value="8693"/>
+  </reference>
+  <reference anchor="RFC8707">
+    <front><title>Resource Indicators for OAuth 2.0</title><author><organization>Campbell, B., Bradley, J., and H. Tschofenig</organization></author><date month="February" year="2020"/></front>
+    <seriesInfo name="RFC" value="8707"/>
+  </reference>
+  <reference anchor="RFC9068">
+    <front><title>JSON Web Token (JWT) Profile for OAuth 2.0 Access Tokens</title><author><organization>Bertocci, V.</organization></author><date month="October" year="2021"/></front>
+    <seriesInfo name="RFC" value="9068"/>
+  </reference>
+  <reference anchor="FIPS-180-4">
+    <front><title>Secure Hash Standard (SHS)</title><author><organization>National Institute of Standards and Technology</organization></author><date month="August" year="2015"/></front>
+    <seriesInfo name="FIPS PUB" value="180-4"/>
+    <seriesInfo name="DOI" value="10.6028/NIST.FIPS.180-4"/>
+  </reference>
+</references>

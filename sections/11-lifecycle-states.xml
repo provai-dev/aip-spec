@@ -1,0 +1,21 @@
+<section anchor="lifecycle-states">
+  <name>Lifecycle States</name>
+  <t>
+    An AID has exactly two lifecycle states: <tt>active</tt> and
+    <tt>revoked</tt>. AIP does not define an <tt>inactive</tt> status;
+    the Dead Man's Switch mechanism (Section 17.8) uses
+    <tt>full_revoke</tt>.
+  </t>
+  <t>
+    An AID MUST remain valid until explicitly revoked. Revoked AIDs MUST
+    NOT be reused. Key rotation preserves the AID but changes the active
+    key. Outstanding tokens signed under the previous key remain valid
+    until their <tt>exp</tt>.
+  </t>
+  <t>
+    Ephemeral agents MUST have a non-null <tt>task_id</tt>. They MUST be
+    explicitly revoked on task completion. The Registry SHOULD
+    auto-revoke ephemeral agents when their stored <tt>expires_at</tt>
+    passes.
+  </t>
+</section>

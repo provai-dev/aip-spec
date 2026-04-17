@@ -1,0 +1,14 @@
+<section anchor="resource-model-chapter" numbered="true" xmlns:xi="http://www.w3.org/2001/XInclude">
+  <name>Resource Model and Data Structures</name>
+  <t>
+    This section defines the core data structures and protocols in AIP:
+    the identity model, JSON Schema representations of all protocol objects,
+    the principal grant ceremony (AIP-GRANT), and advanced authorization
+    primitives including Approval Envelopes, Capability Overlays, and
+    Engagement Objects.
+  </t>
+  <xi:include href="04-identity.xml"/>
+  <xi:include href="05-resource-model.xml"/>
+  <xi:include href="09-grant.xml"/>
+  <xi:include href="10-approval-envelopes.xml"/>
+</section>

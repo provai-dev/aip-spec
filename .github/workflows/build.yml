@@ -1,0 +1,94 @@
+name: Build RFC
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'draft.xml'
+      - 'sections/**/*.xml'
+      - 'references/**/*.xml'
+      - 'Makefile'
+      - 'build_draft.py'
+      - '.github/workflows/build.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'draft.xml'
+      - 'sections/**/*.xml'
+      - 'references/**/*.xml'
+      - 'Makefile'
+      - 'build_draft.py'
+      - '.github/workflows/build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y libxml2-utils libyaml-dev
+          python -m pip install --upgrade pip
+          pip install lxml xml2rfc
+
+      - name: Clean stale build artifacts
+        run: make clean
+
+      - name: Resolve XIncludes
+        run: make expand
+
+      - name: Validate XML
+        run: make validate
+
+      - name: Build HTML
+        run: make html
+
+      - name: Build TEXT
+        run: make text
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rfc-artifacts
+          if-no-files-found: error
+          path: |
+            draft-expanded.xml
+            draft-singla-agent-identity-protocol-00.html
+            draft-singla-agent-identity-protocol-00.txt
+          retention-days: 30
+
+  idnits-check:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Download draft artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: rfc-artifacts
+
+      - name: Install idnits
+        run: npm install -g @ietf-tools/idnits
+
+      - name: Run idnits
+        run: idnits --mode submission draft-singla-agent-identity-protocol-00.txt

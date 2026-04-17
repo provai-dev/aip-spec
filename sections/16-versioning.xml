@@ -1,0 +1,43 @@
+<section anchor="versioning">
+  <name>Versioning and Compatibility</name>
+  <t>
+    AIP follows Semantic Versioning. Before v1.0, MINOR versions MAY
+    include breaking changes.
+  </t>
+  <t>
+    Breaking changes from v0.2:
+  </t>
+  <ul>
+    <li><tt>aip_version</tt> is now <tt>"0.3"</tt> for conforming implementations.</li>
+    <li><tt>X-AIP-Version: 0.3</tt> replaces <tt>X-AIP-Version: 0.2</tt>.</li>
+    <li>The bare <tt>spawn_agents</tt> scope is retired; use <tt>spawn_agents.create</tt> and <tt>spawn_agents.manage</tt> (Section 3.1).</li>
+    <li>Registration Envelopes MUST include <tt>grant_tier</tt>.</li>
+    <li>Principal DID Documents for Tier 2 agents MUST include an <tt>AIPRegistry</tt> service entry.</li>
+    <li>The <tt>/.well-known/aip-registry</tt> response MUST include <tt>signature</tt>, <tt>registry_name</tt>, and <tt>endpoints</tt>.</li>
+    <li>§14.6 backoff formula corrected (Section 14.6).</li>
+  </ul>
+  <t>
+    Implementations MUST NOT silently accept tokens from unsupported
+    versions without logging a version warning.
+  </t>
+
+  <section anchor="tier-conformance">
+    <name>Tier Conformance</name>
+    <table>
+      <thead>
+        <tr><th>Tier</th><th>Revocation</th><th>DPoP</th><th>mTLS</th><th><tt>grant_tier</tt></th><th>Principal DID Method</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>CRL (15 min)</td><td>NOT REQUIRED</td><td>NOT REQUIRED</td><td>G1 or G2</td><td>Any (note 1)</td></tr>
+        <tr><td>2</td><td>Real-time</td><td>REQUIRED</td><td>NOT REQUIRED</td><td>G2 or G3</td><td><tt>did:web</tt> (note 2)</td></tr>
+        <tr><td>3</td><td>Real-time + OCSP</td><td>REQUIRED</td><td>REQUIRED</td><td>G3</td><td><tt>did:web</tt> (note 2)</td></tr>
+      </tbody>
+    </table>
+    <dl newline="false">
+      <dt>Note 1</dt>
+      <dd><t>For Tier 1, the principal MAY use any W3C DID method. Principals using <tt>did:key</tt> are permitted for Tier 1 only; see Note 2.</t></dd>
+      <dt>Note 2</dt>
+      <dd><t><tt>did:aip</tt> is NEVER a valid Principal DID method for Tier 2 or Tier 3. The <tt>principal.id</tt> field MUST NOT use the <tt>did:aip</tt> method. Principals using <tt>did:key</tt> for Tier 2 agents MUST be rejected with <tt>principal_did_method_forbidden</tt>; the <tt>did:key</tt> method does not support a DID Document with the <tt>AIPRegistry</tt> service entry required by Section 6.2.</t></dd>
+    </dl>
+  </section>
+</section>

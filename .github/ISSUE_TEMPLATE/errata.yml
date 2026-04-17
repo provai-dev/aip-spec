@@ -1,0 +1,43 @@
+name: Errata or Defect Report
+description: Report a specification defect, ambiguity, inconsistency, or interoperability problem.
+title: "[Errata]: "
+labels:
+  - errata
+body:
+  - type: input
+    id: issue_number_anchor
+    attributes:
+      label: Existing issue number
+      description: If this issue continues prior work, reference the earlier issue or leave blank.
+      placeholder: "#123"
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: Describe the defect or ambiguity precisely.
+    validations:
+      required: true
+  - type: textarea
+    id: affected_text
+    attributes:
+      label: Affected text or sections
+      description: Cite section numbers, anchors, quotations, or file paths.
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Observed or expected impact
+      description: Explain interoperability, implementation, compatibility, or reader impact.
+    validations:
+      required: true
+  - type: textarea
+    id: precedent
+    attributes:
+      label: Prior discussion or precedent
+      description: Link related issues, PRs, external references, or standards if known.
+  - type: textarea
+    id: questions
+    attributes:
+      label: Open questions
+      description: Note uncertainties that require research.

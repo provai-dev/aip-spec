@@ -1,0 +1,44 @@
+name: Proposal
+description: Propose a new capability, policy change, or normative/specification improvement.
+title: "[Proposal]: "
+labels:
+  - proposal
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Proposal summary
+      description: State the proposed change at a high level.
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: Explain why the proposal is needed and what issue it addresses.
+    validations:
+      required: true
+  - type: textarea
+    id: current_state
+    attributes:
+      label: Current behavior or text
+      description: Describe the current state of the specification or repository.
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility considerations
+      description: Describe migration, downstream impact, and interoperability concerns.
+    validations:
+      required: true
+  - type: textarea
+    id: research
+    attributes:
+      label: Research inputs
+      description: Link related issues, PRs, precedent, or implementation evidence.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Summarize options already known.

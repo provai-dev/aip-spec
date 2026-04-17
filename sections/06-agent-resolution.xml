@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<section anchor="agent-resolution">
+  <name>Agent Resolution</name>
+  
+
+  <!-- 6.1. DID Resolution -->
+  <section anchor="did-resolution">
+    <name>DID Resolution</name>
+    
+    <t>
+      Every AID MUST have a corresponding W3C DID Document resolvable by any standard DID resolver.
+      The DID Document is derived deterministically from the Agent Identity stored in the Registry.
+    </t>
+    <t>
+      The Registry MUST generate and serve DID Documents from <tt>GET /v1/agents/{aid}</tt> when the
+      <tt>Accept: application/did+ld+json</tt> or <tt>Accept: application/did+json</tt> header is present.
+    </t>
+    <t>
+      AIP implementations MUST support DID resolution for at minimum <tt>did:key</tt> and <tt>did:web</tt>
+      DID methods. Resolved DID Documents MAY be cached for a maximum of 300 seconds. If resolution fails or times
+      out, implementations MUST treat the result as <tt>registry_unavailable</tt> and MUST reject the operation.
+    </t>
+    <t>
+      If the AID has been revoked, the Registry MUST return <tt>deactivated: true</tt> in
+      <em>didDocumentMetadata</em>, per W3C-DID Section 7.1.2.
+    </t>
+  </section>
+
+  <!-- 6.2. DID Document Structure -->
+  <section anchor="did-document-structure">
+    <name>DID Document Structure</name>
+    
+    <t>
+      A conformant <tt>did:aip</tt> DID Document MUST include <tt>@context</tt>, <tt>id</tt>,
+      <tt>verificationMethod</tt>, <tt>authentication</tt>, and <tt>controller</tt>. See the canonical example in the
+      repository at <em>examples/latest/did-document.json</em>.
+    </t>
+    <t>
+      A principal's DID Document that authorises agents for Tier 2 operations MUST include an <tt>AIPRegistry</tt>
+      service entry in its <tt>service</tt> array:
+    </t>
+
+    <artwork type="json" ><![CDATA[
+  {
+    "id": "did:web:acme.com#aip-registry",
+    "type": "AIPRegistry",
+    "serviceEndpoint": "https://registry.acme.com"
+  }
+    ]]></artwork>
+
+    <t>
+      The <tt>serviceEndpoint</tt> MUST be an HTTPS URI pointing to the base URL of the authoritative AIP Registry for
+      agents delegated by this principal. The <tt>type</tt> MUST be exactly <tt>"AIPRegistry"</tt> (case-sensitive).
+    </t>
+
+    <t>
+      For principals using <tt>did:key</tt>: an <tt>AIPRegistry</tt> service entry cannot be declared
+      (DID Key documents have no service array). Per Section 4.3, <tt>did:key</tt> principals MUST NOT authorise
+      Tier 2 operations.
+    </t>
+
+    <t>
+      For principals using <tt>did:web</tt> or <tt>did:aip</tt>: the <tt>AIPRegistry</tt> service entry is REQUIRED when
+      the principal authorises any agent with Tier 2 scopes. It is OPTIONAL for principals authorising only Tier 1 agents.
+    </t>
+
+    <t>The CRUD operations for <tt>did:aip</tt> are:</t>
+    <table>
+      <thead>
+        <tr><td>Operation</td><td>Mechanism</td></tr>
+      </thead>
+      <tbody>
+        <tr><td>Create</td><td><tt>POST /v1/agents</tt> with Registration Envelope</td></tr>
+        <tr><td>Read</td><td><tt>GET /v1/agents/{aid}</tt> with DID Accept header</td></tr>
+        <tr><td>Update</td><td><tt>PUT /v1/agents/{aid}</tt> for key rotation only</td></tr>
+        <tr><td>Deactivate</td><td><tt>POST /v1/revocations</tt> with <em>full_revoke</em> object</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 6.3. Registry Genesis -->
+  <section anchor="registry-genesis">
+    <name>Registry Genesis</name>
+    
+    <t>
+      Registry Genesis is the one-time initialisation procedure by which a new AIP Registry creates and persists its own
+      <tt>did:aip</tt> Agent Identity (the Registry AID). It MUST be performed before the Registry serves any requests.
+    </t>
+
+    <!-- 6.3.1 Key Generation -->
+    <section anchor="registry-genesis-key-generation">
+      <name>Key Generation</name>
+      
+      <t>
+        The Registry MUST generate a fresh Ed25519 keypair at first boot. The private key MUST be stored encrypted at rest
+        (AES-256-GCM or equivalent). The public key is used to construct the Registry's DID Document and to sign CRL
+        documents (Section 9.2) and Step Execution Tokens.
+      </t>
+    </section>
+
+    <!-- 6.3.2 AID Construction -->
+    <section anchor="registry-genesis-aid-construction">
+      <name>AID Construction</name>
+      
+      <t>
+        The Registry MUST construct its AID using the <tt>registry</tt> namespace:
+      </t>
+
+      <artwork type="text"><![CDATA[
+  did:aip:registry:<32-hex-character unique-id>
+      ]]></artwork>
+
+      <t>
+        The <tt>unique-id</tt> MUST be generated as a cryptographically random 32-character lowercase hexadecimal string.
+        At most one Registry AID MUST be active per Registry deployment at any time.
+      </t>
+    </section>
+
+    <!-- 6.3.3 Self-Registration Exemption -->
+    <section anchor="registry-genesis-self-registration-exemption">
+      <name>Self-Registration Exemption</name>
+      
+      <t>
+        The Registry AID MUST NOT be created via <tt>POST /v1/agents</tt>. Instead, the Registry MUST persist its AID and
+        keypair directly to its own data store during genesis. The following Registration Envelope checks (Section 5.2) are
+        explicitly inapplicable to the Registry AID:
+      </t>
+      <ul>
+        <li>
+          <strong>Check 10</strong> (<tt>principal_token</tt> validation) — the Registry has no human principal and MUST
+          NOT carry a principal delegation chain.
+        </li>
+        <li>
+          <strong>Check 4</strong> (duplicate AID rejection) — genesis is idempotent; if a Registry AID already exists in the data store the existing record MUST be used and genesis MUST NOT overwrite it.
+        </li>
+      </ul>
+    </section>
+
+    <!-- 6.3.4 Well-Known Publication -->
+    <section anchor="registry-genesis-well-known-publication">
+      <name>Well-Known Publication</name>
+      
+      <t>
+        The Registry MUST publish its DID Document and public key at:
+      </t>
+      <artwork type="text"><![CDATA[
+GET /.well-known/aip-registry
+      ]]></artwork>
+      <t>
+        The response MUST be a JSON object containing:
+      </t>
+
+      <table>
+        <thead>
+          <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><tt>registry_aid</tt></td><td>string</td><td>REQUIRED</td><td>The Registry's <tt>did:aip</tt> AID</td></tr>
+          <tr><td><tt>registry_name</tt></td><td>string</td><td>REQUIRED</td><td>Human-readable Registry name (maxLength: 128)</td></tr>
+          <tr><td><tt>aip_version</tt></td><td>string</td><td>REQUIRED</td><td>The <tt>aip_version</tt> this Registry conforms to</td></tr>
+          <tr><td><tt>public_key</tt></td><td>object</td><td>REQUIRED</td><td>JWK representation of the Registry's Ed25519 public key</td></tr>
+          <tr><td><tt>endpoints</tt></td><td>object</td><td>REQUIRED</td><td>Map of service names to relative or absolute URI paths</td></tr>
+          <tr><td><tt>signature</tt></td><td>string</td><td>REQUIRED</td><td>Base64url EdDSA signature of the canonical JSON (RFC 8785 JCS) of the document excluding the <tt>signature</tt> field</td></tr>
+        </tbody>
+      </table>
+
+      <t>
+        The <em>endpoints</em> object MUST include at minimum:
+      </t>
+
+      <table>
+        <thead>
+          <tr><th>Key</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><tt>agents</tt></td><td>Base path for agent endpoints (e.g., <tt>/v1/agents</tt>)</td></tr>
+          <tr><td><tt>crl</tt></td><td>CRL endpoint path (e.g., <tt>/v1/crl</tt>)</td></tr>
+          <tr><td><tt>revocations</tt></td><td>Revocation submission path (e.g., <tt>/v1/revocations</tt>)</td></tr>
+        </tbody>
+      </table>
+
+      <t>
+        Self-signature verification: Relying Parties MUST verify the <tt>signature</tt> field against the <tt>public_key</tt>
+        in the same document. This ensures the well-known document has not been tampered with in transit. The signature is
+        computed over the RFC 8785 JCS canonical serialisation of the document with the <tt>signature</tt> field removed.
+      </t>
+
+      <t>
+        First-contact bootstrapping: On first contact with a Registry, Relying Parties MUST:
+      </t>
+      <ul>
+        <li>Fetch <tt>/.well-known/aip-registry</tt> over HTTPS.</li>
+        <li>Verify the self-signature.</li>
+        <li>Pin the <tt>public_key</tt> and <tt>registry_aid</tt> locally.</li>
+        <li>On subsequent contacts, verify that the pinned key matches.</li>
+      </ul>
+
+      <t>
+        Key rotation for Registry keys is an administrative operation that requires out-of-band communication to Relying
+        Parties. A future AIP will define the Registry key rotation protocol.
+      </t>
+
+      <t>
+        Validators bootstrapping trust in a Registry MUST fetch and pin the Registry's public key from this endpoint before
+        processing any Step Execution Tokens or CRL documents signed by that Registry. Cached values MUST NOT be used beyond 300 seconds without revalidation.
+      </t>
+    </section>
+
+    <!-- 6.3.5 Single-Instance Constraint -->
+    <section anchor="registry-genesis-single-instance-constraint">
+      <name>Single-Instance Constraint</name>
+      
+      <t>
+        Each Registry deployment MUST have exactly one active Registry AID. Provisioning a second Registry AID within the same deployment
+        MUST be treated as a fatal configuration error. Horizontal scaling and high-availability deployments MUST share a single Registry AID
+        and keypair (stored in a shared secrets manager).
+      </t>
+    </section>
+
+    <!-- 6.3.6 Registry Key Rotation (Interim Procedure) -->
+    <section anchor="registry-genesis-registry-key-rotation">
+      <name>Registry Key Rotation (Interim Procedure)</name>
+      
+      <t>
+        Full in-band Registry key rotation is deferred to a future minor version. Until that protocol is defined, the following interim
+        procedure applies to operators who must rotate the Registry key (e.g., in response to suspected key compromise).
+      </t>
+
+      <ol>
+        <li>
+          Registry key rotation MUST be treated as a Registry instance migration: the existing Registry AID is deprecated, a new Registry
+          is initialised via Registry Genesis with a new AID and keypair, and agents are re-registered or migrated to the new
+          Registry.
+        </li>
+        <li>
+          Relying Parties that have pinned the existing Registry's public key (step 3 of Section 6.3.4 bootstrapping) and subsequently
+          receive a <tt>/.well-known/aip-registry</tt> document whose <em>public_key</em> does not match the pinned key MUST treat this as a potential MITM attack. They MUST NOT use the new key automatically. They MUST halt Registry-dependent operations and require out-of-band verification that the key change is legitimate before re-pinning.
+        </li>
+        <li>
+          Historical Step Execution Tokens and CRL documents signed by the previous Registry key remain valid for their stated <em>exp</em> period only. Relying Parties MUST verify historical tokens against the key that was pinned at issuance time; they MUST NOT re-verify them against a newly pinned key.
+        </li>
+        <li>
+          A future minor version will define an in-band key succession protocol using a <em>previous_registry_key_signature</em> mechanism
+          analogous to agent key rotation, allowing Relying Parties to verify key transitions without out-of-band communication.
+        </li>
+      </ol>
+
+      <t>
+        Validators bootstrapping trust in a Registry MUST fetch and pin the Registry's public key from this endpoint before processing any
+        Step Execution Tokens or CRL documents signed by that Registry. Cached values MUST NOT be used beyond 300 seconds without revalidation.
+      </t>
+    </section>
+  </section>
+</section>
