@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provai.dev/schemas/aip/grant-response/latest",
+  "$comment": "Normatively defined in AIP spec §4.5.4. The GrantResponse is constructed and signed by the Principal Wallet after the principal completes or declines the signing ceremony. The deployer MUST perform 7 validation steps on receipt (§4.5.4). When status is 'partial', the deployer MUST use approved_capabilities — not the originally requested set — to construct the Capability Manifest.",
+  "title": "AIP Grant Response",
+  "description": "The response object constructed by the Principal Wallet after the principal completes the AIP-GRANT signing ceremony. Delivered to the deployer via the callback_uri (Web Redirect / QR) or returned synchronously (SDK In-Process). Defined in AIP spec §4.5.4.",
+  "type": "object",
+  "required": [
+    "grant_request_id",
+    "nonce",
+    "status",
+    "principal_id",
+    "signed_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "grant_request_id": {
+      "type": "string",
+      "pattern": "^gr:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "description": "Echoed from the GrantRequest. The deployer MUST verify this matches the original request — mismatch indicates a forged or misrouted response."
+    },
+    "nonce": {
+      "type": "string",
+      "minLength": 22,
+      "description": "Echoed from the GrantRequest. MUST match exactly. Mismatch MUST be treated as a forgery attempt and the response MUST be rejected."
+    },
+    "state": {
+      "type": "string",
+      "maxLength": 512,
+      "description": "OPTIONAL. Echoed from the GrantRequest if the state field was present. Used by the deployer for CSRF protection and session correlation."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["approved", "rejected", "partial"],
+      "description": "Outcome of the signing ceremony. 'approved': principal approved all requested capabilities. 'rejected': principal declined. 'partial': principal approved a strict subset of capabilities. Deployers MUST handle 'partial' without assuming full approval."
+    },
+    "principal_id": {
+      "type": "string",
+      "pattern": "^did:[a-z][a-z0-9]*:.+$",
+      "description": "W3C DID of the principal who signed (or declined). The deployer MUST verify the principal_token JWT signature against the public key resolved from this DID."
+    },
+    "principal_token": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$",
+      "description": "CONDITIONAL. Compact JWT (header.payload.signature) encoding the Principal Token issued by the wallet. REQUIRED when status is 'approved' or 'partial'. Absent when status is 'rejected'. The JWT payload MUST conform to principal-token.schema.json. The sub field MUST equal the agent's AID from the GrantRequest."
+    },
+    "signed_capability_manifest": {
+      "type": "object",
+      "description": "OPTIONAL (RECOMMENDED). Signed Capability Manifest constructed and signed by the Principal Wallet during the signing ceremony. When present, the deployer MAY use this directly in the Registration Envelope without a separate signing step. Conforms to capability-manifest.schema.json.",
+      "additionalProperties": true
+    },
+    "approved_capabilities": {
+      "type": "object",
+      "description": "CONDITIONAL. REQUIRED when status is 'approved' or 'partial'. The actual capability set approved by the principal. The deployer MUST use this — NOT the originally requested set — to construct the Capability Manifest. When status is 'partial', this is a strict subset of requested_capabilities.",
+      "additionalProperties": true
+    },
+    "approved_delegation_valid_for_seconds": {
+      "type": "integer",
+      "minimum": 300,
+      "maximum": 31536000,
+      "description": "CONDITIONAL. REQUIRED when status is 'approved' or 'partial'. The delegation validity window the principal approved. MAY differ from the requested delegation_valid_for_seconds."
+    },
+    "approved_max_delegation_depth": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10,
+      "description": "CONDITIONAL. REQUIRED when status is 'approved' or 'partial'. The maximum sub-delegation depth the principal approved. MAY be lower than the requested max_delegation_depth."
+    },
+    "rejection_reason": {
+      "type": "string",
+      "maxLength": 256,
+      "description": "OPTIONAL. Human-readable explanation of why the principal declined. Only present when status is 'rejected'."
+    },
+    "signed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of the actual signing event. The deployer MUST verify this is not in the future and not more than 24 hours in the past."
+    }
+  },
+  "if": {
+    "properties": { "status": { "const": "rejected" } },
+    "required": ["status"]
+  },
+  "then": {
+    "description": "When status is 'rejected': principal_token, approved_capabilities, approved_delegation_valid_for_seconds, approved_max_delegation_depth MUST NOT be present."
+  },
+  "else": {
+    "required": [
+      "principal_token",
+      "approved_capabilities",
+      "approved_delegation_valid_for_seconds",
+      "approved_max_delegation_depth"
+    ],
+    "description": "When status is 'approved' or 'partial': principal_token, approved_capabilities, approved_delegation_valid_for_seconds, and approved_max_delegation_depth are REQUIRED."
+  }
+}

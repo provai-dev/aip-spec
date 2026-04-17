@@ -7,6 +7,10 @@ on:
       - 'draft.xml'
       - 'sections/**/*.xml'
       - 'references/**/*.xml'
+      - 'schemas/**/*.json'
+      - 'examples/**/*.json'
+      - 'scripts/**/*.py'
+      - 'drafts/index.json'
       - 'Makefile'
       - 'build_draft.py'
       - '.github/workflows/build.yml'
@@ -16,13 +20,17 @@ on:
       - 'draft.xml'
       - 'sections/**/*.xml'
       - 'references/**/*.xml'
+      - 'schemas/**/*.json'
+      - 'examples/**/*.json'
+      - 'scripts/**/*.py'
+      - 'drafts/index.json'
       - 'Makefile'
       - 'build_draft.py'
       - '.github/workflows/build.yml'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -31,6 +39,36 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Guard archived revisions
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin "${{ github.base_ref }}" --depth=1
+          base_ref="origin/${{ github.base_ref }}"
+          current_draft="$(sed -n 's/.*docName="\([^"]*\)".*/\1/p' draft.xml | head -n1)"
+          changed_source="$(git diff --name-only "$base_ref"...HEAD -- draft.xml sections references schemas examples)"
+
+          if git cat-file -e "$base_ref:drafts/$current_draft" 2>/dev/null && [ -n "$changed_source" ]; then
+            echo "❌ Current draft $current_draft is already archived under drafts/."
+            echo "   Bump to the next -NN revision before changing draft text, schemas, or examples."
+            exit 1
+          fi
+
+          changed_archives="$(git diff --name-only "$base_ref"...HEAD -- drafts)"
+          if [ -n "$changed_archives" ]; then
+            while IFS= read -r path; do
+              [ -z "$path" ] && continue
+              if git cat-file -e "$base_ref:$path" 2>/dev/null; then
+                echo "❌ Existing archived draft content was modified: $path"
+                echo "   Archived revisions are append-only."
+                exit 1
+              fi
+            done <<EOF_GUARD
+$changed_archives
+EOF_GUARD
+          fi
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -41,7 +79,7 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y libxml2-utils libyaml-dev
           python -m pip install --upgrade pip
-          pip install lxml xml2rfc
+          pip install lxml xml2rfc jsonschema
 
       - name: Clean stale build artifacts
         run: make clean
@@ -52,21 +90,47 @@ jobs:
       - name: Validate XML
         run: make validate
 
+      - name: Check draft consistency
+        run: make check-draft
+
+      - name: Validate schemas and examples
+        run: make validate-examples
+
       - name: Build HTML
         run: make html
 
       - name: Build TEXT
         run: make text
 
-      - name: Upload artifacts
+      - name: Normalize archived draft index
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]'
+        run: |
+          current_draft="$(sed -n 's/.*docName="\([^"]*\)".*/\1/p' draft.xml | head -n1)"
+          if [ -d "drafts/$current_draft" ]; then
+            make archive-draft
+            if [ -n "$(git status --porcelain drafts/index.json)" ]; then
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git add drafts/index.json
+              git commit -m "[CI] Normalize archived draft index [skip ci]"
+              git push
+            else
+              echo "Draft index already consistent"
+            fi
+          else
+            echo "Current working draft is not archived; no archival mutation performed"
+          fi
+
+      - name: Upload artifacts for inspection only
+        if: github.event_name != 'push'
         uses: actions/upload-artifact@v4
         with:
           name: rfc-artifacts
           if-no-files-found: error
           path: |
             draft-expanded.xml
-            draft-singla-agent-identity-protocol-00.html
-            draft-singla-agent-identity-protocol-00.txt
+            *.html
+            *.txt
           retention-days: 30
 
   idnits-check:
@@ -82,13 +146,16 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Download draft artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: rfc-artifacts
+      - name: Rebuild text output
+        run: |
+          sudo apt-get update && sudo apt-get install -y libxml2-utils libyaml-dev
+          python -m pip install --upgrade pip
+          pip install lxml xml2rfc
+          make clean
+          make text
 
       - name: Install idnits
         run: npm install -g @ietf-tools/idnits
 
       - name: Run idnits
-        run: idnits --mode submission draft-singla-agent-identity-protocol-00.txt
+        run: idnits --mode submission "$(sed -n 's/.*docName="\([^"]*\)".*/\1/p' draft.xml | head -n1).txt"

@@ -1,0 +1,171 @@
+<section anchor="terminology" numbered="true">
+  <name>Terminology</name>
+  <t>
+    The following terms are used throughout this specification:
+  </t>
+
+  <dl newline="false">
+    <dt>Agent:</dt>
+    <dd>An autonomous software system powered by a large language model
+      that can perceive inputs, reason about them, and execute actions
+      in the world on behalf of a principal.</dd>
+
+    <dt>Agent Identity Descriptor (AID):</dt>
+    <dd><t>A globally unique, persistent identifier for an agent conforming
+      to the did:aip DID method defined in Section 4.1. An AID is
+      a W3C DID.</t></dd>
+
+    <dt>Principal:</dt>
+    <dd><t>The human or organisational entity on whose authority an agent
+      acts. Every AIP delegation chain MUST have a verifiable principal
+      at its root. Principals are identified by W3C DIDs, but NOT by did:aip (which is reserved for agents).</t></dd>
+
+    <dt>Agent Deployer:</dt>
+    <dd>The party that provisions an agent on behalf of a principal.
+      May be the principal themselves or a service acting with the
+      principal's explicit consent.</dd>
+
+    <dt>Principal Wallet:</dt>
+    <dd>Software that holds the principal's DID private key and
+      implements the AIP-GRANT consent and signing ceremony.
+      Throughout this document, "wallet" used alone refers to the Principal
+      Wallet unless the context explicitly states otherwise.</dd>
+
+    <dt>Capability Manifest:</dt>
+    <dd>A versioned, signed JSON document stored in the Registry that
+      declares the specific permissions (scopes and constraints) granted
+      to an agent. Defined in Section 4.2.3.</dd>
+
+    <dt>Credential Token:</dt>
+    <dd>A signed JWT-format token presented by an agent to a Relying
+      Party as proof of identity and authorisation for a specific
+      interaction. Defined in Section 7.1.</dd>
+
+    <dt>Step Execution Token:</dt>
+    <dd>A short-lived Credential Token issued by the AIP Registry
+      attesting that a specific Approval Envelope step has been claimed
+      by its designated actor. Defined in Section 4.4.8.</dd>
+
+    <dt>Principal Token:</dt>
+    <dd><t>A signed JWT payload encoding one delegation link in the AIP
+      principal chain. Principal Tokens are embedded as compact-serialised
+      JWTs in the aip_chain array of a Credential Token.
+      Defined in Section 4.2.5.</t></dd>
+
+    <dt>Relying Party (RP):</dt>
+    <dd>Any service, API, or agent that receives and verifies an AIP
+      Credential Token. Responsible for implementing the Validation
+      Algorithm (Section 7.2).</dd>
+
+    <dt>Delegation:</dt>
+    <dd>The act of granting a subset of capabilities from a principal or
+      parent agent to a child agent. Formally expressed as a Principal
+      Token in the delegation chain.</dd>
+
+    <dt>Delegation Depth:</dt>
+    <dd>A non-negative integer counter incremented at each delegation
+      step. An agent directly authorised by the root principal has
+      delegation depth 0. A child agent of that agent has delegation
+      depth 1, and so on.</dd>
+
+    <dt>Tier:</dt>
+    <dd>A threat-model declaration specifying which security properties
+      the deploying principal asserts hold at execution time. Tier
+      determines the applicable revocation-checking mode, maximum Credential
+      Token lifetime, and mandatory security mechanisms. Three Tiers are
+      defined in Section 3.1 below. Tier selection on performance or
+      availability grounds alone, without regard to the security properties
+      declared, is a misconfiguration and a violation of AIP's zero-trust
+      model.</dd>
+
+    <dt>Grant Tier:</dt>
+    <dd>One of three standardised AIP-GRANT ceremony profiles: G1
+      (Registry-Mediated), G2 (Direct Deployer), G3 (Full Ceremony).
+      Defined in Section 4.3.</dd>
+
+    <dt>Cryptographic Admissibility:</dt>
+    <dd>The property that an agent's Credential Token and delegation
+      chain are cryptographically valid at claim time: signatures verify,
+      claims are well-formed, the token is not expired, and the delegation
+      chain has not been broken.</dd>
+
+    <dt>Capability Overlay:</dt>
+    <dd>A Registry-stored, issuer-signed document that restricts an
+      agent's effective capability set for a specific engagement or issuer
+      context. Defined in Section 4.2.11.</dd>
+
+    <dt>Engagement Object:</dt>
+    <dd>A mutable Registry resource that models a multi-party engagement,
+      serving as the parent container for Capability Overlays, Approval
+      Envelopes, and participant rosters. Defined in Section 4.2.12.</dd>
+
+    <dt>Approval Envelope:</dt>
+    <dd>A signed document submitted to the Registry that pre-authorises a
+      complete multi-step workflow in a single principal signing ceremony.
+      Decouples approval from execution. Defined in Section 4.4.</dd>
+
+    <dt>Action Hash:</dt>
+    <dd>A SHA-256 hash of the canonical JSON representation of an approval
+      step's action descriptor. Binds approval to a specific operation.
+      Computed per Section 4.4.7.</dd>
+
+    <dt>Registry:</dt>
+    <dd>The authoritative store and resolver for AIP agents, Capability
+      Manifests, revocation state, and delegation chains. Implements the
+      Registry Interface (Section 15) and the Validation Algorithm
+      (Section 7.2). May be operated by a principal, a service, or a
+      consortium.</dd>
+
+    <dt>AIP-GRANT:</dt>
+    <dd>The principal authorization protocol defining how principals
+      authorize agents through a consent ceremony. Defined in Section
+      4.3.</dd>
+
+    <dt>Revocation Object:</dt>
+    <dd>A signed document declaring that an agent's grant is revoked,
+      either in whole (<tt>full_revoke</tt>) or in part (<tt>scope_revoke</tt>
+      or <tt>delegation_revoke</tt>). Defined in Section 4.2.7.</dd>
+
+    <dt>Certificate Revocation List (CRL):</dt>
+    <dd>A Registry-published list of revoked agents. Updated periodically
+      (Tier 1) or on-demand (Tier 2). Defined in Section 9.2.</dd>
+
+    <dt>DPoP Proof:</dt>
+    <dd>A Demonstration of Proof-of-Possession as defined in <xref
+      target="RFC9449"/>. Mandatory for Tier 2 sensitive scopes. Binds a
+      Credential Token to a specific HTTP request and the agent's key
+      material.</dd>
+
+    <dt>Endorsement:</dt>
+    <dd>A signed statement affirming a positive experience or outcome of
+      an interaction with an agent. Contributes to the agent's reputation
+      score. Defined in Section 10.1.</dd>
+  </dl>
+
+  <section anchor="architecture-tiers" numbered="true">
+    <name>Architecture Tiers</name>
+    <t>
+      AIP defines three security Tiers that map threat-model declarations to
+      mandatory protocol behaviors. Tiers are NOT performance classes; they
+      are security property assertions.
+    </t>
+    <ul>
+      <li><strong>Tier 1 (Bounded-staleness):</strong> Optimized for high availability
+        and low latency. Revocation is checked against a Registry-published CRL
+        with a mandatory 15-minute update SLA. Principals MAY use <tt>did:key</tt>
+        for Tier 1 operations.</li>
+      <li><strong>Tier 2 (Real-time):</strong> The default Tier for sensitive operations.
+        Revocation status MUST be checked in real-time against the Registry on
+        every interaction. DPoP proof-of-possession (RFC 9449) is REQUIRED.
+        Principals MUST use <tt>did:web</tt> to enable Registry trust anchoring.</li>
+      <li><strong>Tier 3 (Regulated/Enterprise):</strong> The highest security level
+        for regulated or high-value environments. Tier 3 supplements Tier 2 with
+        mandatory mutual TLS (mTLS) and OCSP stapling for transport-layer revocation
+        checks.</li>
+    </ul>
+    <t>
+      The complete mapping of Tiers to normative protocol requirements is defined in
+      the Tier Conformance Table in Section 16.1.
+    </t>
+  </section>
+</section>

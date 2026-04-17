@@ -1,0 +1,200 @@
+<section anchor="registry" numbered="true">
+  <name>Registry Interface</name>
+  <t>
+    A conformant AIP Registry MUST implement the HTTP endpoints
+    defined in this section.
+  </t>
+
+  <section anchor="registry-endpoints" numbered="true">
+    <name>Required Endpoints</name>
+    <t>A conformant AIP Registry MUST implement the following HTTP endpoints:</t>
+    <table>
+      <thead>
+        <tr>
+          <th>Method</th>
+          <th>Path</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>POST</td><td>/v1/agents</td><td>Register a new AID (Registration Envelope)</td></tr>
+        <tr><td>GET</td><td>/v1/agents/{aid}</td><td>Retrieve Agent Identity or DID Document</td></tr>
+        <tr><td>PUT</td><td>/v1/agents/{aid}</td><td>Key rotation only</td></tr>
+        <tr><td>GET</td><td>/v1/agents/{aid}/public-key</td><td>Current public key (JWK)</td></tr>
+        <tr><td>GET</td><td>/v1/agents/{aid}/public-key/{key-id}</td><td>Historical key version</td></tr>
+        <tr><td>GET</td><td>/v1/agents/{aid}/capabilities</td><td>Current Capability Manifest</td></tr>
+        <tr><td>PUT</td><td>/v1/agents/{aid}/capabilities</td><td>Replace Capability Manifest</td></tr>
+        <tr><td>GET</td><td>/v1/agents/{aid}/revocation</td><td>Revocation status</td></tr>
+        <tr><td>POST</td><td>/v1/revocations</td><td>Submit RevocationObject</td></tr>
+        <tr><td>GET</td><td>/v1/crl</td><td>Certificate Revocation List</td></tr>
+        <tr><td>GET</td><td>/v1/agents/{aid}/reputation</td><td>Reputation data</td></tr>
+        <tr><td>POST</td><td>/v1/endorsements</td><td>Submit Endorsement Object</td></tr>
+        <tr><td>POST</td><td>/v1/grants</td><td>Submit G1 grant</td></tr>
+        <tr><td>GET</td><td>/v1/grants/{grant_id}</td><td>Retrieve grant status</td></tr>
+        <tr><td>PUT</td><td>/v1/agents/{aid}/overlays</td><td>Submit Capability Overlay</td></tr>
+        <tr><td>GET</td><td>/v1/agents/{aid}/overlays</td><td>Retrieve current overlay</td></tr>
+        <tr><td>POST</td><td>/v1/engagements</td><td>Create Engagement Object</td></tr>
+        <tr><td>GET</td><td>/v1/engagements/{id}</td><td>Retrieve Engagement Object</td></tr>
+        <tr><td>PUT</td><td>/v1/engagements/{id}</td><td>Update Engagement (append change log)</td></tr>
+        <tr><td>POST</td><td>/v1/subscriptions</td><td>Create RPNP subscription (Section 9.4)</td></tr>
+        <tr><td>DELETE</td><td>/v1/subscriptions/{id}</td><td>Cancel RPNP subscription</td></tr>
+        <tr><td>GET</td><td>/v1/scopes</td><td>Scope Map registry</td></tr>
+        <tr><td>POST</td><td>/v1/oauth/authorize</td><td>G3 authorization endpoint</td></tr>
+        <tr><td>POST</td><td>/v1/oauth/token</td><td>G3 token endpoint / token exchange</td></tr>
+        <tr><td>GET</td><td>/.well-known/oauth-authorization-server</td><td>AS Metadata <xref target="RFC8414"/></td></tr>
+        <tr><td>GET</td><td>/.well-known/aip-registry</td><td>Retrieve Registry configuration</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section anchor="aid-encoding" numbered="true">
+    <name>AID URL Encoding</name>
+    <t>In all path parameters, the `did:aip:` prefix and colons MUST be percent-encoded per <xref target="RFC3986"/>:</t>
+
+    <artwork anchor="aid-encoding-example" type="example"><![CDATA[
+did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3
+→ /v1/agents/did%3Aaip%3Apersonal%3A9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3
+    ]]></artwork>
+  </section>
+
+  <section anchor="response-format-registry" numbered="true">
+    <name>Response Format</name>
+    <t>All Registry responses MUST use `Content-Type: application/json`.</t>
+    <t>All timestamps MUST be in ISO 8601 UTC format.</t>
+  </section>
+
+  <section anchor="approval-endpoints-registry" numbered="true">
+    <name>Approval Envelope Endpoints</name>
+    <t>A conformant AIP Registry MUST implement the following additional endpoints for Approval Envelopes:</t>
+    <table>
+      <thead>
+        <tr><th>Method</th><th>Path</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>POST</td><td>/v1/approvals</td><td>Submit Approval Envelope for approval</td></tr>
+        <tr><td>GET</td><td>/v1/approvals/{id}</td><td>Retrieve Approval Envelope with step statuses</td></tr>
+        <tr><td>POST</td><td>/v1/approvals/{id}/approve</td><td>Principal approves (wallet call; sets `principal_signature`)</td></tr>
+        <tr><td>POST</td><td>/v1/approvals/{id}/reject</td><td>Principal rejects</td></tr>
+        <tr><td>POST</td><td>/v1/approvals/{id}/steps/{n}/claim</td><td>Claim step for execution; returns Step Execution Token</td></tr>
+        <tr><td>POST</td><td>/v1/approvals/{id}/steps/{n}/complete</td><td>Mark step completed</td></tr>
+        <tr><td>POST</td><td>/v1/approvals/{id}/steps/{n}/fail</td><td>Mark step failed; triggers compensation</td></tr>
+        <tr><td>GET</td><td>/v1/approvals/{id}/steps/{n}</td><td>Get step status (used by Relying Parties for Step Execution Token verification)</td></tr>
+        <tr><td>POST</td><td>/v1/approvals/{id}/compensation-steps/{n}/claim</td><td>Claim compensation step</td></tr>
+        <tr><td>POST</td><td>/v1/approvals/{id}/compensation-steps/{n}/complete</td><td>Mark compensation step completed</td></tr>
+        <tr><td>POST</td><td>/v1/approvals/{id}/compensation-steps/{n}/fail</td><td>Mark compensation step failed</td></tr>
+      </tbody>
+    </table>
+
+    <t>**`POST /v1/approvals` validation:** The Registry MUST perform all checks defined in Section 4.4.10 before accepting an Approval Envelope. The Registry MUST return HTTP 201 with the stored envelope (including the Registry-assigned `status: "pending_approval"`) on success.</t>
+    <t>**`POST /v1/approvals/{id}/approve` flow:** This endpoint is called by the Principal Wallet after the principal completes the signing ceremony. The request body MUST contain the `principal_signature` field: a base64url EdDSA signature computed by the principal's wallet over the JCS-canonical serialisation of the full Approval Envelope with `principal_signature` set to the empty string `""` before serialisation — identical to the pattern used for `creator_signature`. The signing key MUST be the private key of `principal_id`. The Registry MUST verify this signature against the `principal_id`'s resolved public key before transitioning the envelope to `approved`.</t>
+    <t>**Atomicity requirement for step claim:** The Registry MUST implement step-claim operations atomically (e.g., using optimistic locking or a distributed lock) to prevent two actors from claiming the same step simultaneously. Only one claim MUST succeed; the other MUST receive `approval_step_already_claimed`.</t>
+    <t>**Step Execution Token format:** The Step Execution Token returned by `POST .../steps/{n}/claim` is a JWT signed by the Registry's administrative key with the claims described in Section 4.4.8. Its TTL MUST comply with normal TTL rules for the scopes involved.</t>
+  </section>
+
+  <section anchor="oauth-registry" numbered="true">
+    <name>OAuth 2.1 Authorization Server</name>
+    <t>A conformant AIP Registry supporting G3 grants MUST implement an OAuth 2.1 Authorization Server <xref target="RFC6749"/> with the following requirements:</t>
+    <ol>
+      <li>The authorization endpoint MUST be published in the Registry's well-known configuration at `/.well-known/oauth-authorization-server` per <xref target="RFC8414"/>.</li>
+      <li>PKCE <xref target="RFC7636"/> with `code_challenge_method: "S256"` is REQUIRED for all authorization requests.</li>
+      <li>The `scope` parameter MUST use AIP scope URIs from the `urn:aip:scope:` namespace.</li>
+      <li>The token endpoint MUST return a signed Principal Token (not a standard OAuth access token) as the `access_token` value, with `token_type: "AIP+JWT"`.</li>
+      <li>The token response MUST include `acr` and `amr` claims reflecting the authentication performed.</li>
+      <li>The authorization server MUST support the `acr_values` parameter to declare minimum identity-proofing requirements.</li>
+      <li>DPoP [RFC9449] MUST be supported on the token endpoint.</li>
+    </ol>
+
+    <t>The token endpoint also serves RFC 8693 <xref target="RFC8693"/> token exchange.</t>
+
+    <section anchor="well-known-metadata-registry" numbered="true">
+      <name>Well-Known Metadata Additions</name>
+      <t>The `/.well-known/aip-registry` response MUST also include:</t>
+      <table>
+        <thead>
+          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>`grant_tiers_supported`</td><td>array</td><td>Supported grant tiers: `["G1", "G2", "G3"]`</td></tr>
+          <tr><td>`acr_values_supported`</td><td>array</td><td>Supported `acr` values</td></tr>
+          <tr><td>`amr_values_supported`</td><td>array</td><td>Supported `amr` values</td></tr>
+          <tr><td>`oauth_authorization_server`</td><td>string</td><td>URI of the OAuth AS metadata document (present only if G3 supported)</td></tr>
+          <tr><td>`identity_proofing_required_for_tier2`</td><td>boolean</td><td>Whether this Registry requires G3 for Tier 2 operations</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </section>
+
+  <section anchor="scope-map-registry" numbered="true">
+    <name>Scope Map</name>
+    <t>All AIP capability scopes MUST be representable as URIs in the
+      `urn:aip:scope:` namespace:</t>
+    <artwork><![CDATA[
+  scope_string → urn:aip:scope:<scope_string>
+    ]]></artwork>
+    <t>Examples: `email.read` → `urn:aip:scope:email.read`,
+`spawn_agents.create` → `urn:aip:scope:spawn_agents.create`.</t>
+    <t>When used in OAuth `scope` parameters, the URI form MUST be used.
+Within AIP Credential Tokens (`aip_scope` array), the short string
+form remains canonical.</t>
+    <t>A conformant AIP Registry MUST implement `GET /v1/scopes` returning
+a JSON object mapping scope strings to metadata:</t>
+    <table>
+      <thead>
+        <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>`uri`</td><td>string</td><td>Full `urn:aip:scope:` URI</td></tr>
+        <tr><td>`description`</td><td>string</td><td>Human-readable description</td></tr>
+        <tr><td>`tier`</td><td>integer</td><td>Tier classification (1, 2, or 3)</td></tr>
+        <tr><td>`destructive`</td><td>boolean</td><td>Whether the scope requires additional confirmation per Section 4.3.3</td></tr>
+        <tr><td>`constraint_schema`</td><td>object/null</td><td>JSON Schema fragment for scope-specific constraints</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section anchor="engagement-endpoints-registry" numbered="true">
+    <name>Engagement Endpoints</name>
+    <t>A conformant AIP Registry supporting Engagement Objects MUST implement:</t>
+    <table>
+      <thead>
+        <tr><th>Method</th><th>Path</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>POST</td><td>/v1/engagements</td><td>Create Engagement Object</td></tr>
+        <tr><td>GET</td><td>/v1/engagements/{id}</td><td>Retrieve Engagement Object</td></tr>
+        <tr><td>PUT</td><td>/v1/engagements/{id}</td><td>Update Engagement (append change log entry)</td></tr>
+      </tbody>
+    </table>
+
+    <t>Create validation: The Registry MUST verify the initiator's
+DID signature, validate that all referenced participant AIDs exist
+and are not revoked, and assign `status: "active"` with
+`seq_number: 1`.</t>
+
+    <t>Update validation: The Registry MUST verify the submitter is an
+active participant, the change log entry's `seq_number` is exactly
+`current_max + 1`, and the entry signature is valid. The Registry
+MUST reject modifications to existing entries with
+`change_log_immutable`.</t>
+  </section>
+
+  <section anchor="rpnp-endpoints-registry" numbered="true">
+    <name>RPNP Subscription Endpoints</name>
+    <t>A conformant AIP Registry supporting RPNP (Section 9.4) MUST
+implement:</t>
+    <table>
+      <thead>
+        <tr><th>Method</th><th>Path</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>POST</td><td>/v1/subscriptions</td><td>Create RPNP subscription</td></tr>
+        <tr><td>GET</td><td>/v1/subscriptions/{id}</td><td>Retrieve subscription status</td></tr>
+        <tr><td>DELETE</td><td>/v1/subscriptions/{id}</td><td>Cancel subscription</td></tr>
+      </tbody>
+    </table>
+
+    <t>Subscription creation MUST be authenticated via DPoP. The
+`webhook_uri` MUST use HTTPS. The Registry MUST reject non-HTTPS
+URIs with `invalid_webhook_uri`.</t>
+  </section>
+</section>

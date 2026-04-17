@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provai.dev/schemas/aip/capability-overlay/latest",
+  "$comment": "Normatively defined in AIP spec §4.7.1. Overlay rules CO-1 through CO-6 are defined in §4.7.2. Effective capability computation is defined in §4.7.3. Submitted via POST /v1/capability-overlays. The signature covers the JCS-canonical (RFC 8785) JSON excluding the signature field. overlay_type MUST be 'restrict' — AIP v0.3 does not define expand overlays.",
+  "title": "AIP Capability Overlay",
+  "description": "A signed restriction document that narrows an agent's effective capability set for operations within a specific engagement or issuer context. Defined in AIP spec §4.7. Rule CO-1 (Attenuation Only): an overlay MUST NOT expand any constraint beyond what the base Capability Manifest permits. The effective capability set is always the intersection of the base manifest and all active overlays.",
+  "type": "object",
+  "required": [
+    "overlay_id",
+    "aid",
+    "issued_by",
+    "overlay_type",
+    "issued_at",
+    "expires_at",
+    "version",
+    "constraints",
+    "signature"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "overlay_id": {
+      "type": "string",
+      "pattern": "^co:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "description": "Unique identifier for this overlay. Format: 'co:' prefix followed by a UUID v4 in canonical lowercase hyphenated form."
+    },
+    "aid": {
+      "type": "string",
+      "pattern": "^did:aip:[a-z][a-z0-9]*(-[a-z0-9]+)*:[0-9a-f]{32}$",
+      "description": "AID of the target agent whose capability set this overlay restricts. MUST be a registered AIP agent."
+    },
+    "engagement_id": {
+      "type": "string",
+      "pattern": "^eng:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "description": "OPTIONAL. Engagement Object identifier this overlay is scoped to. When present, this overlay applies only to Credential Token validations where aip_engagement_id matches. When absent, the overlay applies across all engagement contexts for the (aid, issued_by) pair. Links to Engagement Object per AIP spec §4.8."
+    },
+    "issued_by": {
+      "type": "string",
+      "pattern": "^did:(web|aip):.+$",
+      "description": "DID of the overlay issuer. MUST use did:web or did:aip method. Overlays signed by did:key MUST be rejected with overlay_issuer_invalid (Rule CO-2, AIP spec §4.7.2)."
+    },
+    "overlay_type": {
+      "type": "string",
+      "enum": ["restrict"],
+      "description": "Overlay operation type. MUST be 'restrict' in AIP v0.3. Expand overlays are not defined in this version."
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp when this overlay was issued."
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp after which this overlay is no longer active. MUST be strictly after issued_at. Expired overlays are treated as absent — the base Capability Manifest applies without restriction for that issuer/engagement context (Rule CO-4, AIP spec §4.7.2)."
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Positive integer monotonically increasing per (aid, engagement_id, issued_by) tuple. A new overlay for the same tuple MUST have a strictly higher version than the current active overlay. The Registry MUST reject downgrades with overlay_version_conflict (Rule CO-3, AIP spec §4.7.2)."
+    },
+    "constraints": {
+      "type": "object",
+      "description": "The capability restrictions imposed by this overlay. Uses the same sub-schema as the Capability Manifest 'capabilities' object. For every field present, the value MUST be equal to or more restrictive than the base Capability Manifest (CO-1: boolean fields — false wins; numeric limits — min of base and overlay; path arrays — set intersection). The Registry MUST reject overlays that violate CO-1 with overlay_exceeds_manifest.",
+      "additionalProperties": true
+    },
+    "signature": {
+      "type": "string",
+      "description": "Base64url-encoded EdDSA signature by the issued_by key over the JCS-canonical (RFC 8785) JSON of this overlay excluding the signature field."
+    }
+  }
+}

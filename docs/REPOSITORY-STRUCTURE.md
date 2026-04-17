@@ -7,6 +7,10 @@ This repository should remain predictable for contributors and reviewers.
 - `draft.xml`: root xml2rfc source
 - `sections/`: main specification content split by section
 - `references/`: shared references
+- `schemas/`: canonical schema files for the current draft
+- `examples/`: canonical example JSON files for the current draft
+- `drafts/`: append-only archived Internet-Draft revisions
+- `history/markdown-era/`: historical Markdown-era schema and example material
 - `docs/`: repository policy and contributor documentation
 - `.github/`: issue templates, PR template, and repository workflows
 
@@ -18,9 +22,13 @@ Compatibility surface:
 
 ### Specification text
 
-Put normative and editorial draft content in `draft.xml`, `sections/`, and `references/`.
+Put normative and editorial draft content in `draft.xml`, `sections/`, `references/`, `schemas/`, and `examples/`.
 
 Do not keep a second live Markdown specification tree on `main`.
+
+### Archived revisions
+
+Put minted `-NN` revisions in `drafts/`. Do not overwrite an existing snapshot directory.
 
 ### Public process documentation
 

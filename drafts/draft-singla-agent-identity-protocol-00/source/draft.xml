@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     version="3"
+     docName="draft-singla-agent-identity-protocol-00"
+     ipr="trust200902"
+     category="std"
+     submissionType="IETF"
+     consensus="true"
+     xml:lang="en">
+
+  <front>
+    <title abbrev="AIP">Agent Identity Protocol (AIP): Decentralized Identity and Delegation for AI Agents</title>
+
+    <seriesInfo name="Internet-Draft" value="draft-singla-agent-identity-protocol-00"/>
+
+    <author fullname="Paras Singla" initials="P." surname="Singla">
+      <organization>Independent</organization>
+      <address>
+        <email>paras.singla@inviscel.com</email>
+        <uri>https://provai.dev</uri>
+      </address>
+    </author>
+
+    <date year="2026" month="April" day="17"/>
+
+    <area>Security</area>
+
+    <keyword>agent identity</keyword>
+    <keyword>AI agent</keyword>
+    <keyword>aip</keyword>
+    <keyword>agent identity protocol</keyword>
+    <keyword>autonomous agents</keyword>
+    <keyword>delegation</keyword>
+    <keyword>capability</keyword>
+    <keyword>decentralized identifier</keyword>
+    <keyword>DID</keyword>
+    <keyword>credential token</keyword>
+    <keyword>JWT</keyword>
+    <keyword>DPoP</keyword>
+    <keyword>revocation</keyword>
+    <keyword>principal chain</keyword>
+
+    <abstract>
+      <t>
+        The Agent Identity Protocol (AIP) defines a decentralized identity,
+        delegation, and authorization framework for autonomous AI agents. AIP
+        combines W3C Decentralized Identifiers (DIDs), capability-based
+        authorization, cryptographic delegation chains, and deterministic
+        validation to enable secure, auditable multi-agent workflows without
+        relying on centralized identity providers.
+      </t>
+    </abstract>
+  </front>
+
+  <middle>
+    <xi:include href="sections/01-introduction.xml"/>
+    <xi:include href="sections/02-conventions.xml"/>
+    <xi:include href="sections/03-architecture.xml"/>
+    <xi:include href="sections/04-resource-model.xml"/>
+    <xi:include href="sections/05-registration.xml"/>
+    <xi:include href="sections/06-agent-resolution.xml"/>
+    <xi:include href="sections/07-credential-tokens.xml"/>
+    <xi:include href="sections/08-delegation.xml"/>
+    <xi:include href="sections/09-revocation.xml"/>
+    <xi:include href="sections/10-reputation.xml"/>
+    <xi:include href="sections/11-lifecycle-states.xml"/>
+    <xi:include href="sections/12-principal-chain.xml"/>
+    <xi:include href="sections/13-error-handling.xml"/>
+    <xi:include href="sections/14-rate-limiting.xml"/>
+    <xi:include href="sections/15-registry.xml"/>
+    <xi:include href="sections/16-versioning.xml"/>
+    <xi:include href="sections/17-security.xml"/>
+    <xi:include href="sections/18-iana.xml"/>
+  </middle>
+
+  <back>
+    <xi:include href="references/normative.xml"/>
+    <xi:include href="references/informative.xml"/>
+    <section anchor="appendix-a" numbered="true">
+      <name>Appendix A: Changes from Version 0.1</name>
+      <ul>
+        <li>Added Registry Genesis protocol.</li>
+        <li>Introduced Tiered revocation.</li>
+      </ul>
+    </section>
+    <section anchor="appendix-b" numbered="true">
+      <name>Appendix B: Changes from Version 0.2</name>
+      <ul>
+        <li>Added Engagement Objects and Capability Overlays.</li>
+        <li>Introduced Approval Envelopes for multi-step workflows.</li>
+      </ul>
+    </section>
+    <section anchor="acknowledgements" numbered="false">
+      <name>Acknowledgements</name>
+      <t>TBD</t>
+    </section>
+  </back>
+
+</rfc>

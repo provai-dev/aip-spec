@@ -1,0 +1,155 @@
+<section anchor="iana" numbered="true">
+  <name>IANA Considerations</name>
+  <t>
+    This section describes the IANA considerations for
+    the AIP specification.
+  </t>
+
+  <section anchor="iana-did-method" numbered="true">
+  <name>DID Method Registration</name>
+    <t>
+      The did:aip DID method is requested for registration
+      in the W3C DID Method Registry per W3C DID Specification.
+    </t>
+
+                <table>
+          <name>did:aip Method Registration</name>
+          <thead>
+            <tr>
+              <th align="left">Field</th>
+              <th align="left">Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Method Name</td>
+              <td>did:aip</td>
+            </tr>
+            <tr>
+              <td>Status</td>
+              <td>Draft</td>
+            </tr>
+            <tr>
+              <td>Canonical ID</td>
+              <td>did:aip:namespace:32-hex-characters</td>
+            </tr>
+          </tbody>
+        </table>
+  </section>
+
+  <section anchor="iana-scope-namespace" numbered="true">
+  <name>Scope URI Namespace</name>
+    <t>
+      AIP defines a URN namespace for scope identifiers:
+      urn:aip:scope:*. This namespace is used in
+      OAuth 2.0 token exchange to identify capability scopes.
+    </t>
+
+    <artwork type="example"><![CDATA[
+urn:aip:scope:email.read
+urn:aip:scope:email.write
+urn:aip:scope:transactions
+urn:aip:scope:spawn_agents.create
+]]></artwork>
+  </section>
+
+  <section anchor="iana-grant-tiers" numbered="true">
+  <name>Grant Tier Registry</name>
+                <table>
+          <name>Grant Tier Values</name>
+          <thead>
+            <tr>
+              <th align="left">Value</th>
+              <th align="left">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>G1</td>
+              <td>Registry-Mediated Grant Flow</td>
+            </tr>
+            <tr>
+              <td>G2</td>
+              <td>Direct Deployer Grant Flow</td>
+            </tr>
+            <tr>
+              <td>G3</td>
+              <td>Full Ceremony Grant Flow</td>
+            </tr>
+          </tbody>
+        </table>
+  </section>
+
+  <section anchor="iana-error-codes" numbered="true">
+  <name>Error Code Registry</name>
+    <t>
+      AIP defines a registry of error codes.
+    </t>
+
+                <table>
+          <name>AIP Error Codes</name>
+          <thead>
+            <tr>
+              <th align="left">Code</th>
+              <th align="center">HTTP</th>
+              <th align="left">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>invalid_token</td><td>401</td><td>Token malformed, invalid signature, or invalid claims.</td></tr>
+            <tr><td>token_expired</td><td>401</td><td>Token <tt>exp</tt> is in the past.</td></tr>
+            <tr><td>token_replayed</td><td>401</td><td>Token <tt>jti</tt> seen before within validity window.</td></tr>
+            <tr><td>dpop_proof_required</td><td>401</td><td>DPoP proof absent or invalid.</td></tr>
+            <tr><td>delegation_chain_refresh_required</td><td>401</td><td>Principal Token in chain has expired.</td></tr>
+            <tr><td>agent_revoked</td><td>403</td><td>The AID has been revoked.</td></tr>
+            <tr><td>insufficient_scope</td><td>403</td><td>Operation not within granted scopes.</td></tr>
+            <tr><td>invalid_delegation_depth</td><td>403</td><td><tt>delegation_depth</tt> mismatch or exceeds limit.</td></tr>
+            <tr><td>chain_token_expired</td><td>403</td><td>Principal Token in <tt>aip_chain</tt> expired.</td></tr>
+            <tr><td>delegation_chain_invalid</td><td>403</td><td>Structural error in delegation chain.</td></tr>
+            <tr><td>manifest_invalid</td><td>403</td><td>Capability Manifest signature failed or unavailable.</td></tr>
+            <tr><td>manifest_expired</td><td>403</td><td>Capability Manifest <tt>expires_at</tt> passed.</td></tr>
+            <tr><td>approval_envelope_invalid</td><td>400</td><td>Approval Envelope malformed or hash mismatch.</td></tr>
+            <tr><td>approval_envelope_expired</td><td>403</td><td><tt>approval_window_expires_at</tt> has passed.</td></tr>
+            <tr><td>approval_not_found</td><td>404</td><td>Approval Envelope ID not found.</td></tr>
+            <tr><td>approval_step_prerequisites_unmet</td><td>403</td><td><tt>triggered_by</tt> step not yet completed.</td></tr>
+            <tr><td>approval_step_already_claimed</td><td>409</td><td>Step already claimed by another actor.</td></tr>
+            <tr><td>approval_step_action_mismatch</td><td>403</td><td>Action hash mismatch.</td></tr>
+            <tr><td>grant_request_expired</td><td>400</td><td>AIP-GRANT <tt>request_expires_at</tt> passed.</td></tr>
+            <tr><td>grant_rejected_by_principal</td><td>403</td><td>Principal declined the grant.</td></tr>
+            <tr><td>unknown_aid</td><td>404</td><td>AID not registered in any accessible Registry.</td></tr>
+            <tr><td>registry_unavailable</td><td>503</td><td>Registry could not be reached.</td></tr>
+            <tr><td>rate_limit_exceeded</td><td>429</td><td>Rate limit for this operation exceeded.</td></tr>
+            <tr><td>revocation_stale</td><td>403</td><td>Tier 2 operation with cached revocation status.</td></tr>
+            <tr><td>principal_did_method_forbidden</td><td>403</td><td>Principal uses <tt>did:key</tt> for Tier 2 scope.</td></tr>
+            <tr><td>registry_untrusted</td><td>403</td><td>Registry does not match principal DID-Document.</td></tr>
+            <tr><td>overlay_exceeds_manifest</td><td>400</td><td>Overlay violates CO-1 attenuation rule.</td></tr>
+            <tr><td>engagement_terminated</td><td>403</td><td>Engagement has been terminated or completed.</td></tr>
+          </tbody>
+        </table>
+  </section>
+
+  <section anchor="iana-media-types" numbered="true">
+  <name>Media Types</name>
+                <table>
+          <name>AIP Media Types</name>
+          <thead>
+            <tr>
+              <th align="left">Type</th>
+              <th align="left">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>application/aip+jwt</td>
+              <td>AIP Credential Token (JWT format)</td>
+            </tr>
+          </tbody>
+        </table>
+
+    <t>
+      The typ header value for AIP Credential Tokens
+      is AIP+JWT per RFC 7515.
+    </t>
+  </section>
+</section>
+

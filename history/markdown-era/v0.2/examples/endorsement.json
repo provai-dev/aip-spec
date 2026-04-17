@@ -1,0 +1,11 @@
+{
+  "_comment": "Example AIP Endorsement — AIP spec §11.1. In production, 'signature' is a real base64url EdDSA signature over the canonical field order (endorsement_id, from_aid, to_aid, task_id, outcome, notes, timestamp, signature) with signature set to '' during signing.",
+  "endorsement_id": "end:b1c2d3e4-f5a6-4789-8bcd-ef0123456789",
+  "from_aid": "did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3",
+  "to_aid": "did:aip:ephemeral:abc0123456789def0123456789def012",
+  "task_id": "project-alpha-research-001",
+  "outcome": "success",
+  "notes": "Research task completed on schedule. All requested URLs scraped and summarised correctly.",
+  "timestamp": "2026-03-22T12:15:00Z",
+  "signature": "base64url-encoded-eddsa-signature-placeholder"
+}

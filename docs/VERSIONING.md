@@ -2,12 +2,20 @@
 
 This repository needs disciplined version handling because several unrelated version numbers can coexist.
 
+## Internet-Draft Revision Baseline
+
+- the repository uses Internet-Draft revision numbers such as `-00`, `-01`, and `-02`
+- the current working revision is the suffix embedded in `draft.xml`
+- minted revisions are archived under `drafts/`
+- archived revisions are immutable once minted
+
 ## Migration Baseline
 
-- `v0.2` belongs to the archived Markdown-era repository history.
-- The repository-format migration occurs at `v0.3`.
-- The archived branch `archive/markdown-era` preserves the historical Markdown `v0.3` document that previously backed `docs/aip-spec.md`.
-- On `main`, `v0.3` and later are maintained through the XML draft sources.
+- `v0.2` belongs to the archived Markdown-era repository history
+- the repository-format migration occurs at `v0.3`
+- the archived branch `archive/markdown-era` preserves the historical Markdown `v0.3` document that previously backed `docs/aip-spec.md`
+- historical Markdown-era schemas and examples are preserved under `history/markdown-era/`
+- on `main`, the XML draft uses Internet-Draft revision numbering rather than the old versioned Markdown authoring layout
 
 ## Version Types
 

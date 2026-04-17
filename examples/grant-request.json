@@ -1,0 +1,50 @@
+{
+  "_comment": "Example AIP Grant Request — AIP spec §4.5.2. Constructed by the Agent Deployer (G2 — Direct Deployer flow) and transmitted to the Principal Wallet. In the Web Redirect binding this object would be JSON-serialised, signed with the deployer's Ed25519 key, base64url-encoded, and passed as the 'request' query parameter to the Principal Wallet URI. Signature placeholder.",
+  "grant_request_id": "gr:1a2b3c4d-5e6f-4789-8abc-def012345678",
+  "aip_version": "0.3",
+  "agent_aid": "did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3",
+  "agent_name": "Alice-Personal-Assistant",
+  "agent_type": "personal",
+  "model": {
+    "provider": "Anthropic",
+    "model_id": "claude-sonnet-4-6"
+  },
+  "requested_capabilities": {
+    "email": {
+      "read": true,
+      "write": true,
+      "send": true,
+      "delete": false,
+      "max_recipients_per_send": 10
+    },
+    "calendar": {
+      "read": true,
+      "write": true,
+      "delete": false
+    }
+  },
+  "purpose": "Manage Alice's email and calendar to draft replies, schedule meetings, and organise her inbox on her behalf.",
+  "delegation_valid_for_seconds": 7776000,
+  "max_delegation_depth": 0,
+  "task_id": null,
+  "deployer_did": "did:web:assistant.example.com",
+  "deployer_name": "Example Assistant Platform",
+  "nonce": "7Xk9mN3pQ2rS8tU1vW4yZ6bC",
+  "request_expires_at": "2026-04-14T11:00:00Z",
+  "callback_uri": "https://assistant.example.com/aip/grant-callback",
+  "state": "sess_abc123_csrf_xyz789",
+  "deployer_public_key": {
+    "kty": "OKP",
+    "crv": "Ed25519",
+    "x": "22rZBYLyCsfWS_8UzXQIPh8idwQbNlsJbbQdcHVSs1I",
+    "kid": "did:web:assistant.example.com#key-1"
+  },
+  "_notes": {
+    "grant_tier": "This is a G2 (Direct Deployer) grant. The deployer constructs and signs the GrantRequest directly and the principal reviews it in their wallet. G3 would require an OAuth 2.1 AS involvement.",
+    "agent_aid": "The deployer MUST generate the agent's Ed25519 keypair and compute the AID before constructing the GrantRequest, so the resulting Principal Token's sub field matches.",
+    "max_delegation_depth_0": "max_delegation_depth=0 means this agent is a leaf — it cannot spawn sub-agents. The consent UI will NOT show the sub-delegation notice.",
+    "nonce_entropy": "nonce must have ≥128 bits entropy. This base64url-encoded string represents a 128-bit random value.",
+    "consent_ui_elements": "The Principal Wallet MUST display: (1) agent name 'Alice-Personal-Assistant', type 'personal', (2) model 'Anthropic — claude-sonnet-4-6', (3) purpose verbatim, (4) deployer 'Example Assistant Platform' (did:web:assistant.example.com), (5) capabilities in canonical human-readable form, (6) expiry ~90 days, (7) no sub-delegation notice (depth=0).",
+    "delegation_valid_for_seconds": "7776000 seconds = 90 days. The issued Principal Token expires_at = issued_at + approved_delegation_valid_for_seconds from the GrantResponse."
+  }
+}

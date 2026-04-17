@@ -1,0 +1,77 @@
+{
+  "_comment": "Example AIP Engagement Object — AIP spec §4.8.1. This example models a procurement engagement between a hiring operator (enterprise platform) and a deploying principal (Alice's organisation). Two agents participate: an orchestrator agent and a payment-processing service agent. An approval gate requires Alice's sign-off before payment execution. Signatures are placeholders.",
+  "engagement_id": "eng:a1b2c3d4-e5f6-4789-8abc-def012345678",
+  "title": "Q2 2026 Office Supplies Procurement — Alice Corp",
+  "hiring_operator": "did:web:platform.example.com",
+  "deploying_principal": "did:web:alice.example.com",
+  "created_at": "2026-04-14T09:00:00Z",
+  "expires_at": "2026-07-14T09:00:00Z",
+  "status": "active",
+  "version": 3,
+  "participants": [
+    {
+      "aid": "did:aip:orchestrator:4a7b2c8d1e9f3a6b0c5d4e7f8a9b1c2d",
+      "role": "orchestrator",
+      "capability_overlay_id": null,
+      "added_at": "2026-04-14T09:00:00Z",
+      "added_by": "did:web:platform.example.com"
+    },
+    {
+      "aid": "did:aip:service:8f9e0d1c2b3a4f5e6d7c8b9a0f1e2d3c",
+      "role": "payment-processor",
+      "capability_overlay_id": "co:3f8e7d6c-5b4a-4c3d-8e2f-1a2b3c4d5e6f",
+      "added_at": "2026-04-14T09:30:00Z",
+      "added_by": "did:web:platform.example.com"
+    }
+  ],
+  "approval_gates": [
+    {
+      "gate_id": "gate:payment-approval",
+      "name": "Payment Authorisation",
+      "required_approver": "did:web:alice.example.com",
+      "trigger": "before_payment_execution",
+      "status": "pending"
+    }
+  ],
+  "change_log": [
+    {
+      "seq": 1,
+      "timestamp": "2026-04-14T09:00:00Z",
+      "action": "engagement_created",
+      "actor": "did:web:platform.example.com",
+      "payload": {
+        "engagement_id": "eng:a1b2c3d4-e5f6-4789-8abc-def012345678",
+        "title": "Q2 2026 Office Supplies Procurement — Alice Corp"
+      },
+      "signature": "base64url-encoded-eddsa-signature-placeholder-seq1"
+    },
+    {
+      "seq": 2,
+      "timestamp": "2026-04-14T09:15:00Z",
+      "action": "engagement_countersigned",
+      "actor": "did:web:alice.example.com",
+      "payload": {},
+      "signature": "base64url-encoded-eddsa-signature-placeholder-seq2"
+    },
+    {
+      "seq": 3,
+      "timestamp": "2026-04-14T09:30:00Z",
+      "action": "participant_added",
+      "actor": "did:web:platform.example.com",
+      "payload": {
+        "aid": "did:aip:service:8f9e0d1c2b3a4f5e6d7c8b9a0f1e2d3c",
+        "role": "payment-processor"
+      },
+      "signature": "base64url-encoded-eddsa-signature-placeholder-seq3"
+    }
+  ],
+  "hiring_operator_signature": "base64url-encoded-eddsa-signature-by-platform-placeholder",
+  "deploying_principal_signature": "base64url-encoded-eddsa-signature-by-alice-placeholder",
+  "_notes": {
+    "bi_lateral_activation": "proposed→active requires BOTH hiring_operator_signature and deploying_principal_signature. The change_log records engagement_created (seq:1) then engagement_countersigned (seq:2) to document this two-party activation.",
+    "capability_overlay": "The payment-processor participant has capability_overlay_id pointing to the overlay in capability-overlay.json, which restricts its transaction limits to £500/day for this engagement.",
+    "approval_gate": "The 'payment-approval' gate is 'pending'. Credential Token validations for actions scoped to this engagement that trigger this gate will fail with engagement_gate_pending until Alice approves it.",
+    "append_only_log": "change_log is append-only. The Registry MUST reject any modification of existing entries. Only seq values strictly greater than 3 are valid for new entries.",
+    "termination_cascade": "If terminated: (1) all Capability Overlays for this engagement_id are invalidated, (2) all pending/approved/executing Approval Envelopes scoped to this engagement_id are cancelled, (3) subsequent Credential Token validation fails with engagement_terminated."
+  }
+}

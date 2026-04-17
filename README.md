@@ -28,14 +28,21 @@ Core draft sources:
 - `draft.xml`: root xml2rfc document
 - `sections/`: section-level XML files included into the draft
 - `references/`: normative and informative reference blocks
+- `schemas/`: canonical machine-readable schemas for the current working draft
+- `examples/`: canonical example JSON for the current working draft
+- `drafts/`: append-only archived Internet-Draft revisions
+- `history/markdown-era/`: preserved historical schemas and examples from the Markdown-era repository
 - `Makefile`: local build, validation, and idnits entry points
 - `build_draft.py`: XInclude expansion helper for local builds
 
 Repository documentation:
 
+- `EDITOR_GUIDE.md`: editor procedure for minting new `-NN` draft revisions
+- `CHANGELOG.md`: minted draft revision notes
 - `CONTRIBUTING.md`: contributor workflow and review expectations
 - `CODE_OF_CONDUCT.md`: baseline community behavior policy
 - `docs/aip-spec.md`: compatibility page preserved for legacy backlinks
+- `docs/DRAFT_ARCHIVING.md`: append-only archival policy for draft revisions
 - `docs/MIGRATION-FROM-MARKDOWN.md`: migration record and archived-branch plan
 - `docs/VERSIONING.md`: document, draft, and repository versioning rules
 - `docs/ISSUE-PROPOSAL-WORKFLOW.md`: public issue and proposal lifecycle
@@ -50,7 +57,7 @@ Repository documentation:
 ### Prerequisites
 
 ```bash
-pip install lxml xml2rfc
+pip install lxml xml2rfc jsonschema
 ```
 
 Optional for PDF output:
@@ -66,6 +73,8 @@ make clean
 make html
 make text
 make validate
+make validate-examples
+make check-draft
 make idnits
 ```
 
@@ -78,8 +87,12 @@ The canonical authoring source on `main` is:
 - `draft.xml`
 - `sections/`
 - `references/`
+- `schemas/`
+- `examples/`
 
 `docs/aip-spec.md` continues to exist only as a compatibility surface for inbound links and historical references. It is not an authoring target and not a normative source on `main`.
+
+Minted revisions are preserved under `drafts/` and must remain append-only.
 
 ## Repository Migration
 
@@ -90,6 +103,16 @@ The repository layout changed at `v0.3`.
 - Earlier Markdown-era material, including `v0.2`, is preserved there as part of the full historical repository state.
 
 See [docs/MIGRATION-FROM-MARKDOWN.md](docs/MIGRATION-FROM-MARKDOWN.md) and [docs/aip-spec.md](docs/aip-spec.md) for the compatibility policy.
+
+## Draft Revisions And Archives
+
+The repository uses Internet-Draft revision numbers such as `-00`, `-01`, and `-02`.
+
+- the current working revision is defined by `draft.xml`
+- schemas and examples for the working revision live in `schemas/` and `examples/`
+- minted revisions are archived under `drafts/<full-draft-name>/`
+
+See [EDITOR_GUIDE.md](EDITOR_GUIDE.md) and [docs/DRAFT_ARCHIVING.md](docs/DRAFT_ARCHIVING.md) for the full release procedure.
 
 ## Working Model
 

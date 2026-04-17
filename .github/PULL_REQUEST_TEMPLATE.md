@@ -17,6 +17,14 @@
 - [ ] Direction explicitly approved by a human
 - [ ] Final text or fix explicitly approved by a human when required
 
+## Draft Revision Impact
+
+- [ ] This change does not require a new `-NN` draft revision
+- [ ] This change is intended for the next `-NN` draft revision
+- [ ] Related schema files under `schemas/` were reviewed
+- [ ] Related example files under `examples/` were reviewed
+- [ ] Archival implications under `drafts/` were reviewed
+
 ## Validation
 
 - [ ] `make validate`

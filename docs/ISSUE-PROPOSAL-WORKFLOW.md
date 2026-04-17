@@ -6,7 +6,7 @@ This repository uses an issue-driven workflow for all substantial standards work
 
 Every substantive proposal, errata analysis, fix, or spec edit begins from a human-provided GitHub issue number.
 
-On `main`, all approved draft edits are applied to the XML sources rather than to historical Markdown snapshots.
+On `main`, all approved draft edits are applied to the XML sources, schemas, and examples rather than to historical Markdown snapshots.
 
 That issue number is the traceability anchor for:
 

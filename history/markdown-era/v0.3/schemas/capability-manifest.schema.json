@@ -1,0 +1,301 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provai.dev/schemas/aip/capability-manifest/latest",
+  "$comment": "Normatively defined in AIP spec §4.2.2. Canonical signing field order: manifest_id, aid, granted_by, version, issued_at, expires_at, capabilities, signature (set to '' during signing). Scope-to-manifest mapping for validation is in AIP spec §7.3 Step 9d.",
+  "title": "AIP Capability Manifest",
+  "description": "A versioned, signed document stored in the AIP Registry declaring exactly what an agent is permitted to do. Defined in AIP spec §4.2.2. Signing canonical field order: (manifest_id, aid, granted_by, version, issued_at, expires_at, capabilities, signature) with signature set to empty string during signing.",
+  "type": "object",
+  "required": [
+    "manifest_id",
+    "aid",
+    "granted_by",
+    "version",
+    "issued_at",
+    "expires_at",
+    "capabilities",
+    "signature"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "manifest_id": {
+      "type": "string",
+      "pattern": "^cm:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "description": "Unique identifier for this manifest version. Format: 'cm:' prefix followed by a UUID v4 in canonical lowercase hyphenated form. A new manifest_id MUST be generated on every update including scope_revoke operations — reusing a manifest_id for a different manifest version is forbidden."
+    },
+    "aid": {
+      "type": "string",
+      "pattern": "^did:aip:[a-z][a-z0-9]*(-[a-z0-9]+)*:[0-9a-f]{32}$",
+      "description": "AID of the agent this manifest governs. MUST match the AID of the registered agent."
+    },
+    "granted_by": {
+      "type": "string",
+      "pattern": "^did:[a-z][a-z0-9]*:.+$",
+      "description": "W3C DID of the principal or parent agent that granted these capabilities. For a root-level agent, this is the human or organisational principal's DID. For a sub-agent, this is the parent agent's did:aip AID. The signature field MUST be verified against the public key of this DID."
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Monotonically increasing version counter. Starts at 1 on initial registration. MUST increment by exactly 1 on every update including scope_revoke operations. Relying parties MAY cache the version number to detect staleness: if the Registry returns the same or lower version than previously seen, the manifest should be re-fetched."
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp when this manifest version was issued."
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp after which this manifest is no longer valid. MUST be strictly after issued_at. Validation Algorithm Step 9b returns manifest_expired if this is in the past."
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The capability grants for this agent. An absent or empty object ({}) means no capabilities are granted — the agent may not perform any action. Implementations MUST NOT treat absence as implicitly granting any permission.",
+      "properties": {
+        "email": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Email access capabilities. All fields default to false when absent.",
+          "properties": {
+            "read": {
+              "type": "boolean",
+              "default": false,
+              "description": "Grants email.read scope — read email messages and metadata."
+            },
+            "write": {
+              "type": "boolean",
+              "default": false,
+              "description": "Grants email.write scope — create and modify draft messages."
+            },
+            "send": {
+              "type": "boolean",
+              "default": false,
+              "description": "Grants email.send scope — send email messages. Subject to max_recipients_per_send if set."
+            },
+            "delete": {
+              "type": "boolean",
+              "default": false,
+              "description": "Grants email.delete scope — permanently delete email messages."
+            },
+            "max_recipients_per_send": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "description": "OPTIONAL. Maximum recipients per single send operation. MUST be enforced by the agent runtime. If absent when send is true, no per-send cap applies. Range 1–100."
+            }
+          }
+        },
+        "calendar": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Calendar access capabilities. All fields default to false when absent.",
+          "properties": {
+            "read": {
+              "type": "boolean",
+              "default": false,
+              "description": "Grants calendar.read scope — read calendar events and metadata."
+            },
+            "write": {
+              "type": "boolean",
+              "default": false,
+              "description": "Grants calendar.write scope — create and modify calendar events."
+            },
+            "delete": {
+              "type": "boolean",
+              "default": false,
+              "description": "Grants calendar.delete scope — delete calendar events."
+            }
+          }
+        },
+        "filesystem": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Filesystem access capabilities. Path arrays use absolute paths. Empty arrays mean deny-all for that operation.",
+          "properties": {
+            "read": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "description": "Grants filesystem.read scope for the listed absolute paths. An empty array [] means deny-all — no paths are readable. Omitting this field entirely also means no read access. MUST NOT be treated as allow-all when empty."
+            },
+            "write": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "description": "Grants filesystem.write scope for the listed absolute paths. An empty array [] means deny-all. Omitting means no write access."
+            },
+            "execute": {
+              "type": "boolean",
+              "default": false,
+              "description": "Grants filesystem.execute scope — execute scripts or commands. TIER 2 SENSITIVE: requires DPoP and enforces 300-second token TTL cap. This is the highest-risk filesystem capability."
+            },
+            "delete": {
+              "type": "boolean",
+              "default": false,
+              "description": "Grants filesystem.delete scope — permanently delete files. Deletion is only permitted on paths also listed in the write array."
+            }
+          }
+        },
+        "web": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Web access capabilities. All boolean fields default to false when absent.",
+          "properties": {
+            "browse": {
+              "type": "boolean",
+              "default": false,
+              "description": "Grants web.browse scope — retrieve public web content via HTTP GET."
+            },
+            "forms_submit": {
+              "type": "boolean",
+              "default": false,
+              "description": "Grants web.forms_submit scope — submit HTML forms (HTTP POST to web services)."
+            },
+            "download": {
+              "type": "boolean",
+              "default": false,
+              "description": "Grants web.download scope — download and persist files from the web."
+            },
+            "max_requests_per_hour": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "description": "OPTIONAL. Maximum web requests per rolling 60-minute UTC window. The agent runtime MUST track and enforce this. Relying parties proxying web access SHOULD enforce it and return HTTP 429 when exceeded. If absent, no rate cap applies."
+            }
+          }
+        },
+        "transactions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled"],
+          "description": "Financial transaction capabilities. TIER 2 SENSITIVE when enabled: requires DPoP and enforces 300-second token TTL cap.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Master switch for transaction capability. When true, max_single_transaction, max_daily_total, and currency MUST all be present."
+            },
+            "max_single_transaction": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Maximum value of a single transaction. REQUIRED when enabled is true. MUST be greater than 0. In the currency specified by the currency field."
+            },
+            "max_daily_total": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Maximum total transaction value in a 24-hour UTC window. REQUIRED when enabled is true. MUST be greater than 0."
+            },
+            "currency": {
+              "type": "string",
+              "pattern": "^[A-Z]{3}$",
+              "description": "ISO 4217 three-letter currency code (e.g., 'GBP', 'USD', 'EUR'). REQUIRED when enabled is true. Transactions in other currencies MUST be rejected."
+            },
+            "require_confirmation_above": {
+              "type": "number",
+              "minimum": 0,
+              "description": "OPTIONAL. Transactions above this value MUST obtain explicit principal confirmation before execution. MUST be less than or equal to max_single_transaction when both are present — a threshold above the cap is vacuous and rejected by the Registry."
+            }
+          },
+          "if": {
+            "properties": { "enabled": { "const": true } }
+          },
+          "then": {
+            "required": ["max_single_transaction", "max_daily_total", "currency"],
+            "properties": {
+              "max_single_transaction": { "exclusiveMinimum": 0 },
+              "max_daily_total": { "exclusiveMinimum": 0 }
+            }
+          }
+        },
+        "communicate": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled"],
+          "description": "Outbound communication capabilities. TIER 2 SENSITIVE when enabled: requires DPoP and enforces 300-second token TTL cap. The enabled field acts as a master on/off switch.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Master switch for all communicate sub-capabilities. MUST be true for any channel flag to take effect. When false, all channel flags are ignored regardless of their individual values."
+            },
+            "whatsapp": {
+              "type": "boolean",
+              "default": false,
+              "description": "Grants communicate.whatsapp scope — send messages via WhatsApp. Only meaningful when enabled is true."
+            },
+            "telegram": {
+              "type": "boolean",
+              "default": false,
+              "description": "Grants communicate.telegram scope — send messages via Telegram. Only meaningful when enabled is true."
+            },
+            "sms": {
+              "type": "boolean",
+              "default": false,
+              "description": "Grants communicate.sms scope — send SMS messages. Only meaningful when enabled is true."
+            },
+            "voice": {
+              "type": "boolean",
+              "default": false,
+              "description": "Grants communicate.voice scope — initiate or receive voice calls. Only meaningful when enabled is true."
+            }
+          },
+          "if": {
+            "properties": { "enabled": { "const": true } }
+          },
+          "then": {
+            "anyOf": [
+              { "required": ["whatsapp"], "properties": { "whatsapp": { "const": true } } },
+              { "required": ["telegram"], "properties": { "telegram": { "const": true } } },
+              { "required": ["sms"],      "properties": { "sms":      { "const": true } } },
+              { "required": ["voice"],    "properties": { "voice":    { "const": true } } }
+            ],
+            "description": "When enabled is true, at least one channel MUST be explicitly set to true. An enabled communicate object with all channels false or absent is a configuration error."
+          }
+        },
+        "spawn_agents": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled"],
+          "description": "Agent spawning capability — the right to create child agents via AIP delegation.",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Whether this agent may spawn child agents. When true, max_concurrent MUST be present."
+            },
+            "max_concurrent": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "description": "Maximum number of concurrently active child agents. REQUIRED when enabled is true."
+            },
+            "types_allowed": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["personal", "enterprise", "service", "ephemeral", "orchestrator"]
+              },
+              "description": "Agent namespace types this agent is permitted to spawn. If absent when enabled is true, all registered namespace types are permitted."
+            }
+          },
+          "if": {
+            "properties": { "enabled": { "const": true } }
+          },
+          "then": {
+            "required": ["max_concurrent"]
+          }
+        }
+      }
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]+$",
+      "description": "Base64url-encoded EdDSA signature of this manifest. Computed by: serialise the manifest to JSON in canonical field order (manifest_id, aid, granted_by, version, issued_at, expires_at, capabilities, signature) with signature set to empty string '', then sign with the granted_by party's current Ed25519 private key. Verifiers retrieve the granted_by DID's public key and verify against this value. Validation Algorithm Step 9a returns manifest_invalid on failure."
+    }
+  }
+}

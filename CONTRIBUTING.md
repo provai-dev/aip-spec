@@ -7,7 +7,9 @@ This repository is maintained as a standards and specification project, not a fe
 Read these first:
 
 - [README.md](README.md)
+- [EDITOR_GUIDE.md](EDITOR_GUIDE.md)
 - [docs/aip-spec.md](docs/aip-spec.md)
+- [docs/DRAFT_ARCHIVING.md](docs/DRAFT_ARCHIVING.md)
 - [docs/MIGRATION-FROM-MARKDOWN.md](docs/MIGRATION-FROM-MARKDOWN.md)
 - [docs/ISSUE-PROPOSAL-WORKFLOW.md](docs/ISSUE-PROPOSAL-WORKFLOW.md)
 - [docs/VERSIONING.md](docs/VERSIONING.md)
@@ -31,8 +33,12 @@ On `main`, the specification is authored in:
 - `draft.xml`
 - `sections/`
 - `references/`
+- `schemas/`
+- `examples/`
 
 Do not submit normative draft changes by editing Markdown snapshots or by adding a second authoring path. `docs/aip-spec.md` exists only for backlink compatibility.
+
+Minted draft revisions are preserved under `drafts/` and must remain append-only.
 
 ## Required Workflow
 
@@ -89,6 +95,7 @@ Normative changes should be easy to isolate from editorial cleanup. Prefer small
 - Avoid silent behavior changes. If behavior changes, say so directly.
 - Keep examples, references, and registry text synchronized with normative sections.
 - Preserve backlink compatibility for `docs/aip-spec.md`.
+- Update affected files under `schemas/` and `examples/` in the same change set as the matching draft text.
 
 ## Validation
 
@@ -97,6 +104,8 @@ Before submitting:
 ```bash
 make clean
 make validate
+make validate-examples
+make check-draft
 make html
 make text
 make idnits
@@ -110,6 +119,7 @@ The Markdown-era repository is preserved on branch `archive/markdown-era`.
 
 - The historical Markdown `v0.3` document remains there for path continuity with the old `docs/aip-spec.md`.
 - Earlier Markdown-era content, including `v0.2`, remains there as part of the archived branch.
+- Historical Markdown-era schemas and examples are also preserved under `history/markdown-era/` on `main`.
 
 Do not restore the old Markdown authoring tree onto `main`.
 

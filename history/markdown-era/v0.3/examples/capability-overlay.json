@@ -1,0 +1,28 @@
+{
+  "_comment": "Example AIP Capability Overlay — AIP spec §4.7.1. Submitted via POST /v1/capability-overlays. This example restricts a payment-processing agent's transaction limits for a specific engagement. The base Capability Manifest permits transactions up to £5000/day; this overlay reduces the limit to £500/day for this engagement context. Signature is a placeholder.",
+  "overlay_id": "co:3f8e7d6c-5b4a-4c3d-8e2f-1a2b3c4d5e6f",
+  "aid": "did:aip:service:8f9e0d1c2b3a4f5e6d7c8b9a0f1e2d3c",
+  "engagement_id": "eng:a1b2c3d4-e5f6-4789-8abc-def012345678",
+  "issued_by": "did:web:platform.example.com",
+  "overlay_type": "restrict",
+  "issued_at": "2026-04-14T10:00:00Z",
+  "expires_at": "2026-07-14T10:00:00Z",
+  "version": 1,
+  "constraints": {
+    "transactions": {
+      "max_single_transaction": 500.00,
+      "max_daily_total": 500.00,
+      "currency": "GBP",
+      "require_confirmation_above": 250.00
+    }
+  },
+  "signature": "base64url-encoded-eddsa-signature-placeholder",
+  "_notes": {
+    "attenuation_rule": "CO-1 (Attenuation Only): the base Capability Manifest for this agent permits max_single_transaction=5000 and max_daily_total=5000. This overlay reduces both to 500 — a stricter constraint, which is valid. An overlay attempting to raise limits above the base manifest MUST be rejected with overlay_exceeds_manifest.",
+    "engagement_scope": "This overlay applies only to Credential Token validations where aip_engagement_id = 'eng:a1b2c3d4-...' . Outside this engagement, the base Capability Manifest limits apply.",
+    "effective_capability": "Effective = intersect(base_manifest, overlay): min(5000, 500) = 500 for both single and daily limits.",
+    "version_monotonicity": "CO-3: a subsequent overlay for (aid, engagement_id, issued_by) must have version > 1.",
+    "engagement_termination": "CO-5: if the linked Engagement Object is terminated, this overlay is invalidated atomically by the Registry.",
+    "signature_input": "EdDSA signature by did:web:platform.example.com over JCS(RFC 8785) canonical JSON of this overlay excluding the signature field."
+  }
+}

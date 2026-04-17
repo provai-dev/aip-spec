@@ -1,0 +1,21 @@
+<references>
+  <name>Informative References</name>
+
+  <reference anchor="RFC6749">
+    <front><title>The OAuth 2.0 Authorization Framework</title><author><organization>Hardt, D., Ed.</organization></author><date month="October" year="2012"/></front>
+    <seriesInfo name="RFC" value="6749"/>
+    <seriesInfo name="DOI" value="10.17487/RFC6749"/>
+  </reference>
+  <reference anchor="MCP">
+    <front><title>Model Context Protocol Specification</title><author><organization>Anthropic</organization></author><date year="2024"/></front>
+  </reference>
+  <reference anchor="SP-800-207">
+    <front><title>Zero Trust Architecture</title><author><organization>Rose, S., Borchert, O., Mitchell, S., and S. Connelly</organization></author><date month="August" year="2020"/></front>
+    <seriesInfo name="NIST Special Publication" value="800-207"/>
+    <seriesInfo name="DOI" value="10.6028/NIST.SP.800-207"/>
+  </reference>
+  <reference anchor="SP-800-63-4">
+    <front><title>Digital Identity Guidelines</title><author><organization>Temoshok, D., Fenton, J., Choong, Y., Lefkovitz, N., Regenscheid, A., and J. Richer</organization></author><date month="July" year="2025"/></front>
+    <seriesInfo name="NIST Special Publication" value="800-63-4"/>
+  </reference>
+</references>

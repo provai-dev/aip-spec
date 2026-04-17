@@ -1,0 +1,63 @@
+{
+  "_comment": "Example AIP Approval Envelope — AIP spec §4.6.3–§4.6.5. Submitted as the request body to POST /v1/approvals. This example models a two-step financial workflow: (1) place an e-commerce order, (2) debit a bank account (triggered after step 1 completes). Step 2 has a compensation step (refund) in case execution fails after the order is placed. Signatures and hashes are placeholders.",
+  "approval_id": "apr:7e3b4c0d-f5a6-4b8e-9c1d-2e3f4a5b6c7d",
+  "created_by": "did:aip:orchestrator:4a7b2c8d1e9f3a6b0c5d4e7f8a9b1c2d",
+  "principal_id": "did:web:alice.example.com",
+  "description": "Place an e-commerce order for office supplies (up to £150) and process the associated bank payment. If the payment fails after the order is placed, the order will be automatically cancelled.",
+  "approval_window_expires_at": "2026-04-16T10:00:00Z",
+  "created_at": "2026-04-14T10:00:00Z",
+  "notification_uri": "https://orchestrator.example.com/webhooks/approval-pending",
+  "steps": [
+    {
+      "step_index": 1,
+      "actor": "did:aip:orchestrator:4a7b2c8d1e9f3a6b0c5d4e7f8a9b1c2d",
+      "relying_party_uri": "https://shop.example.com",
+      "action_type": "order.place",
+      "action_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "description": "Place order #ORD-2026-04-001 for office supplies totalling £150.00 at shop.example.com",
+      "required": true,
+      "triggered_by": null,
+      "value": 150.00,
+      "currency": "GBP",
+      "compensation_index": null
+    },
+    {
+      "step_index": 2,
+      "actor": "did:aip:service:8f9e0d1c2b3a4f5e6d7c8b9a0f1e2d3c",
+      "relying_party_uri": "https://payments.bank.example.com",
+      "action_type": "payment.debit",
+      "action_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "description": "Debit £150.00 from account ending 4242 to settle order #ORD-2026-04-001",
+      "required": true,
+      "triggered_by": 1,
+      "value": 150.00,
+      "currency": "GBP",
+      "compensation_index": 0
+    }
+  ],
+  "compensation_steps": [
+    {
+      "compensation_index": 0,
+      "actor": "did:aip:orchestrator:4a7b2c8d1e9f3a6b0c5d4e7f8a9b1c2d",
+      "relying_party_uri": "https://shop.example.com",
+      "action_type": "order.cancel",
+      "action_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "description": "Cancel order #ORD-2026-04-001 if the bank payment fails after the order has been placed"
+    }
+  ],
+  "total_value": 300.00,
+  "currency": "GBP",
+  "creator_signature": "base64url-encoded-eddsa-signature-placeholder",
+  "_decoded_creator_signature_input": {
+    "_note": "creator_signature is EdDSA over JCS(envelope with creator_signature set to ''). The canonical field order for signing: approval_id, created_by, principal_id, description, approval_window_expires_at, created_at, steps, compensation_steps, total_value, currency, creator_signature."
+  },
+  "_notes": {
+    "status_on_submission": "The Registry sets status to 'pending_approval' on receipt. The status field is READ-ONLY and MUST NOT be set by the submitter.",
+    "total_value_computation": "total_value = sum of ALL step value fields (required AND optional) = 150 (step 1) + 150 (step 2) = 300. Both required:true steps carry value. This represents the maximum financial exposure.",
+    "triggered_by": "Step 2 triggered_by:1 means it can only be claimed after step 1 has status 'completed'. Step 1 has triggered_by:null (root step — claimable immediately on approval).",
+    "compensation": "compensation_steps[0] is compensation for step 2 (compensation_index:0). If step 2 fails after step 1 completes, the orchestrator will execute the cancel compensation without new human approval.",
+    "notification": "When notification_uri is present, the Registry POSTs to that URI on pending_approval transition with {approval_id, description, principal_id, review_uri}.",
+    "principal_signature": "Added by the Registry after the principal approves via their wallet. Covers JCS(full envelope with principal_signature set to '').",
+    "step_execution_tokens": "After approval, the orchestrating agent requests short-lived Step Execution Tokens from POST /v1/approvals/{approval_id}/steps/{step_index}/claim for each step at execution time."
+  }
+}

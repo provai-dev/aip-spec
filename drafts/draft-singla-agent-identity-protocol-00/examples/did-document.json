@@ -1,0 +1,20 @@
+{
+  "@context": "https://www.w3.org/ns/did/v1",
+  "id": "did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3",
+  "verificationMethod": [
+    {
+      "id": "did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3#key-1",
+      "type": "JsonWebKey2020",
+      "controller": "did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3",
+      "publicKeyJwk": {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"
+      }
+    }
+  ],
+  "authentication": [
+    "did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3#key-1"
+  ],
+  "controller": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2do7"
+}

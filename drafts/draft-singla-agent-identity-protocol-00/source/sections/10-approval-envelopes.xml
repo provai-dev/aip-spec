@@ -1,0 +1,462 @@
+<section anchor="approval-envelopes" numbered="true">
+  <name>Approval Envelopes</name>
+  <t>
+    Approval Envelopes enable a single human approval to authorise a
+    pre-declared sequence of dependent agent actions. The principal
+    approves the complete workflow graph upfront, and each Relying
+    Party independently verifies its specific step against the
+    Registry without requiring additional human interaction.
+  </t>
+
+  <section anchor="approval-motivation" numbered="true">
+  <name>Motivation</name>
+    <t>
+      <strong>The Cascading Approval Problem:</strong> Without Approval
+      Envelopes, multi-step agent workflows require the human to
+      approve each step independently, eliminating the benefit
+      of autonomous agents. For example, an agent places an order
+      with an e-commerce platform (step 1), which triggers a
+      payment processor (step 2). Without Approval Envelopes,
+      each step would require independent approval.
+    </t>
+  </section>
+
+  <section anchor="token-expiry-pending" numbered="true">
+  <name>The Token-Expiry-While-Pending Problem</name>
+    <t>
+      A Credential Token (TTL = 300s for Tier 2) may expire
+      while approval is pending. Approval Envelopes decouple
+      the approval phase from execution: the envelope waits
+      in pending_approval state without requiring a valid
+      token, and step-claim tokens are issued at execution
+      time.
+    </t>
+  </section>
+
+  <section anchor="approval-schema" numbered="true">
+  <name>Approval Envelope Schema</name>
+    <t>
+      An Approval Envelope is submitted by the orchestrating
+      agent to POST /v1/approvals and approved by the principal
+      through their Principal Wallet.
+    </t>
+
+                <table>
+          <name>Approval Envelope Fields</name>
+          <thead>
+            <tr>
+              <th align="left">Field</th>
+              <th align="center">Required</th>
+              <th align="left">Constraints</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>approval_id</td>
+              <td>REQUIRED</td>
+              <td>pattern: apr:[uuid]</td>
+            </tr>
+            <tr>
+              <td>created_by</td>
+              <td>REQUIRED</td>
+              <td>AID of orchestrating agent</td>
+            </tr>
+            <tr>
+              <td>principal_id</td>
+              <td>REQUIRED</td>
+              <td>W3C DID; MUST NOT be did:aip</td>
+            </tr>
+            <tr>
+              <td>description</td>
+              <td>REQUIRED</td>
+              <td>minLength: 1; maxLength: 512</td>
+            </tr>
+            <tr>
+              <td>approval_window_expires_at</td>
+              <td>REQUIRED</td>
+              <td>ISO 8601 UTC; RECOMMENDED max: 72 hours</td>
+            </tr>
+            <tr>
+              <td>steps</td>
+              <td>REQUIRED</td>
+              <td>minItems: 1; maxItems: 20</td>
+            </tr>
+            <tr>
+              <td>compensation_steps</td>
+              <td>OPTIONAL</td>
+              <td>Compensation steps for SAGA rollback</td>
+            </tr>
+            <tr>
+              <td>total_value</td>
+              <td>OPTIONAL</td>
+              <td>Total financial value; MUST equal sum of step values</td>
+            </tr>
+            <tr>
+              <td>currency</td>
+              <td>OPTIONAL</td>
+              <td>ISO 4217; pattern: three uppercase ASCII letters</td>
+            </tr>
+            <tr>
+              <td>creator_signature</td>
+              <td>REQUIRED</td>
+              <td>base64url EdDSA signature</td>
+            </tr>
+            <tr>
+              <td>principal_signature</td>
+              <td>CONDITIONAL</td>
+              <td>REQUIRED once status is approved</td>
+            </tr>
+          </tbody>
+        </table>
+
+    <t>
+      total_value and currency MUST both be present or both absent.
+      When present, total_value MUST equal the sum of value fields
+      across ALL steps.
+    </t>
+  </section>
+
+  <section anchor="step-schema" numbered="true">
+  <name>Step Schema</name>
+    <t>
+      Each element in the steps array represents one atomic action
+      at one Relying Party.
+    </t>
+
+                <table>
+          <name>Step Fields</name>
+          <thead>
+            <tr>
+              <th align="left">Field</th>
+              <th align="center">Required</th>
+              <th align="left">Constraints</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>step_index</td>
+              <td>REQUIRED</td>
+              <td>1-based; unique within envelope</td>
+            </tr>
+            <tr>
+              <td>actor</td>
+              <td>REQUIRED</td>
+              <td>AID executing this step</td>
+            </tr>
+            <tr>
+              <td>relying_party_uri</td>
+              <td>REQUIRED</td>
+              <td>URI of the Relying Party</td>
+            </tr>
+            <tr>
+              <td>action_type</td>
+              <td>REQUIRED</td>
+              <td>Application-defined; maxLength: 128</td>
+            </tr>
+            <tr>
+              <td>action_hash</td>
+              <td>REQUIRED</td>
+              <td>sha256:64-hex; see Section 4.4.7</td>
+            </tr>
+            <tr>
+              <td>description</td>
+              <td>REQUIRED</td>
+              <td>minLength: 1; maxLength: 256</td>
+            </tr>
+            <tr>
+              <td>required</td>
+              <td>REQUIRED</td>
+              <td>boolean; false = optional step</td>
+            </tr>
+            <tr>
+              <td>triggered_by</td>
+              <td>REQUIRED</td>
+              <td>null or step_index; 0 forbidden</td>
+            </tr>
+            <tr>
+              <td>value</td>
+              <td>OPTIONAL</td>
+              <td>Financial value; minimum: 0</td>
+            </tr>
+            <tr>
+              <td>status</td>
+              <td>READ-ONLY</td>
+              <td>pending | claimed | completed | failed | compensated | skipped</td>
+            </tr>
+          </tbody>
+        </table>
+
+    <t>
+      The triggered_by field implements the SAGA DAG. A step
+      with triggered_by: null is a root step. A step with
+      triggered_by: N may only be claimed after step N reaches
+      completed status. Circular dependencies MUST be rejected.
+    </t>
+
+    <t>
+      Multiple steps MAY share the same triggered_by value,
+      enabling parallel execution paths.
+    </t>
+  </section>
+
+  <section anchor="compensation-schema" numbered="true">
+  <name>Compensation Step Schema</name>
+    <t>
+      Compensation steps define SAGA rollback actions pre-authorised
+      by the principal. If a forward step fails, compensation
+      actions execute without requiring new human approval.
+    </t>
+
+                <table>
+          <name>Compensation Step Fields</name>
+          <thead>
+            <tr>
+              <th align="left">Field</th>
+              <th align="center">Required</th>
+              <th align="left">Constraints</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>compensation_index</td>
+              <td>REQUIRED</td>
+              <td>0-based index</td>
+            </tr>
+            <tr>
+              <td>actor</td>
+              <td>REQUIRED</td>
+              <td>AID executing compensation</td>
+            </tr>
+            <tr>
+              <td>relying_party_uri</td>
+              <td>REQUIRED</td>
+              <td>URI of the Relying Party</td>
+            </tr>
+            <tr>
+              <td>action_type</td>
+              <td>REQUIRED</td>
+              <td>Application-defined rollback</td>
+            </tr>
+            <tr>
+              <td>action_hash</td>
+              <td>REQUIRED</td>
+              <td>sha256:64-hex</td>
+            </tr>
+            <tr>
+              <td>description</td>
+              <td>REQUIRED</td>
+              <td>Plain-language rollback description</td>
+            </tr>
+          </tbody>
+        </table>
+  </section>
+
+  <section anchor="approval-lifecycle" numbered="true">
+  <name>Approval Envelope Lifecycle</name>
+    <t>
+      The Registry maintains lifecycle state with valid transitions:
+    </t>
+
+    <artwork type="example"><![CDATA[
+   pending_approval --> approved --> executing --> completed
+       |                |             |
+       v                v             v
+   rejected          expired     compensating --> compensated
+                                      |
+                                      v
+                                    failed
+]]></artwork>
+
+    <t>
+      <strong>Transition rules:</strong>
+    </t>
+
+    <dl newline="true">
+      <dt>pending_approval to approved</dt>
+      <dd>Principal signs via Principal Wallet. Registry stores principal_signature.</dd>
+
+      <dt>pending_approval to rejected</dt>
+      <dd>Principal declines.</dd>
+
+      <dt>pending_approval to expired</dt>
+      <dd>approval_window_expires_at passes without approval.</dd>
+
+      <dt>approved to executing</dt>
+      <dd>First step is claimed. Automatic transition.</dd>
+
+      <dt>executing to completed</dt>
+      <dd>All required: true steps reach completed status.</dd>
+
+      <dt>executing to compensating</dt>
+      <dd>Any required: true step fails with compensation_index present.</dd>
+
+      <dt>compensating to compensated</dt>
+      <dd>All compensation steps complete successfully.</dd>
+
+      <dt>compensating to failed</dt>
+      <dd>One or more compensation steps fail. Terminal state.</dd>
+    </dl>
+
+    <t>
+      Terminal states (no further transitions): completed, compensated,
+      failed, rejected, expired.
+    </t>
+  </section>
+
+  <section anchor="action-hash" numbered="true">
+  <name>Action Hash Computation</name>
+    <t>
+      The action_hash binds the principal's approval to the
+      specific content of the action. An agent MUST NOT execute
+      a different action than the principal approved.
+    </t>
+
+    <t>
+      The action_hash is computed as:
+    </t>
+
+    <artwork type="example"><![CDATA[
+action_hash = "sha256:"
+  + LCHEX( SHA-256( JCS( action_parameters ) ) )
+]]></artwork>
+
+    <t>
+      Where action_parameters contains:
+    </t>
+
+    <ul>
+      <li>approval_id - The approval_id of the envelope</li>
+      <li>step_index - The step_index of this step</li>
+      <li>actor - The actor AID</li>
+      <li>relying_party_uri - The Relying Party URI</li>
+      <li>action_type - The action type</li>
+      <li>parameters - Application-defined JSON object</li>
+    </ul>
+
+    <t>
+      Implementations MUST use an RFC8785-conformant library.
+      Financial amounts MUST be represented as JSON numbers (not strings).
+    </t>
+  </section>
+
+  <section anchor="step-claim" numbered="true">
+  <name>Step Claim and Execution Protocol</name>
+    <t>
+      To execute a step, an agent follows this protocol:
+    </t>
+
+    <t>
+      <strong>Step 1 - Claim:</strong> The agent calls
+      POST /v1/approvals/{id}/steps/{n}/claim with a valid
+      Credential Token and action_parameters.
+    </t>
+
+    <t>
+      The Registry MUST atomically verify all of the following:
+    </t>
+
+    <ol>
+      <li>Envelope status is approved or executing</li>
+      <li>approval_window_expires_at has not passed</li>
+      <li>Step status is pending</li>
+      <li>All triggered_by steps are completed</li>
+      <li>Token iss matches step actor</li>
+      <li>Credential Token passes validation</li>
+      <li>action_hash matches stored value</li>
+    </ol>
+
+    <t>
+      If all checks pass, the Registry returns a Step Execution Token:
+    </t>
+
+    <artwork type="example"><![CDATA[
+{
+  "iss": "<Registry AID>",
+  "sub": "<actor AID>",
+  "aud": "<relying_party_uri>",
+  "iat": <now>,
+  "exp": <now + 300>,
+  "jti": "<UUID>",
+  "aip_version": "0.3",
+  "aip_scope": "&lt;scope array&gt;",
+  "aip_chain": "&lt;principal chain array&gt;",
+  "aip_approval_id": "<approval_id>",
+  "aip_approval_step": <step_index>
+}
+]]></artwork>
+
+    <t>
+      <strong>Step 2 - Execute:</strong> The agent presents the
+      Step Execution Token to the Relying Party.
+    </t>
+
+    <t>
+      <strong>Step 3 - Complete or Fail:</strong> After execution,
+      the agent MUST call /complete or /fail within
+      step_claim_timeout_seconds (RECOMMENDED: 600 seconds).
+    </t>
+  </section>
+
+  <section anchor="saga-compensation" numbered="true">
+  <name>SAGA Compensation Semantics</name>
+    <t>
+      When any required: true step fails after one or more
+      earlier steps completed, the Registry MUST:
+    </t>
+
+    <ol>
+      <li>Transition envelope status to compensating</li>
+      <li>Trigger compensation steps in reverse step_index order</li>
+      <li>Notify the orchestrating agent</li>
+    </ol>
+
+    <t>
+      Because the principal pre-approved all compensation
+      steps, no additional human interaction is required.
+      This is the core SAGA property.
+    </t>
+
+    <t>
+      If a compensation step itself fails, the envelope
+      transitions to failed (terminal). This requires manual
+      intervention outside the AIP protocol.
+    </t>
+  </section>
+
+  <section anchor="approval-validation" numbered="true">
+  <name>Approval Envelope Validation Rules</name>
+    <t>
+      The Registry MUST reject an Approval Envelope at
+      submission time if any of the following are true:
+    </t>
+
+    <ol>
+      <li>principal_id begins with did:aip:</li>
+      <li>steps contains circular dependencies in triggered_by</li>
+      <li>steps contains duplicate step_index values</li>
+      <li>total_value != sum of step values</li>
+      <li>step currency != envelope currency</li>
+      <li>approval_window_expires_at is in the past</li>
+      <li>compensation_index references non-existent index</li>
+      <li>creator_signature does not verify</li>
+      <li>created_by agent is revoked</li>
+      <li>steps contains more than 20 elements</li>
+      <li>triggered_by is 0 or non-existent</li>
+    </ol>
+
+    <t>
+      The Registry MUST also reject envelopes from agents whose
+      Capability Manifest does not include spawn_agents.create
+      or minimum transactions capability.
+    </t>
+
+    <t>
+      <strong>Rule DESTRUCTIVE-1 (Mandatory Approval):</strong> Any operation
+      involving a scope marked as <tt>destructive: true</tt> in the Registry's
+      Scope Map MUST be authorised via a dedicated Approval
+      Envelope step or a direct human confirmation ceremony. Registry-mediated
+      G1 grants MUST NOT be used for destructive operations without an
+      additional out-of-band confirmation.
+    </t>
+  </section>
+</section>
