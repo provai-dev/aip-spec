@@ -1,0 +1,117 @@
+<section anchor="delegation-rules" numbered="true">
+  <name>Delegation</name>
+  <t>     AIP enables hierarchical delegation where a principal authorizes a     primary agent, which may in turn authorize sub-agents under narrowing    scope constraints. Delegation is encoded in the <tt>aip_chain</tt> array
+    of the Credential Token, with each Principal Token in the chain
+    representing one delegation hop from principal to agent.
+  </t>
+
+  <section anchor="delegation-chain" numbered="true">
+  <name>Delegation Chain</name>
+    <t>
+      Every Credential Token MUST include a verifiable principal chain
+      linking the acting agent to its root principal via the
+      <tt>aip_chain</tt> array. The root principal MUST be a human or
+      organizational entity identified by a W3C Decentralized Identifier
+      (DID) that does NOT use the <tt>did:aip</tt> method. For example:
+      <tt>did:web</tt>, <tt>did:key</tt>, or proprietary DID methods are
+      acceptable.
+    </t>
+    <t>
+      The maximum delegation depth is a hard constraint of 10 levels. This
+      means an agent may not delegate to a sub-agent if doing so would
+      create a chain longer than 10 Principal Tokens (0-indexed from 0 to
+      9, or 1-indexed as depths 1 to 10).
+    </t>
+    <t>
+      The default value of <tt>max_delegation_depth</tt> MUST NOT exceed 3.
+      When a Principal Token does not explicitly set
+      <tt>max_delegation_depth</tt>, implementations MUST treat the default
+      as 3. This conservative default prevents accidental authorization
+      chains from becoming unmanageably deep; parties requiring deeper
+      chains MUST explicitly opt in by setting
+      <tt>max_delegation_depth</tt> to a value between 3 and 10.
+    </t>
+  </section>
+
+  <section anchor="scope-inheritance-rules" numbered="true">
+  <name>Capability Scope Rules</name>
+    <t>
+      Scope inheritance is the mechanism by which child agents are
+      constrained to operate within the bounds of their parent's
+      authorization. Five core rules (D-1 through D-5) govern this
+      relationship; they are defined in Section 5.10 of the AIP
+      specification.
+    </t>
+    <t>
+      <strong>Scope Inheritance Rule:</strong> For each scope <tt>s</tt>
+      granted to a child agent, <tt>s</tt> MUST be present in the parent's
+      Capability Manifest AND all constraint values for <tt>s</tt> in the
+      child's manifest MUST be no more permissive (&lt;=) than the corresponding
+      values in the parent's manifest.
+    </t>
+    <t>
+      For numeric limits (e.g., <tt>max_single_transaction</tt>,
+      <tt>max_daily_value</tt>), the child value MUST be &lt;= the parent value.
+      For boolean enables or enum values, the child constraint MUST NOT be
+      more permissive than the parent (e.g., child cannot set a flag
+      <tt>true</tt> if parent sets it <tt>false</tt>).
+    </t>
+    <t>
+      Implementations MUST enforce this rule at delegation time -- when a
+      child agent is registered, the Registry MUST validate that all scopes
+      in its Capability Manifest satisfy the inheritance rule relative to
+      its immediate parent's manifest. Implementations MAY reject delegation
+      requests that violate this rule before they are registered.
+    </t>
+    <t>
+      Relying Parties MUST independently verify this rule during validation
+      at Step 9c of the Credential Token validation algorithm (see
+      <xref target="validation-step-9"/>). This ensures that even if a
+      Registry incorrectly permits a violating delegation, Relying Parties
+      will catch it and reject the token.
+    </t>
+  </section>
+
+  <section anchor="delegation-validation" numbered="true">
+  <name>Delegation Validation</name>
+    <t>
+      When validating a delegated Credential Token, Relying Parties must
+      fetch and verify the Capability Manifests of all agents in the
+      delegation chain. This section specifies the performance and caching
+      constraints for these operations.
+    </t>
+    <t>
+      <strong>Ancestor Manifest Fetch Limits:</strong> Implementations MUST
+      NOT fetch more ancestor manifests than the <tt>max_delegation_depth</tt>
+      value of the chain's root token (which defaults to 3 when absent).
+      This limit prevents accidental O(n^2) fetch patterns in deep delegation
+      chains and bounds the performance cost of validation.
+    </t>
+    <t>
+      <strong>Ancestor Manifest Caching for Tier 1:</strong> For Tier 1
+      operations (low-risk scopes with bounded-staleness threat model),
+      ancestor manifests MAY be cached for a maximum of 60 seconds. This
+      cache is per-agent and per-manifest, and MUST respect the 60-second
+      TTL. After 60 seconds, a fresh fetch is required.
+    </t>
+    <t>
+      <strong>No-Cache Requirement for Tier 2:</strong> For Tier 2 operations
+      (high-risk scopes with real-time threat model), the no-cache
+      requirement in the Credential Token validation algorithm (see
+      <xref target="validation-step-9"/>) applies to ALL manifests in the
+      delegation chain -- including ancestor manifests -- not only the leaf
+      agent's manifest. The 60-second ancestor cache MUST NOT be used for
+      any manifest appearing in a Tier 2 validation. Every manifest must be
+      fetched fresh from the Registry.
+    </t>
+    <t>
+      <strong>Unavailable Manifests:</strong> If an ancestor manifest is
+      unavailable or cannot be fetched (due to network failure, Registry
+      downtime, or the manifest having been deleted), the Relying Party MUST
+      reject the token by returning the error code <tt>manifest_invalid</tt>.
+      Partial delegation chains are not acceptable; either all manifests in
+      the chain are available and valid, or the token is rejected.
+    </t>
+  </section>
+
+</section>

@@ -1,0 +1,74 @@
+{
+  "_comment": "Example AIP Registration Envelope — AIP spec §5.1. Submitted as the request body to POST /v1/agents. The principal_token is shown decoded below for readability; in the actual request it is a compact JWT string (header.payload.signature). Signatures are placeholders.",
+  "identity": {
+    "aid": "did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3",
+    "name": "Alice-Personal-Assistant",
+    "type": "personal",
+    "model": {
+      "provider": "anthropic",
+      "model_id": "claude-sonnet-4-6",
+      "attestation_hash": "sha256:a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456"
+    },
+    "created_at": "2026-03-22T10:00:00Z",
+    "version": 1,
+    "public_key": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+      "kid": "did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3#key-1"
+    }
+  },
+  "capability_manifest": {
+    "manifest_id": "cm:a1b2c3d4-e5f6-4789-8abc-def012345678",
+    "aid": "did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3",
+    "granted_by": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2do7",
+    "version": 1,
+    "issued_at": "2026-03-22T10:00:00Z",
+    "expires_at": "2026-06-22T10:00:00Z",
+    "capabilities": {
+      "email": {
+        "read": true,
+        "write": true,
+        "send": true,
+        "delete": false,
+        "max_recipients_per_send": 10
+      },
+      "calendar": {
+        "read": true,
+        "write": true,
+        "delete": false
+      }
+    },
+    "signature": "base64url-encoded-eddsa-signature-placeholder"
+  },
+  "principal_token": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCIsImtpZCI6ImRpZDprZXk6ejZNa2hhWGdCWkR2b3REa0w1MjU3ZmFpenRpR2lDMlF0S0xHcGJubkVHdGEyZG83I2tleS0xIn0.eyJpc3MiOiJkaWQ6a2V5Ono2TWtoYVhnQlpEdm90RGtMNTI1N2ZhaXp0aUdpQzJRdEtMR3Bibm5FR3RhMmRvNyIsInN1YiI6ImRpZDphaXA6cGVyc29uYWw6OWYzYTFjODJiNGU2ZDdmMGEyYjVjOGUxZDRmN2EwYjMiLCJwcmluY2lwYWwiOnsidHlwZSI6Imh1bWFuIiwiaWQiOiJkaWQ6a2V5Ono2TWtoYVhnQlpEdm90RGtMNTI1N2ZhaXp0aUdpQzJRdEtMR3Bibm5FR3RhMmRvNyJ9LCJkZWxlZ2F0ZWRfYnkiOm51bGwsImRlbGVnYXRpb25fZGVwdGgiOjAsIm1heF9kZWxlZ2F0aW9uX2RlcHRoIjozLCJpc3N1ZWRfYXQiOiIyMDI2LTAzLTIyVDEwOjAwOjAwWiIsImV4cGlyZXNfYXQiOiIyMDI2LTA2LTIyVDEwOjAwOjAwWiIsInNjb3BlIjpbImVtYWlsLnJlYWQiLCJlbWFpbC53cml0ZSIsImVtYWlsLnNlbmQiLCJjYWxlbmRhci5yZWFkIiwiY2FsZW5kYXIud3JpdGUiXX0.example-signature-placeholder",
+  "grant_tier": "G2",
+  "_principal_token_decoded": {
+    "_note": "The principal_token field above is a compact JWT. Its decoded content is shown here for reference only — this field is not part of the actual request body.",
+    "header": {
+      "alg": "EdDSA",
+      "typ": "JWT",
+      "kid": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2do7#key-1"
+    },
+    "payload": {
+      "iss": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2do7",
+      "sub": "did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3",
+      "principal": {
+        "type": "human",
+        "id": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2do7"
+      },
+      "delegated_by": null,
+      "delegation_depth": 0,
+      "max_delegation_depth": 3,
+      "issued_at": "2026-03-22T10:00:00Z",
+      "expires_at": "2026-06-22T10:00:00Z",
+      "scope": [
+        "email.read",
+        "email.write",
+        "email.send",
+        "calendar.read",
+        "calendar.write"
+      ]
+    }
+  }
+}

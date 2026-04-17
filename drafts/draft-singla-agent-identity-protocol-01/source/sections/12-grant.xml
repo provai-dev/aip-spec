@@ -1,0 +1,582 @@
+<section anchor="principal-grant" numbered="true">
+  <name>Principal Grant Ceremony (AIP-GRANT)</name>
+  <t>
+    The AIP-GRANT ceremony provides a standardised protocol for principals
+    to authorise AI agents. AIP-GRANT is analogous to the OAuth 2.0
+    Authorization Code Flow, adapted for the agent identity use case.
+    Two independent implementations following this section MUST
+    produce interoperable grant interactions.
+  </t>
+
+  <section anchor="grant-overview" numbered="true">
+  <name>Overview and Roles</name>
+    <t>
+      The AIP-GRANT ceremony involves three actors:
+    </t>
+
+    <dl>
+      <dt>Agent Deployer</dt>
+      <dd>
+        The party that constructs the GrantRequest and submits the
+        Registration Envelope to the Registry. The deployer generates
+        the agent's Ed25519 keypair before initiating the grant
+        and may be the principal themselves or a service acting
+        on the principal's behalf.
+      </dd>
+
+      <dt>Principal Wallet</dt>
+      <dd>
+        Software that holds the principal's DID private key and executes
+        the signing ceremony. The wallet MUST verify the deployer's
+        signature and MUST obtain explicit human approval before signing.
+      </dd>
+
+      <dt>AIP Registry</dt>
+      <dd>
+        The service that accepts the Registration Envelope. The Registry's
+        role is defined in <xref target="registry"/>; it is not modified
+        by AIP-GRANT.
+      </dd>
+    </dl>
+
+    <t>
+      The basic flow:
+    </t>
+
+    <artwork type="example"><![CDATA[
+   Agent Deployer      Principal Wallet      AIP Registry
+         |                     |                  |
+         |-- GrantRequest ---->|                  |
+         | (capabilities,      |                  |
+         |  purpose, nonce)    |                  |
+         |                     |                  |
+         |             [Display consent UI]       |
+         |           [Human reviews & signs]      |
+         |                     |                  |
+         |<-- GrantResponse ---|                  |
+         | (signed             |                  |
+         |  PrincipalToken)    |                  |
+         |                     |                  |
+         |-- Registration Envelope -------------->|
+         | (identity + manifest +                 |
+         |  principal_token)                      |
+         |                                        |
+         |<-- AID --------------------------------|
+]]></artwork>
+  </section>
+
+  <section anchor="grant-request" numbered="true">
+  <name>GrantRequest Object</name>
+    <t>
+      The GrantRequest is a JSON object constructed by the Agent Deployer.
+      It MUST be signed by the deployer's Ed25519 key when transmitted
+      over the Web Redirect or QR Code bindings. The nonce MUST be
+      cryptographically random and MUST contain at least 128 bits of
+      entropy.
+    </t>
+
+                <table>
+          <name>GrantRequest Fields</name>
+          <thead>
+            <tr>
+              <th align="left">Field</th>
+              <th align="left">Type</th>
+              <th align="center">Required</th>
+              <th align="left">Constraints</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>grant_request_id</td>
+              <td>string</td>
+              <td>REQUIRED</td>
+              <td>pattern: gr:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}</td>
+            </tr>
+            <tr>
+              <td>aip_version</td>
+              <td>string</td>
+              <td>REQUIRED</td>
+              <td>MUST be "0.3"</td>
+            </tr>
+            <tr>
+              <td>agent_name</td>
+              <td>string</td>
+              <td>REQUIRED</td>
+              <td>maxLength: 64; displayed in consent UI</td>
+            </tr>
+            <tr>
+              <td>agent_type</td>
+              <td>string</td>
+              <td>REQUIRED</td>
+              <td>registered namespace value</td>
+            </tr>
+            <tr>
+              <td>model.provider</td>
+              <td>string</td>
+              <td>REQUIRED</td>
+              <td>displayed in consent UI</td>
+            </tr>
+            <tr>
+              <td>model.model_id</td>
+              <td>string</td>
+              <td>REQUIRED</td>
+              <td>displayed in consent UI</td>
+            </tr>
+            <tr>
+              <td>requested_capabilities</td>
+              <td>object</td>
+              <td>REQUIRED</td>
+              <td>Capability Manifest capabilities sub-schema</td>
+            </tr>
+            <tr>
+              <td>purpose</td>
+              <td>string</td>
+              <td>REQUIRED</td>
+              <td>minLength: 1; maxLength: 512</td>
+            </tr>
+            <tr>
+              <td>delegation_valid_for_seconds</td>
+              <td>integer</td>
+              <td>REQUIRED</td>
+              <td>min: 300; max: 31536000</td>
+            </tr>
+            <tr>
+              <td>nonce</td>
+              <td>string</td>
+              <td>REQUIRED</td>
+              <td>minLength: 22; cryptographically random</td>
+            </tr>
+            <tr>
+              <td>request_expires_at</td>
+              <td>string</td>
+              <td>REQUIRED</td>
+              <td>ISO 8601 UTC</td>
+            </tr>
+            <tr>
+              <td>callback_uri</td>
+              <td>string</td>
+              <td>CONDITIONAL</td>
+              <td>REQUIRED for Web Redirect; MUST use HTTPS</td>
+            </tr>
+          </tbody>
+        </table>
+
+    <t>
+      The deployer MUST generate the agent's AID before constructing
+      the GrantRequest so that the resulting Principal Token correctly
+      names the agent's AID in its sub field.
+    </t>
+  </section>
+
+  <section anchor="grant-consent" numbered="true">
+  <name>Wallet Consent Requirements</name>
+    <t>
+      The Principal Wallet MUST implement the following requirements
+      before signing any grant.
+    </t>
+
+    <t>
+      <strong>Nonce and expiry checks:</strong> The Principal Wallet
+      MUST check request_expires_at against the current clock. If expired,
+      it MUST reject with grant_request_expired and MUST NOT show the
+      consent UI. The Principal Wallet MUST maintain a record of seen
+      grant_request_id values for at least 30 days and MUST reject
+      replays with grant_request_replayed.
+    </t>
+
+    <t>
+      <strong>Mandatory display elements:</strong> The consent UI
+      MUST display ALL of the following before presenting the
+      sign/decline choice:
+    </t>
+
+    <ol>
+      <li>Agent name (agent_name) and type (agent_type)</li>
+      <li>AI model - provider and model_id</li>
+      <li>Purpose - the purpose field verbatim</li>
+      <li>Deployer identity - deployer_name and deployer_did</li>
+      <li>All requested capabilities in canonical human-readable strings</li>
+      <li>Delegation validity - expiry computed from delegation_valid_for_seconds</li>
+      <li><strong>Destructive Operations:</strong> Any scope marked as <tt>destructive: true</tt> in the Registry's Scope Map MUST be highlighted in the UI with a mandatory "confirm destructive action" checkbox or equivalent additional friction.</li>
+    </ol>
+
+    <t>
+      <strong>Canonical human-readable capability strings:</strong>
+    </t>
+
+                <table>
+          <name>Canonical Capability Display Strings</name>
+          <thead>
+            <tr>
+              <th align="left">Scope</th>
+              <th align="left">Display String</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>email.read</td>
+              <td>Read your email messages and metadata</td>
+            </tr>
+            <tr>
+              <td>email.write</td>
+              <td>Create and draft email messages</td>
+            </tr>
+            <tr>
+              <td>email.send</td>
+              <td>Send email on your behalf</td>
+            </tr>
+            <tr>
+              <td>email.delete</td>
+              <td>Permanently delete your email messages - this cannot be undone</td>
+            </tr>
+            <tr>
+              <td>calendar.read</td>
+              <td>Read your calendar events</td>
+            </tr>
+            <tr>
+              <td>calendar.write</td>
+              <td>Create and update calendar events</td>
+            </tr>
+            <tr>
+              <td>calendar.delete</td>
+              <td>Delete your calendar events</td>
+            </tr>
+            <tr>
+              <td>filesystem.read</td>
+              <td>Read files from your local storage</td>
+            </tr>
+            <tr>
+              <td>filesystem.write</td>
+              <td>Save and modify files on your local storage</td>
+            </tr>
+            <tr>
+              <td>filesystem.execute</td>
+              <td>Execute scripts and commands on your system - HIGH RISK</td>
+            </tr>
+            <tr>
+              <td>filesystem.delete</td>
+              <td>Delete files from your local storage</td>
+            </tr>
+            <tr>
+              <td>web.browse</td>
+              <td>Browse the web and read website content</td>
+            </tr>
+            <tr>
+              <td>web.forms_submit</td>
+              <td>Submit data to web forms</td>
+            </tr>
+            <tr>
+              <td>web.download</td>
+              <td>Download files from the web to your system</td>
+            </tr>
+            <tr>
+              <td>transactions</td>
+              <td>Make financial transactions up to specified limits</td>
+            </tr>
+            <tr>
+              <td>communicate.whatsapp</td>
+              <td>Send and receive messages via WhatsApp</td>
+            </tr>
+            <tr>
+              <td>communicate.telegram</td>
+              <td>Send and receive messages via Telegram</td>
+            </tr>
+            <tr>
+              <td>communicate.sms</td>
+              <td>Send and receive SMS messages</td>
+            </tr>
+            <tr>
+              <td>communicate.voice</td>
+              <td>Initiate and receive voice calls</td>
+            </tr>
+            <tr>
+              <td>spawn_agents.create</td>
+              <td>Create child AI agents on your behalf</td>
+            </tr>
+            <tr>
+              <td>spawn_agents.manage</td>
+              <td>Monitor and manage your existing child agents</td>
+            </tr>
+          </tbody>
+        </table>
+  </section>
+
+  <section anchor="grant-response" numbered="true">
+  <name>GrantResponse Object</name>
+    <t>
+      The GrantResponse is constructed and signed by the Principal Wallet
+      after the principal completes the signing ceremony.
+    </t>
+
+                <table>
+          <name>GrantResponse Fields</name>
+          <thead>
+            <tr>
+              <th align="left">Field</th>
+              <th align="center">Required</th>
+              <th align="left">Constraints</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>grant_request_id</td>
+              <td>REQUIRED</td>
+              <td>MUST match original request</td>
+            </tr>
+            <tr>
+              <td>nonce</td>
+              <td>REQUIRED</td>
+              <td>MUST match original nonce</td>
+            </tr>
+            <tr>
+              <td>status</td>
+              <td>REQUIRED</td>
+              <td>enum: "approved", "rejected", "partial"</td>
+            </tr>
+            <tr>
+              <td>principal_id</td>
+              <td>REQUIRED</td>
+              <td>W3C DID of signing principal</td>
+            </tr>
+            <tr>
+              <td>principal_token</td>
+              <td>CONDITIONAL</td>
+              <td>REQUIRED when status is "approved" or "partial"</td>
+            </tr>
+          </tbody>
+        </table>
+
+    <t>
+      <strong>Deployer validation of GrantResponse:</strong> Upon receipt the deployer
+      MUST:
+    </t>
+
+    <ol>
+      <li>Verify grant_request_id matches the original request</li>
+      <li>Verify nonce matches - mismatch MUST be treated as forgery</li>
+      <li>If status is "rejected", halt - no agent is registered</li>
+      <li>Decode and verify the principal_token JWT signature</li>
+      <li>Verify the principal_token payload sub matches the agent's AID</li>
+    </ol>
+  </section>
+
+  <section anchor="grant-transport" numbered="true">
+  <name>Transport Bindings</name>
+    <t>
+      Implementations MUST support the Web Redirect Flow.
+    </t>
+
+    <t>
+      <strong>Web Redirect Flow:</strong>
+    </t>
+
+    <artwork type="example"><![CDATA[
+https://wallet.example.com/aip-grant
+  ?request=<base64url-signed-GrantRequest>
+  &aip_version=0.3
+]]></artwork>
+
+    <t>
+      After the principal signs, the Principal Wallet delivers the GrantResponse:
+    </t>
+
+    <artwork type="example"><![CDATA[
+POST <callback_uri>
+Content-Type: application/json
+
+{GrantResponse JSON}
+]]></artwork>
+
+    <t>
+      The callback_uri MUST be pre-registered by the deployer.
+      Principal Wallets MUST NOT deliver GrantResponses to unregistered URIs.
+    </t>
+  </section>
+
+  <section anchor="sub-agent-delegation" numbered="true">
+  <name>Sub-Agent Delegation Flow</name>
+    <t>
+      When a parent agent delegates to a child agent, the parent acts as
+      the Principal Wallet. No human consent UI is required.
+    </t>
+
+    <t>
+      The parent agent MUST:
+    </t>
+
+    <ol>
+      <li>Verify requested child capabilities are a strict subset of its own
+        Capability Manifest (Rule D-1)</li>
+      <li>Generate a fresh Ed25519 keypair for the child agent</li>
+      <li>Construct and sign the child's Principal Token</li>
+      <li>Construct the Registration Envelope for the child</li>
+      <li>Submit the Registration Envelope to the Registry</li>
+      <li>Provision the child's private key through a secure channel</li>
+    </ol>
+
+    <t>
+      The parent MUST NOT retain the child's private key after
+      successful provisioning. Retaining the child's private key enables
+      the parent to forge Credential Tokens in the child's name and
+      constitutes a violation of the principle of least privilege.
+    </t>
+  </section>
+
+  <section anchor="grant-errors" numbered="true">
+  <name>AIP-GRANT Error Codes</name>
+                <table>
+          <name>AIP-GRANT Error Codes</name>
+          <thead>
+            <tr>
+              <th align="left">Code</th>
+              <th align="left">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>grant_request_expired</td>
+              <td>request_expires_at has passed</td>
+            </tr>
+            <tr>
+              <td>grant_request_replayed</td>
+              <td>grant_request_id seen before</td>
+            </tr>
+            <tr>
+              <td>grant_request_invalid</td>
+              <td>GrantRequest malformed or signature failed</td>
+            </tr>
+            <tr>
+              <td>grant_rejected_by_principal</td>
+              <td>Principal declined the grant</td>
+            </tr>
+            <tr>
+              <td>grant_nonce_mismatch</td>
+              <td>GrantResponse nonce does not match</td>
+            </tr>
+          </tbody>
+        </table>
+  </section>
+
+  <section anchor="g1-grant" numbered="true">
+  <name>G1: Registry-Mediated Grant Flow</name>
+    <t>
+      The G1 (Registry-Mediated) grant profile is designed for consumer
+      deployments where the agent deployer does not operate its own
+      Principal Wallet integration. The AIP Registry brokers the
+      consent ceremony on the deployer's behalf.
+    </t>
+
+    <t>
+      <strong>Actors:</strong> Agent Deployer, AIP Registry, Principal
+      (via Registry-hosted or redirected wallet consent UI).
+    </t>
+
+    <artwork type="example"><![CDATA[
+      Deployer               Registry              Principal
+         |                      |                      |
+         |-- POST /v1/grants -->|                      |
+         |  (GrantRequest +     |                      |
+         |   callback_uri)      |                      |
+         |<-- 201 grant_id + ---|                      |
+         |    wallet_redirect   |                      |
+         |                      |                      |
+         |-- [redirect principal to wallet URI] ------>|
+         |                      |                      |
+         |                      |<--- authenticates ---|
+         |                      |<-- approve/decline --|
+         |                      |                      |
+         |      [Registry signs Principal Token]       |
+         |                      |                      |
+         |<--- POST callback ---|                      |
+         |    (GrantResponse)   |                      |
+         |                      |                      |
+         |-- GET /v1/grants/id->|                      |
+         |<--- GrantResponse ---|                      |
+]]></artwork>
+
+    <t>
+      <strong>Step-by-step definition:</strong>
+    </t>
+
+    <ol>
+      <li>
+        The deployer generates the agent's Ed25519 keypair and constructs
+        a GrantRequest. For G1, callback_uri is REQUIRED.
+      </li>
+      <li>The deployer calls POST /v1/grants. See example response.</li>
+      <li>
+        The deployer redirects the principal to wallet_redirect_uri.
+        The Registry presents a consent UI.
+      </li>
+      <li>
+        On approval, the Registry MUST construct the Principal Token
+        and store the GrantResponse.
+      </li>
+      <li>
+        The deployer receives the GrantResponse and submits the
+        Registration Envelope to POST /v1/agents with grant_tier: "G1".
+      </li>
+    </ol>
+
+    <t>
+      <strong>GET /v1/grants/{grant_id} authorisation:</strong> Only the
+      deployer whose deployer_did appears in the original GrantRequest
+      MUST be permitted to retrieve the GrantResponse.
+    </t>
+  </section>
+
+  <section anchor="g2-grant" numbered="true">
+  <name>G2: Direct Deployer Grant Flow</name>
+    <t>
+      The G2 (Direct Deployer) grant profile is the standard flow for
+      applications that integrate directly with Principal Wallets.
+      The deployer signs the GrantRequest directly and transmits it
+      to the wallet via a front-channel binding (Web Redirect or QR Code).
+    </t>
+
+    <t>
+      <strong>Actors:</strong> Agent Deployer, Principal Wallet, Principal.
+    </t>
+
+    <t>
+      <strong>Step-by-step definition:</strong>
+    </t>
+
+    <ol>
+      <li>The deployer generates the agent's Ed25519 keypair and constructs a GrantRequest.</li>
+      <li>The deployer signs the GrantRequest with its own Ed25519 key (deployer_did).</li>
+      <li>The deployer transmits the request to the Principal Wallet via a front-channel binding.</li>
+      <li>The Principal Wallet verifies the deployer's signature and presents the consent UI to the principal.</li>
+      <li>On approval, the Principal Wallet signs the Principal Token and returns a GrantResponse to the deployer's callback_uri.</li>
+      <li>The deployer submits the Registration Envelope to the Registry with grant_tier: "G2".</li>
+    </ol>
+  </section>
+
+  <section anchor="g3-grant" numbered="true">
+  <name>G3: Full Ceremony Grant Flow (OAuth 2.1)</name>
+    <t>
+      The G3 (Full Ceremony) grant profile is required for high-assurance
+      Tier 3 operations and environments requiring identity proofing.
+      It uses an OAuth 2.1 Authorization Server (AS) typically operated
+      by the Registry.
+    </t>
+
+    <t>
+      <strong>Actors:</strong> Agent Deployer, AIP Registry (as OAuth AS),
+      Principal Wallet, Principal.
+    </t>
+
+    <t>
+      <strong>Step-by-step definition:</strong>
+    </t>
+
+    <ol>
+      <li>The deployer initiates an OAuth 2.1 Authorization Code Flow with PKCE at the Registry's authorization endpoint.</li>
+      <li>The Registry redirects the principal to their configured Principal Wallet for authentication and consent.</li>
+      <li>The wallet performs high-assurance authentication (e.g., FIDO2/WebAuthn) and obtains consent.</li>
+      <li>The wallet returns an authorization code to the Registry.</li>
+      <li>The Registry issues a signed Principal Token to the deployer's token endpoint. The token MUST include acr and amr claims.</li>
+      <li>The deployer submits the Registration Envelope to the Registry with grant_tier: "G3".</li>
+    </ol>
+  </section>
+</section>

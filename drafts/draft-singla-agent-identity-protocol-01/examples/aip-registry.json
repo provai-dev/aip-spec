@@ -1,0 +1,16 @@
+{
+  "_comment": "Example /.well-known/aip-registry discovery document. This is discovery metadata only; canonical trust state lives in the Registry Trust Record referenced by registry_trust_uri.",
+  "registry_id": "https://registry.provai.dev",
+  "registry_name": "ProvAI Registry",
+  "aip_version": "0.3",
+  "registry_trust_uri": "https://registry.provai.dev/v1/registry-trust/current",
+  "endpoints": {
+    "agents": "/v1/agents",
+    "crl": "/v1/crl",
+    "revocations": "/v1/revocations"
+  },
+  "_notes": {
+    "stable_identifier": "registry_id is stable across planned key rotation.",
+    "trust_model": "Verifiers fetch the Registry Trust Record from registry_trust_uri and pin trust state from that record, not from this discovery document."
+  }
+}

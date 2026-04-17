@@ -1,0 +1,480 @@
+<section anchor="credential-token-validation" numbered="true">
+  <name>Credential Token Validation</name>
+  <t>
+    The Credential Token Validation Algorithm is the normative heart of
+    AIP. A Relying Party MUST execute the following steps in the order
+    presented. Validation is deterministic: two independent implementations
+    executing the same steps on the same token with the same Registry state
+    MUST reach the same outcome.
+  </t>
+
+  <t>
+    The Relying Party MUST reject the token at the first step that fails.
+    Steps marked 6a, 6b, 9e, and 10a are conditional sub-steps introduced
+    in v0.3; they are part of the numbered step at which they appear and do
+    not change the base step numbering.
+  </t>
+
+  <section anchor="validation-step-1" numbered="true">
+  <name>Step 1: Parse</name>
+    <t>
+      Parse the Authorization header value as a JWT per <xref
+      target="RFC7519"/>. If parsing fails or the token is malformed,
+      reject with <tt>invalid_token</tt>.
+    </t>
+  </section>
+
+  <section anchor="validation-step-2" numbered="true">
+  <name>Step 2: Header Validation</name>
+    <t>
+      Verify the JWT header contains:
+    </t>
+    <ul>
+      <li><tt>typ</tt>: MUST be <tt>"AIP+JWT"</tt></li>
+      <li><tt>alg</tt>: MUST be one of the approved algorithms per Section
+        21.2 (EdDSA REQUIRED; ES256 and RS256 optional per Section
+        20.1)</li>
+      <li><tt>kid</tt>: MUST be present and MUST be a DID URL in the form
+        <tt>did:aip:&lt;namespace&gt;:&lt;32-hex&gt;#key-&lt;n&gt;</tt></li>
+    </ul>
+    <t>      If any check fails, reject with <tt>invalid_token</tt>.
+    </t>
+  </section>
+
+  <section anchor="validation-step-3" numbered="true">
+  <name>Step 3: Identify Agent and Retrieve Public Key</name>
+    <t>
+      Extract the <tt>kid</tt> header parameter. This is a full DID URL
+      identifying the agent's public key. Contact the Registry to retrieve
+      the historical public key matching this <tt>kid</tt>. The Registry
+      MUST return the public key material along with its validity period
+      (<tt>valid_from</tt> and <tt>valid_until</tt> timestamps).
+    </t>
+    <t>
+      If the <tt>kid</tt> is not found or the key is not valid at the time
+      of the JWT's <tt>iat</tt> claim, reject with <tt>unknown_aid</tt>.
+    </t>
+  </section>
+
+  <section anchor="validation-step-4" numbered="true">
+  <name>Step 4: Verify Signature</name>
+    <t>       Verify the JWT signature using the public key retrieved in Step 3.       The signature verification MUST use constant-time comparison. If      signature verification fails, reject with <tt>invalid_token</tt>.
+    </t>
+  </section>
+
+  <section anchor="validation-step-5" numbered="true">
+  <name>Step 5: Validate Claims</name>
+    <t>
+      Validate the following claims from the decoded JWT payload:
+    </t>
+    <dl newline="false">
+      <dt>5a. iat (Issued-At Time):</dt>
+      <dd>
+        <tt>iat</tt> MUST NOT be in the future. Allow a 30-second clock
+        skew tolerance. If <tt>iat</tt> is in the future (beyond skew), reject
+        with <tt>invalid_token</tt>.
+      </dd>
+
+      <dt>5b. exp (Expiration Time):</dt>
+      <dd>
+        <tt>exp</tt> MUST be strictly greater than <tt>iat</tt> (zero-duration
+        tokens are not permitted). If <tt>exp &lt;= iat</tt>, reject with
+        <tt>invalid_token</tt>.
+      </dd>
+
+      <dt>5c. Token Not Expired:</dt>
+      <dd>
+        <tt>exp</tt> MUST be in the future (current time must be &lt;
+        <tt>exp</tt>). If <tt>exp</tt> is in the past, reject with
+        <tt>token_expired</tt>.
+      </dd>
+
+      <dt>5d. aud (Audience):</dt>
+      <dd>
+        The <tt>aud</tt> claim MUST match the Relying Party's identifier.
+        If <tt>aud</tt> is a string, it MUST match exactly. If <tt>aud</tt>
+        is an array, the Relying Party's identifier MUST be present in the
+        array. If no match, reject with <tt>invalid_token</tt>.
+      </dd>
+
+      <dt>5e. jti (JWT ID) Replay Check:</dt>
+      <dd>
+        <tt>jti</tt> MUST be a UUID v4 in canonical form (lowercase,
+        hyphenated). The Relying Party MUST maintain a replay cache keyed by
+        <tt>(iss, jti)</tt> for each token's validity window. If <tt>(iss,
+        jti)</tt> has been seen before, reject with <tt>token_replayed</tt>.
+        After the token expires, the replay cache entry MAY be discarded.
+      </dd>
+
+      <dt>5f. aip_version:</dt>
+      <dd>
+        <tt>aip_version</tt> MUST be present and MUST be <tt>"0.3"</tt> for
+        tokens conforming to this specification. If <tt>aip_version</tt> is
+        absent or unrecognised, reject with <tt>invalid_token</tt> and
+        include the received <tt>aip_version</tt> in the error description
+        to aid debugging.
+      </dd>
+    </dl>
+  </section>
+
+  <section anchor="validation-step-6" numbered="true">
+  <name>Step 6: TTL Validation</name>
+    <t>       Verify that the token's lifetime does not exceed the maximum permitted      by its scopes. Compute <tt>lifetime = exp - iat</tt> (in seconds).
+      Compare against the TTL limits defined in Section 8.2:
+    </t>
+    <artwork><![CDATA[
+Standard scopes (email.*, calendar.*, web.*):     max 3600 seconds
+Sensitive scopes (transactions.*, communicate.*,
+                  filesystem.execute,
+                  spawn_agents.create/manage):    max 300 seconds
+
+When a token contains scopes from multiple
+categories, the most restrictive limit applies.
+    ]]></artwork>
+    <t>
+      If <tt>lifetime</tt> exceeds the limit, reject with <tt>invalid_token</tt>.
+    </t>
+    <t>
+      REMINDER: A token's Tier is determined by its highest-risk scope
+      (Section 3.1). A token containing one Tier 2 scope and nine Tier 1
+      scopes is a Tier 2 token in its entirety. Do not derive Tier from the
+      majority or first scope.
+    </t>
+  </section>
+
+  <section anchor="validation-step-6a" numbered="true">
+  <name>Step 6a: Registry Trust Anchoring (Conditional)</name>
+    <t>
+      This step is REQUIRED for Tier 2 operations and RECOMMENDED for Tier
+      1. It verifies that the Registry from which the Relying Party has been
+      fetching data matches the Registry declared by the principal's DID
+      Document.
+    </t>
+    <ol>
+      <li>Extract <tt>principal_id</tt> from <tt>aip_chain[0].iss</tt> (the
+        root principal's DID). This is the authorising human or
+        organisational principal.</li>
+      <li>Resolve <tt>principal_id</tt> using the DID method's own resolution
+        mechanism (e.g., did:web resolution per <xref target="W3C-DID"/>,
+        did:key per <xref target="W3C-DID"/>). The resolution MUST be
+        independent of any agent-provided data. Use the DID method's
+        canonical resolver.</li>
+      <li>Examine the resolved DID Document's <tt>service</tt> array. Locate
+        an entry with <tt>type: "AIPRegistry"</tt>.</li>
+      <li>Extract the <tt>serviceEndpoint</tt> URI from that service entry.
+        This is the authoritative Registry URI for this principal.</li>
+      <li>Verify that the Registry from which the Relying Party has been
+        fetching revocation status, Capability Manifests, and step data
+        matches the declared <tt>serviceEndpoint</tt> URI. Perform origin
+        comparison per <xref target="RFC6454"/> (scheme + host + port must
+        match).</li>
+      <li>If <tt>aip_registry</tt> is present in the Credential Token,
+        verify it matches the DID-Document-declared Registry endpoint. If
+        mismatch, reject with <tt>registry_untrusted</tt>.</li>
+      <li>If the DID Document does not contain an <tt>AIPRegistry</tt>
+        service entry and the token contains Tier 2 scopes, reject with
+        <tt>registry_untrusted</tt>.</li>
+    </ol>
+    <t>
+      For Tier 1 operations: this step is RECOMMENDED. Registry trust
+      anchoring prevents MitM Registry substitution but adds latency
+      (additional DID resolution). Tier 1 operators MAY skip this step if
+      they accept the risk that the Registry might be MitM'd with a loss of
+      up to 15-minute revocation staleness.
+    </t>
+    <t>       If DID resolution fails and the token contains Tier 2 scopes, reject      with <tt>registry_unavailable</tt>.
+    </t>
+  </section>
+
+  <section anchor="validation-step-6b" numbered="true">
+  <name>Step 6b: Engagement Validation (Conditional)</name>
+    <t>      This step applies only if <tt>aip_engagement_id</tt> is present in the
+      Credential Token payload.
+    </t>
+    <ol>
+      <li>Fetch the Engagement Object from the Registry via <tt>GET /v1/engagements/{aip_engagement_id}</tt>.</li>
+      <li>Verify the Engagement's <tt>status</tt> field. If <tt>"active"</tt>, continue.
+        If <tt>"completed"</tt> or <tt>"terminated"</tt>, reject with <tt>engagement_terminated</tt>.
+        If <tt>"suspended"</tt>, reject with <tt>engagement_suspended</tt>.</li>
+      <li>Verify that the token's <tt>sub</tt> (agent AID) appears in the
+        Engagement's <tt>participants</tt> array as an active participant.
+        If <tt>sub</tt> is not in the participants array or has been marked
+        as removed, reject with <tt>engagement_participant_removed</tt>.</li>
+      <li>If the Engagement defines <tt>approval_gates</tt> with pending
+        gates that guard the current operation, verify the token's operation
+        is not gated (or that the gate has been approved). If a required
+        gate is still pending, reject with <tt>engagement_gate_pending</tt>.</li>
+    </ol>
+  </section>
+
+  <section anchor="validation-step-7" numbered="true">
+  <name>Step 7: Revocation Check</name>
+    <t>
+      Query the Registry for revocation status of the agent identified by
+      <tt>iss</tt> (extracted from the <tt>kid</tt>). The revocation check
+      method depends on the token's Tier:
+    </t>
+    <ul>
+      <li><strong>Tier 1:</strong> Retrieve the CRL from the Registry cache.
+        If the agent appears on the CRL with revocation type
+        <tt>full_revoke</tt> or <tt>principal_revoke</tt>, reject with
+        <tt>agent_revoked</tt>. If the agent appears with <tt>scope_revoke</tt>,
+        the Relying Party MUST verify that none of the scopes in the token's
+        <tt>aip_scope</tt> are present in the <tt>scopes_revoked</tt> list.
+        If any match, reject with <tt>agent_revoked</tt>.</li>
+      <li><strong>Tier 2:</strong> Perform a live Registry lookup. Query
+        <tt>GET /v1/agents/{iss}/revocation</tt> and verify no active revocation
+        applies to the token's AID or its currently requested scopes.
+        If revoked, reject with <tt>agent_revoked</tt>. If the Registry is
+        unreachable, reject with <tt>registry_unavailable</tt>.</li>
+    </ul>
+    <t>
+      The Relying Party MUST verify the Registry trust state used for this
+      revocation check using the Registry Trust Record procedure in Section
+      7.3.6 before treating Registry responses as authoritative.
+    </t>
+  </section>
+
+  <section anchor="validation-step-8" numbered="true">
+  <name>Step 8: Delegation Chain Validation</name>
+    <t>      Validate the Principal Token delegation chain in <tt>aip_chain</tt>.
+      This array contains one or more compact-serialised JWTs, each
+      conforming to the Principal Token schema.
+    </t>
+    <t>
+      For each Principal Token at index <tt>i</tt> (from <tt>0</tt> to
+      <tt>n-1</tt> where <tt>n</tt> is the length of <tt>aip_chain</tt>):
+    </t>
+    <dl newline="false">
+      <dt>8a. Valid JWT:</dt>
+      <dd>
+        The token at index <tt>i</tt> MUST be a valid, well-formed JWT
+        conforming to the Principal Token schema. If
+        parsing or schema validation fails, reject with
+        <tt>delegation_chain_invalid</tt>.
+      </dd>
+
+      <dt>8b. delegation_depth Matches Index:</dt>
+      <dd>
+        The <tt>delegation_depth</tt> claim in token <tt>i</tt> MUST equal
+        exactly <tt>i</tt>. (The array is 0-indexed; <tt>aip_chain[0]</tt>
+        has <tt>delegation_depth: 0</tt>, etc.) If mismatch, reject with
+        <tt>invalid_delegation_depth</tt>.
+      </dd>
+
+      <dt>8c. Delegation Depth Does Not Exceed Maximum:</dt>
+      <dd>
+        The <tt>delegation_depth</tt> of token <tt>i</tt> MUST NOT exceed
+        the <tt>max_delegation_depth</tt> value declared in token 0 (the
+        root token). If <tt>max_delegation_depth</tt> is absent from token
+        0, the default is 3. If <tt>i</tt> exceeds this limit, reject with
+        <tt>invalid_delegation_depth</tt>.
+      </dd>
+
+      <dt>8d. Signature Verification:</dt>
+      <dd>For token at index <tt>i</tt>, extract the <tt>iss</tt> claim:
+        For <tt>i = 0</tt>, <tt>iss</tt> MUST equal <tt>principal.id</tt>. Verify signature.
+        For <tt>i &gt; 0</tt>, <tt>iss</tt> MUST equal <tt>delegated_by</tt>. Verify signature.
+        If verification fails, reject with <tt>delegation_chain_invalid</tt>.</dd>
+
+      <dt>8e. Delegation Chain Linkage:</dt>
+      <dd>
+        For token at index <tt>i &gt; 0</tt>, verify that
+        <tt>delegated_by[i]</tt> equals <tt>sub[i-1]</tt> (the <tt>sub</tt>
+        of the previous token). This ensures the chain is continuous: each
+        agent is delegated by the previous agent in the chain. If mismatch,
+        reject with <tt>delegation_chain_invalid</tt>.
+      </dd>
+
+      <dt>8f. Agent Revocation:</dt>
+      <dd>
+        For each <tt>sub</tt> AID in the chain (at all indices), verify it
+        is not revoked using the same Tier-specific revocation check as Step
+        7. If any agent in the chain is revoked, reject with
+        <tt>agent_revoked</tt>.
+      </dd>
+
+      <dt>8g. No Duplicate AIDs:</dt>
+      <dd>
+        No AID may appear more than once in the chain (no cycles or
+        duplicates). If an AID appears at indices <tt>i</tt> and <tt>j</tt>
+        with <tt>i != j</tt>, reject with <tt>delegation_chain_invalid</tt>.
+      </dd>
+
+      <dt>8h. Token Validity:</dt>
+      <dd>For token at index <tt>i</tt>, verify <tt>expires_at</tt> > <tt>issued_at</tt>
+        and <tt>expires_at</tt> is in the future. If either check fails, reject with
+        <tt>chain_token_expired</tt>.</dd>
+
+      <dt>8i. Consistent Principal:</dt>
+      <dd>
+        The <tt>principal.id</tt> field MUST be byte-for-byte identical
+        across ALL elements in the chain (index 0 through n-1). This
+        ensures the chain always traces to the same root principal. If any
+        element has a different <tt>principal.id</tt>, reject with
+        <tt>delegation_chain_invalid</tt>.
+      </dd>
+
+      <dt>8j. Principal is Not an Agent:</dt>
+      <dd>
+        The <tt>principal.id</tt> from <tt>aip_chain[0]</tt> MUST NOT begin
+        with <tt>did:aip:</tt>. Principals are humans or organisations, never
+        agents. If <tt>principal.id</tt> uses the <tt>did:aip</tt> method,
+        reject with <tt>delegation_chain_invalid</tt>.
+      </dd>
+    </dl>
+
+    <section  numbered="true">
+  <name>Step 8 Post-Check A</name>
+      <t>
+        After validating all elements in the chain, verify that <tt>iss</tt>
+        (the issuer of the Credential Token, from the JWT header <tt>kid</tt>)
+        MUST equal <tt>aip_chain[n-1].sub</tt> (the <tt>sub</tt> of the last
+        element in the chain, i.e., the acting agent's AID). This confirms
+        that the agent issuing the token is the leaf of the delegation chain.
+        If mismatch, reject with <tt>delegation_chain_invalid</tt>.
+      </t>
+    </section>
+
+    <section  numbered="true">
+  <name>Step 8 Post-Check B</name>
+      <t>
+        For single-element chains (n = 1), verify that <tt>iss</tt> MUST
+        equal <tt>sub</tt>. This confirms a non-delegated token issued
+        directly by the principal's agent. If mismatch, reject with
+        <tt>delegation_chain_invalid</tt>.
+      </t>
+    </section>
+  </section>
+
+  <section anchor="validation-step-9" numbered="true">
+  <name>Step 9: Capability Validation</name>
+    <t>Verify that the agent's requested scopes are permitted by its Capability Manifest.</t>
+    <ol>
+      <li>Fetch the Capability Manifest for the agent identified by <tt>iss</tt> from the Registry.
+        If unavailable, reject with <tt>manifest_invalid</tt>.</li>
+      <li>Verify the manifest signature. If verification fails, reject with <tt>manifest_invalid</tt>.</li>
+      <li>Verify <tt>expires_at</tt> is in the future. If expired, reject with <tt>manifest_expired</tt>.</li>
+<li>For delegated agents: verify scope inheritance. For each scope, verify chain has permission.</li>
+    </ol>
+  </section>
+
+  <section anchor="validation-step-9a" numbered="true">
+    <name>Step 9a: Scope Verification</name>
+    <t>For all agents: verify each scope in <tt>aip_scope</tt> is present in the Capability Manifest.</t>
+  </section>
+
+  <section anchor="validation-step-9b" numbered="true">
+    <name>Step 9b: Capability Overlay (Conditional)</name>
+    <t>If a Capability Overlay exists, verify scope constraints permit the requested operation.</t>
+  </section>
+
+  <section anchor="validation-step-10" numbered="true">
+  <name>Step 10: DPoP Validation (Conditional)</name>
+    <t>
+      REMINDER: A token's Tier is determined by its highest-risk scope
+      (Section 3.1). A token containing one Tier 2 scope is a Tier 2 token.
+    </t>
+    <t>      If <tt>aip_scope</tt> contains any of the following scopes, DPoP
+      (Demonstration of Proof-of-Possession) MUST be verified:
+    </t>
+    <ul>
+      <li><tt>transactions</tt> or any scope with prefix <tt>transactions.</tt></li>
+      <li><tt>communicate.whatsapp</tt>, <tt>communicate.telegram</tt>,
+        <tt>communicate.sms</tt>, <tt>communicate.voice</tt></li>
+      <li><tt>filesystem.execute</tt></li>
+      <li><tt>spawn_agents.create</tt>, <tt>spawn_agents.manage</tt></li>
+    </ul>
+    <t>
+      If any of these scopes is present, the HTTP request MUST include a
+      <tt>DPoP</tt> header containing a Demonstration of Proof-of-Possession
+      proof JWT per <xref target="RFC9449"/>. Verify:
+    </t>
+    <ol>
+      <li>The DPoP proof is a valid JWT.</li>
+      <li>The <tt>htm</tt> (HTTP method) claim matches the HTTP method of
+        the request.</li>
+      <li>The <tt>htu</tt> (HTTP URI) claim matches the request URI.</li>
+      <li>The <tt>jti</tt> has not been seen before (DPoP-specific replay
+        cache, separate from Credential Token <tt>jti</tt> cache, keyed by
+        <tt>(kid, jti)</tt>).</li>
+      <li>The public key in the <tt>jwk</tt> claim matches the agent's key
+        material (used to issue the Credential Token).</li>
+    </ol>
+    <t>
+      If DPoP validation fails at any step, reject with
+      <tt>dpop_proof_required</tt> (if proof is missing) or
+      <tt>invalid_token</tt> (if proof is malformed or invalid).
+    </t>
+  </section>
+
+  <section anchor="validation-step-10a" numbered="true">
+  <name>Step 10a: Approval Envelope Step Verification (Conditional)</name>
+    <t>
+      This step applies only if both <tt>aip_approval_id</tt> and
+      <tt>aip_approval_step</tt> are present in the Credential Token (the
+      Step Execution Token case, Section 13.8).
+    </t>
+    <t>
+      The Relying Party MUST call the Registry endpoint <tt>GET
+      /v1/approvals/{aip_approval_id}/steps/{n}</tt> where <tt>{n}</tt> is
+      the value of <tt>aip_approval_step</tt> verbatim (an integer &gt;= 1, per
+      Section 13.4; MUST NOT be decremented or adjusted).
+      NOTE: <tt>aip_approval_step</tt> uses 1-based indexing (e.g., the
+      first step in an envelope is step 1). This is a change from
+      deprecated 0-indexed drafts; implementations MUST NOT subtract 1 from
+      the value.
+      Verify:
+    </t>
+    <ol>
+      <li><strong>Step Status:</strong> The step's <tt>status</tt> field MUST
+        be <tt>"claimed"</tt> (not <tt>"pending"</tt>, <tt>"completed"</tt>,
+        etc.). If status is <tt>"pending"</tt>, the step has not been claimed
+        and cannot execute. Reject with <tt>approval_step_invalid</tt>.</li>
+      <li><strong>Actor Match:</strong> The step's <tt>actor</tt> field MUST
+        equal the Credential Token's <tt>sub</tt> (the agent AID). Reject if
+        mismatch with <tt>approval_step_invalid</tt>.</li>
+      <li><strong>Relying Party Match:</strong> The step's
+        <tt>relying_party_uri</tt> MUST match the host of the current HTTP
+        request (origin comparison per <xref target="RFC6454"/>: scheme +
+        host + port). Reject if mismatch with <tt>approval_step_invalid</tt>.</li>
+      <li><strong>Action Hash:</strong> Compute the expected action hash for
+        this step per Section 13.7. Compare against the step's
+        <tt>action_hash</tt> field. If mismatch, reject with
+        <tt>approval_step_invalid</tt>. This ensures the approving principal
+        authorised the exact action being executed.</li>
+    </ol>
+  </section>
+
+  <section anchor="validation-step-11" numbered="true">
+  <name>Step 11: Tier 3 Enterprise Checks (Conditional)</name>
+    <t>       This step applies only to Tier 3 enterprise deployments, which are      declared and documented in the Registry's <tt>/.well-known/aip-registry</tt>
+      endpoint.
+    </t>
+    <t>
+      For Tier 3 operations:
+    </t>
+    <ol>
+      <li><strong>mTLS Client Certificate:</strong> The HTTP connection MUST
+        use mutual TLS. Verify that the client certificate's subject DN maps
+        to the agent's AID (<tt>iss</tt>). If mismatch or certificate is
+        absent, reject with <tt>invalid_token</tt>.</li>
+      <li><strong>OCSP Revocation Check:</strong> Perform an OCSP check per
+        <xref target="RFC6960"/> on the client certificate to verify it has
+        not been revoked at the transport layer. If the certificate is
+        revoked, reject with <tt>agent_revoked</tt>.</li>
+    </ol>
+    <t>
+      If either check fails, reject with the appropriate error code
+      (<tt>invalid_token</tt> or <tt>agent_revoked</tt>).
+    </t>
+  </section>
+
+  <section anchor="validation-step-12" numbered="true">
+  <name>Step 12: Accept</name>
+    <t>
+      If all preceding steps pass without rejection, the Relying Party MUST
+      accept the token and grant the requested access.
+    </t>
+  </section>
+</section>

@@ -1,11 +1,16 @@
 {
-  "current_working_draft": "draft-singla-agent-identity-protocol-00",
+  "current_working_draft": "draft-singla-agent-identity-protocol-01",
   "snapshots": [
     {
       "draft": "draft-singla-agent-identity-protocol-00",
       "path": "drafts/draft-singla-agent-identity-protocol-00",
       "status": "minted"
+    },
+    {
+      "draft": "draft-singla-agent-identity-protocol-01",
+      "path": "drafts/draft-singla-agent-identity-protocol-01",
+      "status": "minted"
     }
   ],
-  "latest_minted_draft": "draft-singla-agent-identity-protocol-00"
+  "latest_minted_draft": "draft-singla-agent-identity-protocol-01"
 }

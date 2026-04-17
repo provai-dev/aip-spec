@@ -1,0 +1,224 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provai.dev/schemas/aip/engagement-object/latest",
+  "$comment": "Normatively defined in AIP spec §4.8.1 (schema), §4.8.2 (change log), §4.8.3 (lifecycle), §4.8.4 (termination cascade). Submitted via POST /v1/engagements. Both hiring_operator_signature and deploying_principal_signature are required for the proposed→active transition. Both top-level signatures are computed over the same JCS-canonical engagement object with both top-level signature fields removed. The change_log is append-only — the Registry MUST reject any modification of existing entries.",
+  "title": "AIP Engagement Object",
+  "description": "A mutable Registry resource modelling a multi-party engagement. Parent container for Capability Overlays (§4.7) scoped via engagement_id, Approval Envelopes (§4.6) scoped via engagement_id, and participant roster and approval gate state. Defined in AIP spec §4.8.",
+  "type": "object",
+  "required": [
+    "engagement_id",
+    "title",
+    "hiring_operator",
+    "deploying_principal",
+    "created_at",
+    "expires_at",
+    "status",
+    "participants",
+    "change_log",
+    "hiring_operator_signature",
+    "deploying_principal_signature",
+    "version"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "engagement_id": {
+      "type": "string",
+      "pattern": "^eng:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "description": "Unique identifier for this engagement. Format: 'eng:' prefix followed by a UUID v4 in canonical lowercase hyphenated form. Immutable once created."
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 256,
+      "description": "Human-readable title for this engagement."
+    },
+    "hiring_operator": {
+      "type": "string",
+      "pattern": "^did:(web|aip):.+$",
+      "description": "DID of the hiring operator — the party that initiates and manages the engagement. MUST use did:web or did:aip method."
+    },
+    "deploying_principal": {
+      "type": "string",
+      "pattern": "^did:[a-z][a-z0-9]*:.+$",
+      "description": "DID of the deploying principal — the human or organisation authorising the agents in this engagement."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp when the engagement was created."
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp after which the engagement expires if not already completed or terminated. MUST be strictly after created_at."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["proposed", "active", "suspended", "completed", "terminated"],
+      "description": "Lifecycle status of the engagement. Transitions: proposed→active (requires both signatures), active→suspended (hiring operator), active→completed (hiring operator), active/suspended→terminated (either party). See §4.8.3."
+    },
+    "participants": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/participant"
+      },
+      "description": "Array of Participant objects representing agents enrolled in this engagement."
+    },
+    "approval_gates": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/approval_gate"
+      },
+      "description": "OPTIONAL. Array of Approval Gate objects that must be satisfied before certain actions in this engagement."
+    },
+    "change_log": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/change_log_entry"
+      },
+      "description": "Append-only array of Change Log Entry objects recording all mutations to this engagement. The Registry MUST reject any request that modifies or deletes an existing entry."
+    },
+    "hiring_operator_signature": {
+      "type": "string",
+      "description": "Base64url-encoded EdDSA signature by the hiring_operator over the JCS-canonical (RFC 8785) engagement object after removing both top-level signature fields: hiring_operator_signature and deploying_principal_signature. Required for the proposed→active transition."
+    },
+    "deploying_principal_signature": {
+      "type": "string",
+      "description": "Base64url-encoded EdDSA countersignature by the deploying_principal over the same JCS-canonical (RFC 8785) engagement object used for hiring_operator_signature, after removing both top-level signature fields: hiring_operator_signature and deploying_principal_signature. Required for the proposed→active transition. Together with hiring_operator_signature completes the bi-lateral agreement."
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Monotonically increasing version number. Incremented by the Registry on every state change."
+    }
+  },
+  "$defs": {
+    "participant": {
+      "type": "object",
+      "title": "Participant",
+      "description": "An agent enrolled as a participant in this engagement.",
+      "required": ["aid", "role", "added_at", "added_by"],
+      "additionalProperties": false,
+      "properties": {
+        "aid": {
+          "type": "string",
+          "pattern": "^did:aip:[a-z][a-z0-9]*(-[a-z0-9]+)*:[0-9a-f]{32}$",
+          "description": "AID of the participating agent."
+        },
+        "role": {
+          "type": "string",
+          "maxLength": 64,
+          "description": "Human-readable role label for this participant within the engagement (e.g., 'orchestrator', 'payment-processor', 'reviewer')."
+        },
+        "capability_overlay_id": {
+          "type": "string",
+          "pattern": "^co:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+          "description": "OPTIONAL. Capability Overlay applying to this participant within this engagement."
+        },
+        "added_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 UTC timestamp when this participant was enrolled."
+        },
+        "added_by": {
+          "type": "string",
+          "pattern": "^did:[a-z][a-z0-9]*:.+$",
+          "description": "DID of the party that added this participant."
+        },
+        "removed_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "OPTIONAL. ISO 8601 UTC timestamp when this participant was removed. Absent for active participants."
+        }
+      }
+    },
+    "approval_gate": {
+      "type": "object",
+      "title": "Approval Gate",
+      "description": "A named checkpoint within the engagement requiring explicit approval before dependent steps may proceed.",
+      "required": ["gate_id", "name", "required_approver", "trigger", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "gate_id": {
+          "type": "string",
+          "pattern": "^gate:[a-z0-9_-]+$",
+          "description": "Unique gate identifier within this engagement."
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Human-readable name for this approval gate."
+        },
+        "required_approver": {
+          "type": "string",
+          "pattern": "^did:[a-z][a-z0-9]*:.+$",
+          "description": "DID of the party whose approval is required to pass this gate."
+        },
+        "trigger": {
+          "type": "string",
+          "description": "Application-defined trigger condition describing when this gate is evaluated (e.g., 'before_payment', 'after_step_3_completes')."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "approved", "rejected"],
+          "description": "Current approval status of this gate. pending: awaiting approval. approved: gate passed. rejected: gate failed — dependent steps MUST NOT proceed."
+        },
+        "approved_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "OPTIONAL. ISO 8601 UTC timestamp when the gate was approved."
+        }
+      }
+    },
+    "change_log_entry": {
+      "type": "object",
+      "title": "Change Log Entry",
+      "description": "An immutable record of one change to the engagement. The Registry appends entries; existing entries MUST NOT be modified or deleted.",
+      "required": ["seq", "timestamp", "action", "actor", "signature"],
+      "additionalProperties": false,
+      "properties": {
+        "seq": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Monotonically increasing sequence number starting at 1. Each new entry MUST have a strictly higher seq than the previous."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 UTC timestamp when this change occurred."
+        },
+        "action": {
+          "type": "string",
+          "enum": [
+            "engagement_created",
+            "engagement_countersigned",
+            "participant_added",
+            "participant_removed",
+            "participant_role_changed",
+            "gate_added",
+            "gate_approved",
+            "gate_rejected",
+            "engagement_suspended",
+            "engagement_resumed",
+            "engagement_completed",
+            "engagement_terminated"
+          ],
+          "description": "The type of change recorded in this log entry."
+        },
+        "actor": {
+          "type": "string",
+          "pattern": "^did:[a-z][a-z0-9]*:.+$",
+          "description": "DID of the party that performed this change."
+        },
+        "payload": {
+          "type": "object",
+          "description": "OPTIONAL. Action-specific data. For participant_added: {aid, role}. For participant_removed: {aid}. For gate_approved/rejected: {gate_id}.",
+          "additionalProperties": true
+        },
+        "signature": {
+          "type": "string",
+          "description": "Base64url-encoded EdDSA signature by the actor over the JCS-canonical (RFC 8785) change log entry excluding the signature field."
+        }
+      }
+    }
+  }
+}

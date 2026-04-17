@@ -1,0 +1,172 @@
+<section anchor="introduction" numbered="true">
+  <name>Introduction</name>
+  <t>
+    Autonomous AI agents are deployed in production environments to act
+    on behalf of human and organisational principals. An agent may send
+    emails, book appointments, make purchases, access file systems, spawn
+    child agents to complete subtasks, and communicate across multiple
+    platforms, all without explicit human approval for each action.
+  </t>
+  <t>
+    This creates an identity gap. When an agent presents itself to an
+    API, a payment processor, or another agent, there is no standard
+    mechanism to establish: the agent's persistent identity across
+    interactions; the human or organisation on whose authority it acts;
+    the specific actions it is permitted to take; whether it has been
+    compromised or revoked; or whether it has a trustworthy history.
+  </t>
+  <t>
+    AIP addresses this gap. It is designed as neutral, open
+    infrastructure analogous to HTTP, OAuth, and JWT, providing
+    infrastructure that any application can build on without vendor
+    dependency.
+  </t>
+
+  <section anchor="motivation" numbered="true">
+    <name>Motivation</name>
+    <t>
+      The absence of an identity standard creates concrete operational
+      problems. Services cannot implement fine-grained agent access
+      control. Humans have no auditable record of what their agents did.
+      Compromised agents cannot be reliably stopped. Agent-to-agent
+      systems have no basis for trust.
+    </t>
+    <t>
+      Existing deployments typically operate in one of two modes: no
+      access, or full access. AIP introduces fine-grained capability
+      declarations. A principal can grant <tt>email.read</tt> without
+      <tt>email.send</tt>, or <tt>transactions</tt> with a
+      <tt>max_daily_total</tt> constraint.
+    </t>
+  </section>
+
+  <section anchor="design-philosophy" numbered="true">
+    <name>Design Philosophy</name>
+    <t>
+      AIP is built on five design principles:
+    </t>
+    <t>
+      Neutral and open. The spec is released under CC0 and the
+      <tt>did:aip</tt> DID method is registered with the W3C.
+    </t>
+    <t>
+      Build on existing standards. AIP builds on W3C DID, JWT
+      <xref target="RFC7519"/>, JWK <xref target="RFC7517"/>, DPoP
+      <xref target="RFC9449"/>, and CRL patterns from
+      <xref target="RFC5280"/>.
+    </t>
+    <t>
+      Human sovereignty. Every agent action must trace to a human or
+      authorised organisational principal.
+    </t>
+    <t>
+      Security proportional to risk. AIP defines three security tiers
+      matching overhead to risk level.
+    </t>
+    <t>
+      Deterministic verification. The Validation Algorithm (Section 9) is fully
+      deterministic: two independent implementations executing the same
+      steps on the same token will reach the same result.
+    </t>
+    <t>
+      Zero Trust Architecture. AIP implements the zero trust principles
+      defined in <xref target="SP-800-207"/> and satisfies NIST SP 800-63-4
+      <xref target="SP-800-63-4"/> AAL2 for agent-to-service interactions.
+      No agent is implicitly trusted by virtue of its origin, network
+      location, or prior successful interaction. Every Credential Token
+      must be validated against the Registry on every interaction.
+      Short-lived Credential Tokens bound by a mandatory TTL
+      limit the blast radius of any credential compromise. Revocation is
+      checked in real time for Tier 2 sensitive operations (Section 11.3).
+      DPoP proof-of-possession (Section 21.3) ensures that possession of a
+      valid Credential Token is insufficient for impersonation without the
+      corresponding private key material, satisfying the anti-replay
+      requirement of <xref target="SP-800-207"/> Section 3.
+    </t>
+    <t>
+      Integration with Model Context Protocol (MCP). AIP provides the
+      agent identity, authorization, and delegation layer that MCP server
+      implementations require but do not define. An AIP-authenticated
+      agent can obtain scoped access tokens for MCP servers via the token
+      exchange mechanism defined in Section 8.4. AIP does not replace MCP;
+      it provides the identity substrate on which MCP authorization
+      decisions are made. See Section 8.4 (Token Exchange) and Section 17.5
+      (OAuth Authorization Server) for the concrete integration path.
+    </t>
+    <t>
+      Least Privilege. Agents are granted only the specific capabilities
+      required for their declared purpose, expressed as signed Capability
+      Manifests (Section 5.3). Capability grants are always additive from
+      principal to agent and never exceed the granting principal's own
+      capability set. A child agent must not be granted capabilities that
+      the delegating parent does not itself hold (Rule D-1, Section 5.10).
+      The max_delegation_depth field (Section 10) bounds the depth of
+      sub-agent hierarchies, limiting transitive capability propagation.
+      Capability constraints allow fine-grained least-privilege expression
+      within each capability category, consistent with
+      <xref target="SP-800-207"/> Section 3 (Tenets 5 and 6).
+    </t>
+    <t>
+      Relationship to SPIFFE/SPIRE. SPIFFE is designed for workload
+      identity within enumerable, infrastructure-managed environments. AIP
+      is designed for autonomous agents that are created dynamically,
+      operate across organisational boundaries, and act on behalf of named
+      human principals whose authority must be cryptographically
+      traceable. An enterprise may deploy SPIFFE for its internal service
+      mesh and AIP for its agent fleet without conflict. The two
+      mechanisms are complementary and operate at distinct layers of the
+      identity stack.
+    </t>
+    <t>
+      Relationship to MCP. The Model Context Protocol <xref target="MCP"/>
+      defines how AI agents discover and invoke tools and data sources.
+      AIP is the agent identity layer that sits beneath MCP's
+      authorisation flow: AIP establishes that an agent is who it claims
+      to be (identification via Credential Token), that it was authorised
+      by a named human principal (delegation chain in the Principal
+      Token), and that it holds specific capabilities (Capability
+      Manifest). AIP does not replace MCP's tool-access OAuth flow - it
+      provides the agent identity that OAuth's "sub" claim cannot supply
+      when the subject is an autonomous agent rather than a human user.
+    </t>
+    <t>
+      Out of scope - Prompt injection prevention. AIP is an identity and
+      authorisation protocol. Whether the content an agent processes
+      contains adversarial instructions is an application-layer and
+      model-layer concern outside this specification's scope. AIP
+      mitigates the persistence window of a successful prompt injection
+      attack: a compromised agent may be immediately revoked via
+      <tt>full_revoke</tt> (Section 11.1), and revocation propagates to all
+      child agents within the TTL window defined in Section 8.2. AIP does
+      not prevent the initial injection - it limits the attacker's
+      persistence.
+    </t>
+  </section>
+
+  <section anchor="architecture-layers" numbered="true">
+    <name>Architecture Layers</name>
+    <t>
+      AIP is structured as six ordered layers:
+    </t>
+    <figure anchor="aip-architecture-layers">
+      <name>AIP Architecture Layers</name>
+      <artwork><![CDATA[
+ +------------------------------------------------------+
+ | Layer 6 - Reputation Trust over time                 |
+ +------------------------------------------------------+
+ | Layer 5 - Revocation Standard kill switch            |
+ +------------------------------------------------------+
+ | Layer 4 - Credential Token & Verification            |
+ |           Cryptographic proof                        |
+ +------------------------------------------------------+
+ | Layer 3 - Capabilities What the agent can do         |
+ +------------------------------------------------------+
+ | Layer 2 - Principal Chain Who authorised it          |
+ |           incl. AIP-GRANT and Approval Envelopes     |
+ +------------------------------------------------------+
+ | Layer 1 - Core Identity Who the agent IS             |
+ +------------------------------------------------------+
+]]></artwork>
+    </figure>
+  </section>
+</section>

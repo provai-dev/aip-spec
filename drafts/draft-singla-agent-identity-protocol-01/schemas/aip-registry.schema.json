@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provai.dev/schemas/aip/aip-registry/latest",
+  "$comment": "Normatively defined in AIP spec §7.3.4. This schema describes the /.well-known/aip-registry discovery document.",
+  "title": "AIP Registry Discovery Document",
+  "description": "Discovery metadata published at /.well-known/aip-registry. This document identifies the Registry service and points verifiers to the current Registry Trust Record.",
+  "type": "object",
+  "required": [
+    "registry_id",
+    "registry_name",
+    "aip_version",
+    "registry_trust_uri",
+    "endpoints"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "registry_id": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://.+$",
+      "description": "Stable HTTPS identifier for the Registry service."
+    },
+    "registry_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Human-readable Registry name."
+    },
+    "aip_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 16,
+      "description": "AIP version implemented by this Registry."
+    },
+    "registry_trust_uri": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://.+$",
+      "description": "URI of the current Registry Trust Record."
+    },
+    "endpoints": {
+      "type": "object",
+      "required": [
+        "agents",
+        "crl",
+        "revocations"
+      ],
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      },
+      "properties": {
+        "agents": {
+          "type": "string",
+          "minLength": 1
+        },
+        "crl": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revocations": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "description": "Service endpoints published by the Registry. Values may be relative or absolute URIs."
+    },
+    "grant_tiers_supported": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "OPTIONAL. Supported grant tiers."
+    },
+    "acr_values_supported": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "OPTIONAL. Supported acr values."
+    },
+    "amr_values_supported": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "OPTIONAL. Supported amr values."
+    },
+    "oauth_authorization_server": {
+      "type": "string",
+      "format": "uri",
+      "description": "OPTIONAL. URI of the OAuth authorization server metadata."
+    },
+    "identity_proofing_required_for_tier2": {
+      "type": "boolean",
+      "description": "OPTIONAL. Whether this Registry requires G3 for Tier 2 operations."
+    }
+  }
+}
