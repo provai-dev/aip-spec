@@ -1015,13 +1015,16 @@
           <td>hiring_operator_signature</td>
           <td>string</td>
           <td>REQUIRED</td>
-          <td>Base64url EdDSA signature by hiring_operator</td>
+          <td>Base64url EdDSA signature by hiring_operator over the
+            top-level engagement signing input defined below</td>
         </tr>
         <tr>
           <td>deploying_principal_signature</td>
           <td>string</td>
           <td>REQUIRED</td>
-          <td>Countersignature by deploying_principal</td>
+          <td>Base64url EdDSA countersignature by
+            deploying_principal over the same top-level engagement
+            signing input defined below</td>
         </tr>
         <tr>
           <td>version</td>
@@ -1045,6 +1048,18 @@
       required_approver (REQUIRED, DID), trigger (REQUIRED, string),
       status (REQUIRED, one of: "pending", "approved", "rejected"),
       approved_at (OPTIONAL, ISO 8601).
+    </t>
+
+    <t>
+      <strong>Top-level engagement signature input:</strong> Both
+      hiring_operator_signature and deploying_principal_signature MUST
+      be computed over the same JCS-canonical JSON serialization of the
+      Engagement Object after removing both top-level signature fields
+      (<tt>hiring_operator_signature</tt> and
+      <tt>deploying_principal_signature</tt>). This signing input
+      includes all other Engagement Object fields, including
+      <tt>change_log</tt> and <tt>version</tt>. The countersignature
+      does not sign the other party's signature value.
     </t>
 
     <t>

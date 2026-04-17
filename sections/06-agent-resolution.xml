@@ -36,8 +36,11 @@
       repository at <em>examples/did-document.json</em>.
     </t>
     <t>
-      A principal's DID Document that authorises agents for Tier 2 operations MUST include an <tt>AIPRegistry</tt>
-      service entry in its <tt>service</tt> array:
+      A principal's DID Document that authorises agents for Tier 2
+      operations MUST include an <tt>AIPRegistry</tt> service entry in
+      its <tt>service</tt> array. This requirement applies to principal
+      DID methods other than <tt>did:aip</tt>; principals MUST NOT use
+      the <tt>did:aip</tt> method anywhere in the protocol.
     </t>
 
     <artwork type="json" ><![CDATA[
@@ -60,8 +63,11 @@
     </t>
 
     <t>
-      For principals using <tt>did:web</tt> or <tt>did:aip</tt>: the <tt>AIPRegistry</tt> service entry is REQUIRED when
-      the principal authorises any agent with Tier 2 scopes. It is OPTIONAL for principals authorising only Tier 1 agents.
+      For principals using <tt>did:web</tt> or another non-<tt>did:aip</tt>
+      method that supports service entries: the
+      <tt>AIPRegistry</tt> service entry is REQUIRED when the principal
+      authorises any agent with Tier 2 scopes. It is OPTIONAL for
+      principals authorising only Tier 1 agents.
     </t>
 
     <t>The CRUD operations for <tt>did:aip</tt> are:</t>

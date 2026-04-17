@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://provai.dev/schemas/aip/engagement-object/latest",
-  "$comment": "Normatively defined in AIP spec §4.8.1 (schema), §4.8.2 (change log), §4.8.3 (lifecycle), §4.8.4 (termination cascade). Submitted via POST /v1/engagements. Both hiring_operator_signature and deploying_principal_signature are required for the proposed→active transition. The change_log is append-only — the Registry MUST reject any modification of existing entries.",
+  "$comment": "Normatively defined in AIP spec §4.8.1 (schema), §4.8.2 (change log), §4.8.3 (lifecycle), §4.8.4 (termination cascade). Submitted via POST /v1/engagements. Both hiring_operator_signature and deploying_principal_signature are required for the proposed→active transition. Both top-level signatures are computed over the same JCS-canonical engagement object with both top-level signature fields removed. The change_log is append-only — the Registry MUST reject any modification of existing entries.",
   "title": "AIP Engagement Object",
   "description": "A mutable Registry resource modelling a multi-party engagement. Parent container for Capability Overlays (§4.7) scoped via engagement_id, Approval Envelopes (§4.6) scoped via engagement_id, and participant roster and approval gate state. Defined in AIP spec §4.8.",
   "type": "object",
@@ -79,11 +79,11 @@
     },
     "hiring_operator_signature": {
       "type": "string",
-      "description": "Base64url-encoded EdDSA signature by the hiring_operator over the JCS-canonical (RFC 8785) engagement object. Required for the proposed→active transition."
+      "description": "Base64url-encoded EdDSA signature by the hiring_operator over the JCS-canonical (RFC 8785) engagement object after removing both top-level signature fields: hiring_operator_signature and deploying_principal_signature. Required for the proposed→active transition."
     },
     "deploying_principal_signature": {
       "type": "string",
-      "description": "Base64url-encoded EdDSA countersignature by the deploying_principal. Required for the proposed→active transition. Together with hiring_operator_signature completes the bi-lateral agreement."
+      "description": "Base64url-encoded EdDSA countersignature by the deploying_principal over the same JCS-canonical (RFC 8785) engagement object used for hiring_operator_signature, after removing both top-level signature fields: hiring_operator_signature and deploying_principal_signature. Required for the proposed→active transition. Together with hiring_operator_signature completes the bi-lateral agreement."
     },
     "version": {
       "type": "integer",
