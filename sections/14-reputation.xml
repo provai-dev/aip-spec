@@ -3,7 +3,7 @@
   <name>Reputation and Endorsements</name>
   <section anchor="endorsement-object">
     <name>Endorsement Object</name>
-    <t>Any Relying Party or agent MAY submit a signed Endorsement Object to the Registry after a completed interaction. The schema is in Section 4.2.8.</t>
+    <t>Any Relying Party or agent MAY submit a signed Endorsement Object to the Registry after a completed interaction. The schema is in Section 5.8.</t>
     <t>The Registry MUST verify every submitted Endorsement Object signature. Only <tt>success</tt> and <tt>partial</tt> outcomes increment <tt>endorsement_count</tt>. <tt>failure</tt> increments <tt>incident_count</tt>.</t>
     <t>Completed Approval Envelope steps SHOULD generate Endorsement Objects. When an Approval Envelope reaches <tt>completed</tt> status, the orchestrator SHOULD submit an Endorsement Object for each agent that executed a step successfully.</t>
   </section>

@@ -234,7 +234,7 @@
           <td>capabilities</td>
           <td>object</td>
           <td>REQUIRED</td>
-          <td>See Section 4.2.9 for all sub-fields</td>
+          <td>See Section 5.9 for all sub-fields</td>
         </tr>
         <tr>
           <td>signature</td>
@@ -346,7 +346,7 @@
           <td>exp</td>
           <td>integer</td>
           <td>REQUIRED</td>
-          <td>Unix timestamp; MUST be strictly greater than iat; TTL limits per Section 7.1.2</td>
+          <td>Unix timestamp; MUST be strictly greater than iat; TTL limits per Section 8.2</td>
         </tr>
         <tr>
           <td>jti</td>
@@ -382,7 +382,7 @@
           <td>aip_approval_step</td>
           <td>integer</td>
           <td>OPTIONAL</td>
-          <td>Positive integer (&gt;= 1); REQUIRED when aip_approval_id is present</td>
+          <td>Positive integer (&gt;= 1); REQUIRED when aip_approval_id is present. Uses 1-based indexing.</td>
         </tr>
         <tr>
           <td>aip_engagement_id</td>
@@ -564,7 +564,7 @@
     <t>
       Revocation is performed by submitting a signed Revocation Object to
       POST /v1/revocations. Canonical signing field order:
-      revocation_id, target_aid, type, issued_by, reason, timestamp,
+      revocation_id, target_id, type, issued_by, reason, timestamp,
       propagate_to_children, scopes_revoked, signature.
     </t>
 
@@ -586,10 +586,10 @@
           <td>pattern: ^rev:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$</td>
         </tr>
         <tr>
-          <td>target_aid</td>
+          <td>target_id</td>
           <td>string</td>
           <td>REQUIRED</td>
-          <td>MUST match did:aip ABNF</td>
+          <td>MUST be a did:aip AID (for full_revoke, scope_revoke, delegation_revoke) or a Principal DID (for principal_revoke)</td>
         </tr>
         <tr>
           <td>type</td>
@@ -641,9 +641,9 @@
     </t>
     <ul>
       <li><strong>full_revoke</strong> - Permanently revokes the AID.</li>
-      <li><strong>scope_revoke</strong> - Removes specific scopes from the Capability Manifest. Does NOT invalidate outstanding Credential Tokens.</li>
+      <li><strong>scope_revoke</strong> - Invalidates specific scopes for the agent. For Tier 1 and 2, this MUST cause Relying Parties to reject Credential Tokens containing the revoked scopes (Step 7, Section 9).</li>
       <li><strong>delegation_revoke</strong> - Invalidates delegation chains rooted at the target. Child agents lose authority; the target AID remains valid for direct principal interactions.</li>
-      <li><strong>principal_revoke</strong> - Issued by the root principal to revoke their entire authorisation of the target agent. Equivalent to full_revoke plus child propagation.</li>
+      <li><strong>principal_revoke</strong> - Issued by the root principal to revoke their entire authorisation of the target agent (via AID) or all agents under their authority (via Principal DID).</li>
     </ul>
   </section>
 
@@ -729,7 +729,7 @@
     <name>Field Constraints and Defined Scope Identifiers</name>
     <t>
       Capability capabilities sub-fields are defined in full in
-      <tt>schemas/capability-manifest.schema.json</tt>.
+      schemas/v0.3/capability-manifest.schema.json.
     </t>
 
     <t>

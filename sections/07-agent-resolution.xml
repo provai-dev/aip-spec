@@ -3,7 +3,7 @@
   <name>Agent Resolution</name>
   
 
-  <!-- 6.1. DID Resolution -->
+  <!-- 7.1. DID Resolution -->
   <section anchor="did-resolution">
     <name>DID Resolution</name>
     
@@ -26,14 +26,14 @@
     </t>
   </section>
 
-  <!-- 6.2. DID Document Structure -->
+  <!-- 7.2. DID Document Structure -->
   <section anchor="did-document-structure">
     <name>DID Document Structure</name>
     
     <t>
       A conformant <tt>did:aip</tt> DID Document MUST include <tt>@context</tt>, <tt>id</tt>,
       <tt>verificationMethod</tt>, <tt>authentication</tt>, and <tt>controller</tt>. See the canonical example in the
-      repository at <em>examples/did-document.json</em>.
+      repository at <em>examples/latest/did-document.json</em>.
     </t>
     <t>
       A principal's DID Document that authorises agents for Tier 2
@@ -58,7 +58,7 @@
 
     <t>
       For principals using <tt>did:key</tt>: an <tt>AIPRegistry</tt> service entry cannot be declared
-      (DID Key documents have no service array). Per Section 4.3, <tt>did:key</tt> principals MUST NOT authorise
+      (DID Key documents have no service array). Per Section 12, <tt>did:key</tt> principals MUST NOT authorise
       Tier 2 operations.
     </t>
 
@@ -84,7 +84,7 @@
     </table>
   </section>
 
-  <!-- 6.3. Registry Genesis -->
+  <!-- 7.3. Registry Genesis -->
   <section anchor="registry-genesis">
     <name>Registry Genesis</name>
     
@@ -93,18 +93,18 @@
       <tt>did:aip</tt> Agent Identity (the Registry AID). It MUST be performed before the Registry serves any requests.
     </t>
 
-    <!-- 6.3.1 Key Generation -->
+    <!-- 7.3.1 Key Generation -->
     <section anchor="registry-genesis-key-generation">
       <name>Key Generation</name>
       
       <t>
         The Registry MUST generate a fresh Ed25519 keypair at first boot. The private key MUST be stored encrypted at rest
         (AES-256-GCM or equivalent). The public key is used to construct the Registry's DID Document and to sign CRL
-        documents (Section 9.2) and Step Execution Tokens.
+        documents (Section 11.2) and Step Execution Tokens.
       </t>
     </section>
 
-    <!-- 6.3.2 AID Construction -->
+    <!-- 7.3.2 AID Construction -->
     <section anchor="registry-genesis-aid-construction">
       <name>AID Construction</name>
       
@@ -122,13 +122,13 @@
       </t>
     </section>
 
-    <!-- 6.3.3 Self-Registration Exemption -->
+    <!-- 7.3.3 Self-Registration Exemption -->
     <section anchor="registry-genesis-self-registration-exemption">
       <name>Self-Registration Exemption</name>
       
       <t>
         The Registry AID MUST NOT be created via <tt>POST /v1/agents</tt>. Instead, the Registry MUST persist its AID and
-        keypair directly to its own data store during genesis. The following Registration Envelope checks (Section 5.2) are
+        keypair directly to its own data store during genesis. The following Registration Envelope checks (Section 6.2) are
         explicitly inapplicable to the Registry AID:
       </t>
       <ul>
@@ -142,7 +142,7 @@
       </ul>
     </section>
 
-    <!-- 6.3.4 Well-Known Publication -->
+    <!-- 7.3.4 Well-Known Publication -->
     <section anchor="registry-genesis-well-known-publication">
       <name>Well-Known Publication</name>
       
@@ -203,7 +203,7 @@ GET /.well-known/aip-registry
 
       <t>
         Key rotation for Registry keys is an administrative operation that requires out-of-band communication to Relying
-        Parties. A future AIP will define the Registry key rotation protocol.
+        Parties. A future AIP will define the Registry key rotation protocol (see Section 17.9).
       </t>
 
       <t>
@@ -212,7 +212,7 @@ GET /.well-known/aip-registry
       </t>
     </section>
 
-    <!-- 6.3.5 Single-Instance Constraint -->
+    <!-- 7.3.5 Single-Instance Constraint -->
     <section anchor="registry-genesis-single-instance-constraint">
       <name>Single-Instance Constraint</name>
       
@@ -223,7 +223,7 @@ GET /.well-known/aip-registry
       </t>
     </section>
 
-    <!-- 6.3.6 Registry Key Rotation (Interim Procedure) -->
+    <!-- 7.3.6 Registry Key Rotation (Interim Procedure) -->
     <section anchor="registry-genesis-registry-key-rotation">
       <name>Registry Key Rotation (Interim Procedure)</name>
       
@@ -239,7 +239,7 @@ GET /.well-known/aip-registry
           Registry.
         </li>
         <li>
-          Relying Parties that have pinned the existing Registry's public key (step 3 of Section 6.3.4 bootstrapping) and subsequently
+          Relying Parties that have pinned the existing Registry's public key (step 3 of Section 7.3.4 bootstrapping) and subsequently
           receive a <tt>/.well-known/aip-registry</tt> document whose <em>public_key</em> does not match the pinned key MUST treat this as a potential MITM attack. They MUST NOT use the new key automatically. They MUST halt Registry-dependent operations and require out-of-band verification that the key change is legitimate before re-pinning.
         </li>
         <li>
@@ -247,7 +247,7 @@ GET /.well-known/aip-registry
         </li>
         <li>
           A future minor version will define an in-band key succession protocol using a <em>previous_registry_key_signature</em> mechanism
-          analogous to agent key rotation, allowing Relying Parties to verify key transitions without out-of-band communication.
+          analogous to agent key rotation, allowing Relying Parties to verify key transitions without out-of-band communication. See Open Issue in Section 17.9.
         </li>
       </ol>
 

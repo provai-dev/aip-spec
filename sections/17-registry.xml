@@ -36,7 +36,7 @@
         <tr><td>POST</td><td>/v1/engagements</td><td>Create Engagement Object</td></tr>
         <tr><td>GET</td><td>/v1/engagements/{id}</td><td>Retrieve Engagement Object</td></tr>
         <tr><td>PUT</td><td>/v1/engagements/{id}</td><td>Update Engagement (append change log)</td></tr>
-        <tr><td>POST</td><td>/v1/subscriptions</td><td>Create RPNP subscription (Section 9.4)</td></tr>
+        <tr><td>POST</td><td>/v1/subscriptions</td><td>Create RPNP subscription (Section 11.4)</td></tr>
         <tr><td>DELETE</td><td>/v1/subscriptions/{id}</td><td>Cancel RPNP subscription</td></tr>
         <tr><td>GET</td><td>/v1/scopes</td><td>Scope Map registry</td></tr>
         <tr><td>POST</td><td>/v1/oauth/authorize</td><td>G3 authorization endpoint</td></tr>
@@ -85,10 +85,10 @@ did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3
       </tbody>
     </table>
 
-    <t>**`POST /v1/approvals` validation:** The Registry MUST perform all checks defined in Section 4.4.10 before accepting an Approval Envelope. The Registry MUST return HTTP 201 with the stored envelope (including the Registry-assigned `status: "pending_approval"`) on success.</t>
+    <t>**`POST /v1/approvals` validation:** The Registry MUST perform all checks defined in Section 13.10 before accepting an Approval Envelope. The Registry MUST return HTTP 201 with the stored envelope (including the Registry-assigned `status: "pending_approval"`) on success.</t>
     <t>**`POST /v1/approvals/{id}/approve` flow:** This endpoint is called by the Principal Wallet after the principal completes the signing ceremony. The request body MUST contain the `principal_signature` field: a base64url EdDSA signature computed by the principal's wallet over the JCS-canonical serialisation of the full Approval Envelope with `principal_signature` set to the empty string `""` before serialisation — identical to the pattern used for `creator_signature`. The signing key MUST be the private key of `principal_id`. The Registry MUST verify this signature against the `principal_id`'s resolved public key before transitioning the envelope to `approved`.</t>
     <t>**Atomicity requirement for step claim:** The Registry MUST implement step-claim operations atomically (e.g., using optimistic locking or a distributed lock) to prevent two actors from claiming the same step simultaneously. Only one claim MUST succeed; the other MUST receive `approval_step_already_claimed`.</t>
-    <t>**Step Execution Token format:** The Step Execution Token returned by `POST .../steps/{n}/claim` is a JWT signed by the Registry's administrative key with the claims described in Section 4.4.8. Its TTL MUST comply with normal TTL rules for the scopes involved.</t>
+    <t>**Step Execution Token format:** The Step Execution Token returned by `POST .../steps/{n}/claim` is a JWT signed by the Registry's administrative key with the claims described in Section 13.8. Its TTL MUST comply with normal TTL rules for the scopes involved.</t>
   </section>
 
   <section anchor="oauth-registry" numbered="true">
@@ -146,7 +146,7 @@ a JSON object mapping scope strings to metadata:</t>
         <tr><td>`uri`</td><td>string</td><td>Full `urn:aip:scope:` URI</td></tr>
         <tr><td>`description`</td><td>string</td><td>Human-readable description</td></tr>
         <tr><td>`tier`</td><td>integer</td><td>Tier classification (1, 2, or 3)</td></tr>
-        <tr><td>`destructive`</td><td>boolean</td><td>Whether the scope requires additional confirmation per Section 4.3.3</td></tr>
+        <tr><td>`destructive`</td><td>boolean</td><td>Whether the scope requires additional confirmation per Section 12.3</td></tr>
         <tr><td>`constraint_schema`</td><td>object/null</td><td>JSON Schema fragment for scope-specific constraints</td></tr>
       </tbody>
     </table>
@@ -180,7 +180,7 @@ MUST reject modifications to existing entries with
 
   <section anchor="rpnp-endpoints-registry" numbered="true">
     <name>RPNP Subscription Endpoints</name>
-    <t>A conformant AIP Registry supporting RPNP (Section 9.4) MUST
+    <t>A conformant AIP Registry supporting RPNP (Section 11.4) MUST
 implement:</t>
     <table>
       <thead>
@@ -196,5 +196,15 @@ implement:</t>
     <t>Subscription creation MUST be authenticated via DPoP. The
 `webhook_uri` MUST use HTTPS. The Registry MUST reject non-HTTPS
 URIs with `invalid_webhook_uri`.</t>
+  </section>
+
+  <section anchor="registry-key-management" numbered="true">
+    <name>Key Management and Rotation (Open Issue)</name>
+    <t>
+      Full in-band Registry key rotation is an open issue in AIP v0.3.
+      Current implementations MUST follow the interim procedure defined in
+      Section 7.3.6. A future minor version will define an interoperable
+      rotation protocol using cryptographic succession proofs.
+    </t>
   </section>
 </section>

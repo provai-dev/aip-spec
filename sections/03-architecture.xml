@@ -34,28 +34,28 @@
     <dt>Capability Manifest:</dt>
     <dd>A versioned, signed JSON document stored in the Registry that
       declares the specific permissions (scopes and constraints) granted
-      to an agent. Defined in Section 4.2.3.</dd>
+      to an agent. Defined in Section 5.3.</dd>
 
     <dt>Credential Token:</dt>
     <dd>A signed JWT-format token presented by an agent to a Relying
       Party as proof of identity and authorisation for a specific
-      interaction. Defined in Section 7.1.</dd>
+      interaction. Defined in Section 8.1.</dd>
 
     <dt>Step Execution Token:</dt>
     <dd>A short-lived Credential Token issued by the AIP Registry
       attesting that a specific Approval Envelope step has been claimed
-      by its designated actor. Defined in Section 4.4.8.</dd>
+      by its designated actor. Defined in Section 13.8.</dd>
 
     <dt>Principal Token:</dt>
     <dd><t>A signed JWT payload encoding one delegation link in the AIP
       principal chain. Principal Tokens are embedded as compact-serialised
       JWTs in the aip_chain array of a Credential Token.
-      Defined in Section 4.2.5.</t></dd>
+      Defined in Section 5.5.</t></dd>
 
     <dt>Relying Party (RP):</dt>
     <dd>Any service, API, or agent that receives and verifies an AIP
       Credential Token. Responsible for implementing the Validation
-      Algorithm (Section 7.2).</dd>
+      Algorithm (Section 9).</dd>
 
     <dt>Delegation:</dt>
     <dd>The act of granting a subset of capabilities from a principal or
@@ -81,7 +81,7 @@
     <dt>Grant Tier:</dt>
     <dd>One of three standardised AIP-GRANT ceremony profiles: G1
       (Registry-Mediated), G2 (Direct Deployer), G3 (Full Ceremony).
-      Defined in Section 4.3.</dd>
+      Defined in Section 12.</dd>
 
     <dt>Cryptographic Admissibility:</dt>
     <dd>The property that an agent's Credential Token and delegation
@@ -92,43 +92,43 @@
     <dt>Capability Overlay:</dt>
     <dd>A Registry-stored, issuer-signed document that restricts an
       agent's effective capability set for a specific engagement or issuer
-      context. Defined in Section 4.2.11.</dd>
+      context. Defined in Section 5.11.</dd>
 
     <dt>Engagement Object:</dt>
     <dd>A mutable Registry resource that models a multi-party engagement,
       serving as the parent container for Capability Overlays, Approval
-      Envelopes, and participant rosters. Defined in Section 4.2.12.</dd>
+      Envelopes, and participant rosters. Defined in Section 5.12.</dd>
 
     <dt>Approval Envelope:</dt>
     <dd>A signed document submitted to the Registry that pre-authorises a
       complete multi-step workflow in a single principal signing ceremony.
-      Decouples approval from execution. Defined in Section 4.4.</dd>
+      Decouples approval from execution. Defined in Section 13.</dd>
 
     <dt>Action Hash:</dt>
     <dd>A SHA-256 hash of the canonical JSON representation of an approval
       step's action descriptor. Binds approval to a specific operation.
-      Computed per Section 4.4.7.</dd>
+      Computed per Section 13.7.</dd>
 
     <dt>Registry:</dt>
     <dd>The authoritative store and resolver for AIP agents, Capability
       Manifests, revocation state, and delegation chains. Implements the
-      Registry Interface (Section 15) and the Validation Algorithm
-      (Section 7.2). May be operated by a principal, a service, or a
+      Registry Interface (Section 17) and the Validation Algorithm
+      (Section 9). May be operated by a principal, a service, or a
       consortium.</dd>
 
     <dt>AIP-GRANT:</dt>
     <dd>The principal authorization protocol defining how principals
       authorize agents through a consent ceremony. Defined in Section
-      4.3.</dd>
+      12.</dd>
 
     <dt>Revocation Object:</dt>
     <dd>A signed document declaring that an agent's grant is revoked,
       either in whole (<tt>full_revoke</tt>) or in part (<tt>scope_revoke</tt>
-      or <tt>delegation_revoke</tt>). Defined in Section 4.2.7.</dd>
+      or <tt>delegation_revoke</tt>). Defined in Section 5.7.</dd>
 
     <dt>Certificate Revocation List (CRL):</dt>
     <dd>A Registry-published list of revoked agents. Updated periodically
-      (Tier 1) or on-demand (Tier 2). Defined in Section 9.2.</dd>
+      (Tier 1) or on-demand (Tier 2). Defined in Section 11.2.</dd>
 
     <dt>DPoP Proof:</dt>
     <dd>A Demonstration of Proof-of-Possession as defined in <xref
@@ -139,7 +139,7 @@
     <dt>Endorsement:</dt>
     <dd>A signed statement affirming a positive experience or outcome of
       an interaction with an agent. Contributes to the agent's reputation
-      score. Defined in Section 10.1.</dd>
+      score. Defined in Section 14.1.</dd>
   </dl>
 
   <section anchor="architecture-tiers" numbered="true">
@@ -165,7 +165,7 @@
     </ul>
     <t>
       The complete mapping of Tiers to normative protocol requirements is defined in
-      the Tier Conformance Table in Section 16.1.
+      the Tier Conformance Table in Section 20.1.
     </t>
   </section>
 </section>

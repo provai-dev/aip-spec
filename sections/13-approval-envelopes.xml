@@ -156,7 +156,7 @@
             <tr>
               <td>action_hash</td>
               <td>REQUIRED</td>
-              <td>sha256:64-hex; see Section 4.4.7</td>
+              <td>sha256:64-hex; see Section 13.7</td>
             </tr>
             <tr>
               <td>description</td>

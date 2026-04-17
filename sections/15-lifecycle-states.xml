@@ -3,7 +3,7 @@
   <t>
     An AID has exactly two lifecycle states: <tt>active</tt> and
     <tt>revoked</tt>. AIP does not define an <tt>inactive</tt> status;
-    the Dead Man's Switch mechanism (Section 17.8) uses
+    the Dead Man's Switch mechanism (Section 21.8) uses
     <tt>full_revoke</tt>.
   </t>
   <t>

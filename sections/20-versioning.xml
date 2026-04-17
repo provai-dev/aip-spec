@@ -14,7 +14,7 @@
     <li>Registration Envelopes MUST include <tt>grant_tier</tt>.</li>
     <li>Principal DID Documents for Tier 2 agents MUST include an <tt>AIPRegistry</tt> service entry.</li>
     <li>The <tt>/.well-known/aip-registry</tt> response MUST include <tt>signature</tt>, <tt>registry_name</tt>, and <tt>endpoints</tt>.</li>
-    <li>§14.6 backoff formula corrected (Section 14.6).</li>
+    <li>§19.6 backoff formula corrected (Section 19.6).</li>
   </ul>
   <t>
     Implementations MUST NOT silently accept tokens from unsupported
@@ -37,7 +37,7 @@
       <dt>Note 1</dt>
       <dd><t>For Tier 1, the principal MAY use any W3C DID method. Principals using <tt>did:key</tt> are permitted for Tier 1 only; see Note 2.</t></dd>
       <dt>Note 2</dt>
-      <dd><t><tt>did:aip</tt> is NEVER a valid Principal DID method for Tier 2 or Tier 3. The <tt>principal.id</tt> field MUST NOT use the <tt>did:aip</tt> method. Principals using <tt>did:key</tt> for Tier 2 agents MUST be rejected with <tt>principal_did_method_forbidden</tt>; the <tt>did:key</tt> method does not support a DID Document with the <tt>AIPRegistry</tt> service entry required by Section 6.2.</t></dd>
+      <dd><t><tt>did:aip</tt> is NEVER a valid Principal DID method for Tier 2 or Tier 3. The <tt>principal.id</tt> field MUST NOT use the <tt>did:aip</tt> method. Principals using <tt>did:key</tt> for Tier 2 agents MUST be rejected with <tt>principal_did_method_forbidden</tt>; the <tt>did:key</tt> method does not support a DID Document with the <tt>AIPRegistry</tt> service entry required by Section 7.2.</t></dd>
     </dl>
   </section>
 </section>

@@ -44,7 +44,7 @@
       <dt><tt>grant_nonce_mismatch</tt></dt><dd><t>HTTP 400. GrantResponse nonce does not match.</t></dd>
       <dt><tt>unknown_aid</tt></dt><dd><t>HTTP 404. AID not registered in any accessible Registry.</t></dd>
       <dt><tt>registry_unavailable</tt></dt><dd><t>HTTP 503. Registry could not be reached.</t></dd>
-      <dt><tt>rate_limit_exceeded</tt></dt><dd><t>HTTP 429. Rate limit for this operation exceeded; see Section 14.</t></dd>
+      <dt><tt>rate_limit_exceeded</tt></dt><dd><t>HTTP 429. Rate limit for this operation exceeded; see Section 19.</t></dd>
       <dt><tt>revocation_stale</tt></dt><dd><t>HTTP 403. Tier 2 operation with cached revocation status.</t></dd>
       <dt><tt>dpop_required</tt></dt><dd><t>HTTP 401. Tier 2 operation without DPoP proof.</t></dd>
       <dt><tt>mtls_required</tt></dt><dd><t>HTTP 403. Tier 3 operation without mTLS.</t></dd>
@@ -78,7 +78,7 @@
   <section anchor="error-detail-types">
     <name>Error Detail Types</name>
     <t>For `registry_unavailable` (503): SHOULD include `Retry-After` per <xref target="RFC9110"/>.</t>
-    <t>For `rate_limit_exceeded` (429): MUST include `Retry-After` per <xref target="RFC6585"/> Section 4 and rate limit headers per Section 14.1.</t>
+    <t>For `rate_limit_exceeded` (429): MUST include `Retry-After` per <xref target="RFC6585"/> Section 4 and rate limit headers per Section 19.1.</t>
     <t>For `delegation_chain_refresh_required` (401): the response SHOULD include an `error_description` indicating which delegation depth's Principal Token has expired, to help the agent identify which delegation level to renew.</t>
   </section>
 </section>

@@ -39,7 +39,7 @@
       Scope inheritance is the mechanism by which child agents are
       constrained to operate within the bounds of their parent's
       authorization. Five core rules (D-1 through D-5) govern this
-      relationship; they are defined in Section 4.2.10 of the AIP
+      relationship; they are defined in Section 5.10 of the AIP
       specification.
     </t>
     <t>

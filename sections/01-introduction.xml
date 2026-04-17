@@ -64,7 +64,7 @@
       matching overhead to risk level.
     </t>
     <t>
-      Deterministic verification. The Validation Algorithm (Section 7.2) is fully
+      Deterministic verification. The Validation Algorithm (Section 9) is fully
       deterministic: two independent implementations executing the same
       steps on the same token will reach the same result.
     </t>
@@ -77,8 +77,8 @@
       must be validated against the Registry on every interaction.
       Short-lived Credential Tokens bound by a mandatory TTL
       limit the blast radius of any credential compromise. Revocation is
-      checked in real time for Tier 2 sensitive operations (Section 17.3).
-      DPoP proof-of-possession (Section 17.3) ensures that possession of a
+      checked in real time for Tier 2 sensitive operations (Section 11.3).
+      DPoP proof-of-possession (Section 21.3) ensures that possession of a
       valid Credential Token is insufficient for impersonation without the
       corresponding private key material, satisfying the anti-replay
       requirement of <xref target="SP-800-207"/> Section 3.
@@ -88,19 +88,19 @@
       agent identity, authorization, and delegation layer that MCP server
       implementations require but do not define. An AIP-authenticated
       agent can obtain scoped access tokens for MCP servers via the token
-      exchange mechanism defined in Section 7.1.4. AIP does not replace MCP;
+      exchange mechanism defined in Section 8.4. AIP does not replace MCP;
       it provides the identity substrate on which MCP authorization
-      decisions are made. See Section 7.1.4 (Token Exchange) and Section 15.5
+      decisions are made. See Section 8.4 (Token Exchange) and Section 17.5
       (OAuth Authorization Server) for the concrete integration path.
     </t>
     <t>
       Least Privilege. Agents are granted only the specific capabilities
       required for their declared purpose, expressed as signed Capability
-      Manifests (Section 4.2.3). Capability grants are always additive from
+      Manifests (Section 5.3). Capability grants are always additive from
       principal to agent and never exceed the granting principal's own
       capability set. A child agent must not be granted capabilities that
-      the delegating parent does not itself hold (Rule D-1, Section 4.2.10).
-      The max_delegation_depth field (Section 8) bounds the depth of
+      the delegating parent does not itself hold (Rule D-1, Section 5.10).
+      The max_delegation_depth field (Section 10) bounds the depth of
       sub-agent hierarchies, limiting transitive capability propagation.
       Capability constraints allow fine-grained least-privilege expression
       within each capability category, consistent with
@@ -136,8 +136,8 @@
       model-layer concern outside this specification's scope. AIP
       mitigates the persistence window of a successful prompt injection
       attack: a compromised agent may be immediately revoked via
-      <tt>full_revoke</tt> (Section 9.1), and revocation propagates to all
-      child agents within the TTL window defined in Section 7.1.2. AIP does
+      <tt>full_revoke</tt> (Section 11.1), and revocation propagates to all
+      child agents within the TTL window defined in Section 8.2. AIP does
       not prevent the initial injection - it limits the attacker's
       persistence.
     </t>

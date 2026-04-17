@@ -9,6 +9,9 @@
 *.swp
 *.swo
 
+.local-agent
+
+.venv/
 tmp/
 docs/archive
 

@@ -1,18 +1,18 @@
 # Agent Identity Protocol (AIP) RFC Draft
 
-This repository contains the IETF/RFC XML source for the Agent Identity Protocol Internet-Draft and the public documentation needed to maintain it as a long-lived standards project.
+This repository contains the IETF/RFC XML source for the Agent Identity Protocol Internet-Draft together with the working documentation, schemas, examples, archives, and editorial tooling used to maintain it as a long-lived standards project.
 
-The repository is intended to be conservative, review-heavy, and traceable. The canonical working draft lives in XML. Markdown is not the authoring source on `main`.
+This is the private working repository aligned with the public AIP specification repository. The canonical working draft lives in XML. Markdown is not the authoring source on `main`.
 
 ## Scope
 
-This repository is the public working tree for:
+This repository is the working tree for:
 
 - Internet-Draft XML source and referenced fragments
 - accepted specification edits and public review artifacts
 - contributor, maintenance, and release guidance
 
-This repository is not the place for:
+The public repository is not the place for:
 
 - unpublished working notes or draft materials
 - internal review materials

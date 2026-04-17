@@ -5,7 +5,7 @@
   <section anchor="registration-envelope-submission">
     <name>Registration Envelope</name>
     <t>An agent is registered by submitting a Registration Envelope to
-`POST /v1/agents`. The fields are defined in Section 4.2.6.</t>
+`POST /v1/agents`. The fields are defined in Section 5.6.</t>
     <t>The `principal_token` MUST have `delegation_depth` equal to 0 and
 `delegated_by` equal to null. The `sub` field of the decoded principal
 token payload MUST equal `identity.aid`.</t>
@@ -32,11 +32,11 @@ all or reject all — partial registration MUST NOT be possible.</t>
       <li>Check 13. If `identity.version` is 2 or greater, `identity.previous_key_signature` MUST be present and MUST verify using the key at the previous version.</li>
       <li>Check 14. `grant_tier` MUST be present and MUST be one of `"G1"`, `"G2"`, or `"G3"`. If any scope in `capability_manifest.capabilities` is a Tier 2 scope (per Section 3.1), `grant_tier` MUST be `"G2"` or `"G3"`. If any scope is Tier 3, `grant_tier` MUST be `"G3"`. If `grant_tier` is absent, the Registry MUST reject with `registration_invalid`.</li>
     </ol>
-    <t>The Registry MUST record the `delegated_by` field from the decoded `principal_token` payload (or the principal's DID if `delegated_by` is null) in the parent-child delegation index, for use in revocation propagation (Section 9.3).</t>
+    <t>The Registry MUST record the `delegated_by` field from the decoded `principal_token` payload (or the principal's DID if `delegated_by` is null) in the parent-child delegation index, for use in revocation propagation (Section 11.3).</t>
   </section>
 
   <section anchor="registration-errors">
     <name>Error Responses</name>
-    <t>All AIP error responses MUST use the format defined in Section 13.1. Implementations MUST NOT return HTTP 200 for error conditions.</t>
+    <t>All AIP error responses MUST use the format defined in Section 18.1. Implementations MUST NOT return HTTP 200 for error conditions.</t>
   </section>
 </section>

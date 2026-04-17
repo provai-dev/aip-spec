@@ -27,7 +27,7 @@
       </tbody>
     </table>
     <t>
-      The response body MUST conform to the error response format (Section 13.1)
+      The response body MUST conform to the error response format (Section 18.1)
       with `error: "rate_limit_exceeded"` and a human-readable
       `error_description` identifying the rate-limited operation and the
       applicable window.
@@ -137,8 +137,8 @@
       <ul>
         <li>
           The CRL endpoint MUST be served from a CDN or distributed
-          infrastructure (Section 9.2). Direct-origin CRL reads SHOULD be rate
-          limited per IP to 100 requests per minute to protect against CDN
+          infrastructure (Section 11.2). Direct-origin CRL reads SHOULD be rate
+           limited per IP to 100 requests per minute to protect against CDN
           bypass attacks. CDN-served responses have no normative rate limit
           constraint.
         </li>
@@ -196,7 +196,7 @@
         The Registry MUST check AID uniqueness under a distributed lock or
         equivalent atomic mechanism. Two simultaneous registration requests
         for the same AID MUST result in exactly one succeeding and one
-        receiving an appropriate error (Section 5.2 Check 4).
+        receiving an appropriate error (Section 6.2 Check 4).
       </t>
     </section>
 
@@ -298,7 +298,7 @@
     <section anchor="envelope-submission-rate">
       <name>Envelope submission rate</name>
       <t>
-        Per Section 14.2, Category R7.
+        Per Section 19.2, Category R7.
       </t>
     </section>
 

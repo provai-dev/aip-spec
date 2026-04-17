@@ -32,8 +32,8 @@
     <ul>
       <li><tt>typ</tt>: MUST be <tt>"AIP+JWT"</tt></li>
       <li><tt>alg</tt>: MUST be one of the approved algorithms per Section
-        17.2 (EdDSA REQUIRED; ES256 and RS256 optional per Section
-        16.1)</li>
+        21.2 (EdDSA REQUIRED; ES256 and RS256 optional per Section
+        20.1)</li>
       <li><tt>kid</tt>: MUST be present and MUST be a DID URL in the form
         <tt>did:aip:&lt;namespace&gt;:&lt;32-hex&gt;#key-&lt;n&gt;</tt></li>
     </ul>
@@ -120,7 +120,7 @@
   <section anchor="validation-step-6" numbered="true">
   <name>Step 6: TTL Validation</name>
     <t>       Verify that the token's lifetime does not exceed the maximum permitted      by its scopes. Compute <tt>lifetime = exp - iat</tt> (in seconds).
-      Compare against the TTL limits defined in Section 7.1.2:
+      Compare against the TTL limits defined in Section 8.2:
     </t>
     <artwork><![CDATA[
 Standard scopes (email.*, calendar.*, web.*):     max 3600 seconds
@@ -216,14 +216,17 @@ categories, the most restrictive limit applies.
     </t>
     <ul>
       <li><strong>Tier 1:</strong> Retrieve the CRL from the Registry cache.
-        If the agent appears on the CRL (revocation type
-        <tt>full_revoke</tt>, <tt>scope_revoke</tt>, or
-        <tt>principal_revoke</tt>), reject with <tt>agent_revoked</tt>.</li>
-      <li><strong>Tier 2:</strong> Perform a live Registry lookup. Do not use
-        cached CRL data. Query <tt>GET /v1/agents/{iss}/revocation</tt>
-        and verify no active revocation applies. If the agent is revoked,
-        reject with <tt>agent_revoked</tt>. If the Registry is unreachable,
-        reject with <tt>registry_unavailable</tt>.</li>
+        If the agent appears on the CRL with revocation type
+        <tt>full_revoke</tt> or <tt>principal_revoke</tt>, reject with
+        <tt>agent_revoked</tt>. If the agent appears with <tt>scope_revoke</tt>,
+        the Relying Party MUST verify that none of the scopes in the token's
+        <tt>aip_scope</tt> are present in the <tt>scopes_revoked</tt> list.
+        If any match, reject with <tt>agent_revoked</tt>.</li>
+      <li><strong>Tier 2:</strong> Perform a live Registry lookup. Query
+        <tt>GET /v1/agents/{iss}/revocation</tt> and verify no active revocation
+        applies to the token's AID or its currently requested scopes.
+        If revoked, reject with <tt>agent_revoked</tt>. If the Registry is
+        unreachable, reject with <tt>registry_unavailable</tt>.</li>
     </ul>
   </section>
 
@@ -405,13 +408,18 @@ categories, the most restrictive limit applies.
     <t>
       This step applies only if both <tt>aip_approval_id</tt> and
       <tt>aip_approval_step</tt> are present in the Credential Token (the
-      Step Execution Token case, Section 4.4.8).
+      Step Execution Token case, Section 13.8).
     </t>
     <t>
       The Relying Party MUST call the Registry endpoint <tt>GET
       /v1/approvals/{aip_approval_id}/steps/{n}</tt> where <tt>{n}</tt> is
       the value of <tt>aip_approval_step</tt> verbatim (an integer &gt;= 1, per
-      Section 4.4.4; MUST NOT be decremented or adjusted). Verify:
+      Section 13.4; MUST NOT be decremented or adjusted).
+      NOTE: <tt>aip_approval_step</tt> uses 1-based indexing (e.g., the
+      first step in an envelope is step 1). This is a change from
+      deprecated 0-indexed drafts; implementations MUST NOT subtract 1 from
+      the value.
+      Verify:
     </t>
     <ol>
       <li><strong>Step Status:</strong> The step's <tt>status</tt> field MUST
@@ -426,7 +434,7 @@ categories, the most restrictive limit applies.
         request (origin comparison per <xref target="RFC6454"/>: scheme +
         host + port). Reject if mismatch with <tt>approval_step_invalid</tt>.</li>
       <li><strong>Action Hash:</strong> Compute the expected action hash for
-        this step per Section 4.4.7. Compare against the step's
+        this step per Section 13.7. Compare against the step's
         <tt>action_hash</tt> field. If mismatch, reject with
         <tt>approval_step_invalid</tt>. This ensures the approving principal
         authorised the exact action being executed.</li>

@@ -29,7 +29,7 @@
             </tr>
             <tr>
               <td>scope_revoke</td>
-              <td>Removes specific scopes from Capability Manifest. Does NOT invalidate outstanding tokens.</td>
+              <td>Invalidates specific scopes for the agent. For Tier 1 and 2, this MUST cause Relying Parties to reject Credential Tokens containing the revoked scopes (Step 7, Section 9).</td>
             </tr>
             <tr>
               <td>delegation_revoke</td>
@@ -37,7 +37,7 @@
             </tr>
             <tr>
               <td>principal_revoke</td>
-              <td>Issued by root principal. Equivalent to full_revoke plus child propagation.</td>
+              <td>Issued by the root principal to revoke their entire authorisation of the target agent (via AID) or all agents under their authority (via Principal DID).</td>
             </tr>
           </tbody>
         </table>

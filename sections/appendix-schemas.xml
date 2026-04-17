@@ -1,0 +1,57 @@
+<section anchor="appendix-schemas-content" numbered="false">
+  <name>JSON Schema Index</name>
+  <t>
+    The following JSON Schema definitions are normatively referenced throughout
+    this specification. They are available in JSON Schema Draft 2020-12 format
+    in the specification repository at <eref
+    target="https://github.com/provai-dev/aip-spec">aip-spec</eref> under
+    <tt>spec/v0.3/schemas/</tt>.
+  </t>
+
+  <dl newline="false">
+    <dt>agent-identity.schema.json</dt>
+    <dd>Defines the Agent Identity Object structure (Section 5.2).</dd>
+
+    <dt>capability-manifest.schema.json</dt>
+    <dd>Defines the Capability Manifest structure (Section 5.3).</dd>
+
+    <dt>credential-token.schema.json</dt>
+    <dd>Defines the Credential Token JWT payload structure (Section 5.4).</dd>
+
+    <dt>principal-token.schema.json</dt>
+    <dd>Defines the Principal Token JWT payload structure (Section 5.5).</dd>
+
+    <dt>registration-envelope.schema.json</dt>
+    <dd>Defines the Registration Envelope request body structure (Section
+      5.6).</dd>
+
+    <dt>revocation-object.schema.json</dt>
+    <dd>Defines the Revocation Object structure (Section 5.7).</dd>
+
+    <dt>endorsement.schema.json</dt>
+    <dd>Defines the Endorsement Object structure (Section 5.8).</dd>
+
+    <dt>approval-envelope.schema.json</dt>
+    <dd>Defines the Approval Envelope, Step, and Compensation Step structures
+      (Section 13).</dd>
+
+    <dt>capability-overlay.schema.json</dt>
+    <dd>Defines the Capability Overlay structure (Section 5.11).</dd>
+
+    <dt>engagement-object.schema.json</dt>
+    <dd>Defines the Engagement Object structure including Participant,
+      Approval Gate, and Change Log Entry (Section 5.12).</dd>
+
+    <dt>grant-request.schema.json</dt>
+    <dd>Defines the Grant Request structure (Section 12.2).</dd>
+
+    <dt>grant-response.schema.json</dt>
+    <dd>Defines the Grant Response structure (Section 12.4).</dd>
+  </dl>
+
+  <t>
+    All schema files conform to JSON Schema Draft 2020-12. Implementations MUST
+    validate objects against these schemas. Validation failures MUST result in
+    rejection.
+  </t>
+</section>

@@ -524,4 +524,59 @@ Content-Type: application/json
       MUST be permitted to retrieve the GrantResponse.
     </t>
   </section>
+
+  <section anchor="g2-grant" numbered="true">
+  <name>G2: Direct Deployer Grant Flow</name>
+    <t>
+      The G2 (Direct Deployer) grant profile is the standard flow for
+      applications that integrate directly with Principal Wallets.
+      The deployer signs the GrantRequest directly and transmits it
+      to the wallet via a front-channel binding (Web Redirect or QR Code).
+    </t>
+
+    <t>
+      <strong>Actors:</strong> Agent Deployer, Principal Wallet, Principal.
+    </t>
+
+    <t>
+      <strong>Step-by-step definition:</strong>
+    </t>
+
+    <ol>
+      <li>The deployer generates the agent's Ed25519 keypair and constructs a GrantRequest.</li>
+      <li>The deployer signs the GrantRequest with its own Ed25519 key (deployer_did).</li>
+      <li>The deployer transmits the request to the Principal Wallet via a front-channel binding.</li>
+      <li>The Principal Wallet verifies the deployer's signature and presents the consent UI to the principal.</li>
+      <li>On approval, the Principal Wallet signs the Principal Token and returns a GrantResponse to the deployer's callback_uri.</li>
+      <li>The deployer submits the Registration Envelope to the Registry with grant_tier: "G2".</li>
+    </ol>
+  </section>
+
+  <section anchor="g3-grant" numbered="true">
+  <name>G3: Full Ceremony Grant Flow (OAuth 2.1)</name>
+    <t>
+      The G3 (Full Ceremony) grant profile is required for high-assurance
+      Tier 3 operations and environments requiring identity proofing.
+      It uses an OAuth 2.1 Authorization Server (AS) typically operated
+      by the Registry.
+    </t>
+
+    <t>
+      <strong>Actors:</strong> Agent Deployer, AIP Registry (as OAuth AS),
+      Principal Wallet, Principal.
+    </t>
+
+    <t>
+      <strong>Step-by-step definition:</strong>
+    </t>
+
+    <ol>
+      <li>The deployer initiates an OAuth 2.1 Authorization Code Flow with PKCE at the Registry's authorization endpoint.</li>
+      <li>The Registry redirects the principal to their configured Principal Wallet for authentication and consent.</li>
+      <li>The wallet performs high-assurance authentication (e.g., FIDO2/WebAuthn) and obtains consent.</li>
+      <li>The wallet returns an authorization code to the Registry.</li>
+      <li>The Registry issues a signed Principal Token to the deployer's token endpoint. The token MUST include acr and amr claims.</li>
+      <li>The deployer submits the Registration Envelope to the Registry with grant_tier: "G3".</li>
+    </ol>
+  </section>
 </section>

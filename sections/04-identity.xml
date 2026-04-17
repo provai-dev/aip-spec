@@ -4,7 +4,7 @@
     registry.
   </t>
 
-  <section  numbered="true">
+  <section anchor="aid-syntax" numbered="true">
   <name>AID Syntax</name>
     <t>
       An Agent Identity Descriptor (AID) conforms to the following ABNF:
@@ -39,7 +39,7 @@ LOHEXDIG   = DIGIT / "a" / "b" / "c" / "d" / "e" / "f"
     </ul>
   </section>
 
-  <section  numbered="true">
+  <section anchor="aid-derivation" numbered="true">
   <name>AID Derivation</name>
     <t>
       An AID is derived deterministically from the agent's Ed25519 public
@@ -63,7 +63,7 @@ LOHEXDIG   = DIGIT / "a" / "b" / "c" / "d" / "e" / "f"
     </t>
   </section>
 
-  <section  numbered="true">
+  <section anchor="registered-namespaces" numbered="true">
   <name>Registered Namespaces</name>
     <t>
       The following namespaces are registered:
@@ -103,12 +103,13 @@ LOHEXDIG   = DIGIT / "a" / "b" / "c" / "d" / "e" / "f"
     </t>
   </section>
 
-  <section  numbered="true">
+  <section anchor="agent-identity-object-schema" numbered="true">
   <name>Agent Identity Object Schema</name>
     <t>
       The Agent Identity Object is the base document for an agent. It
       includes the AID, public key material, and metadata. The schema is
-      defined in Section 4.2.2 (see also <tt>schemas/agent-identity.schema.json</tt>).
+      defined in Section 5.2 (see also agent-identity.schema.json in the
+      schemas directory).
     </t>
     <t>
       Key fields:
@@ -129,7 +130,7 @@ LOHEXDIG   = DIGIT / "a" / "b" / "c" / "d" / "e" / "f"
     </ul>
   </section>
 
-  <section  numbered="true">
+  <section anchor="aid-uniqueness" numbered="true">
   <name>Uniqueness and Immutability</name>
     <t>
       An AID MUST be globally unique. Once an agent is registered in a
