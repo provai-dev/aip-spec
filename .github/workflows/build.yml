@@ -65,9 +65,7 @@ jobs:
                 echo "   Archived revisions are append-only."
                 exit 1
               fi
-            done <<EOF_GUARD
-$changed_archives
-EOF_GUARD
+            done <<< "$changed_archives"
           fi
 
       - name: Set up Python
