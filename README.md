@@ -12,6 +12,8 @@ This repository is the working tree for:
 - accepted specification edits and public review artifacts
 - contributor, maintenance, and release guidance
 
+The project is currently oriented around review, validation, and implementation feedback. See [ROADMAP.md](ROADMAP.md) for the public workstreams.
+
 The public repository is not the place for:
 
 - unpublished working notes or draft materials
@@ -46,9 +48,12 @@ Repository documentation:
 - `docs/MIGRATION-FROM-MARKDOWN.md`: migration record and archived-branch plan
 - `docs/VERSIONING.md`: document, draft, and repository versioning rules
 - `docs/ISSUE-PROPOSAL-WORKFLOW.md`: public issue and proposal lifecycle
+- `docs/IMPLEMENTER-WALKTHROUGH.md`: non-normative walkthrough of one grant and registration flow
+- `docs/IMPLEMENTATION-REPORTS.md`: how to share implementation experience and prototype findings
 - `docs/AUTHORSHIP.md`: authorship, acknowledgments, and editor guidance
 - `docs/MAINTAINERS.md`: maintainer responsibilities and cadence
 - `docs/REPOSITORY-STRUCTURE.md`: documentation and file placement guidance
+- `ROADMAP.md`: current public open-source workstreams
 - `.github/ISSUE_TEMPLATE/`: structured issue intake forms
 - `.github/PULL_REQUEST_TEMPLATE.md`: required PR checklist
 
@@ -143,9 +148,21 @@ Start here depending on the work:
 
 - editorial or normative contribution: [CONTRIBUTING.md](CONTRIBUTING.md)
 - proposal or errata handling: [docs/ISSUE-PROPOSAL-WORKFLOW.md](docs/ISSUE-PROPOSAL-WORKFLOW.md)
+- implementation feedback: [docs/IMPLEMENTATION-REPORTS.md](docs/IMPLEMENTATION-REPORTS.md)
+- first implementer walkthrough: [docs/IMPLEMENTER-WALKTHROUGH.md](docs/IMPLEMENTER-WALKTHROUGH.md)
 - authorship and acknowledgment questions: [docs/AUTHORSHIP.md](docs/AUTHORSHIP.md)
 - maintainer responsibilities: [docs/MAINTAINERS.md](docs/MAINTAINERS.md)
 - repository organization: [docs/REPOSITORY-STRUCTURE.md](docs/REPOSITORY-STRUCTURE.md)
+
+## How To Help Now
+
+- Review draft clarity and file focused errata.
+- Validate schemas and examples against real implementation expectations.
+- Walk through the G2 grant and registration path in [docs/IMPLEMENTER-WALKTHROUGH.md](docs/IMPLEMENTER-WALKTHROUGH.md).
+- File implementation reports from prototypes, models, or interoperability experiments.
+- Improve contributor documentation when a setup or validation step is unclear.
+
+Use [ROADMAP.md](ROADMAP.md) to choose the right contribution path.
 
 ## Maintenance Principles
 

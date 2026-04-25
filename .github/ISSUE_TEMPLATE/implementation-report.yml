@@ -1,0 +1,76 @@
+name: Implementation Report
+description: Share implementation experience, prototype findings, or interop feedback for AIP.
+title: "[Implementation Report]: "
+labels:
+  - implementation-report
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Briefly describe what you tried to implement or evaluate.
+    validations:
+      required: true
+  - type: input
+    id: draft_revision
+    attributes:
+      label: Draft revision or commit
+      description: Name the draft revision, commit SHA, or branch you reviewed.
+      placeholder: "draft-singla-agent-identity-protocol-01 or commit SHA"
+    validations:
+      required: true
+  - type: textarea
+    id: affected_artifacts
+    attributes:
+      label: Affected sections, schemas, or examples
+      description: List section numbers, schema files, example files, or links.
+    validations:
+      required: true
+  - type: textarea
+    id: implementation_context
+    attributes:
+      label: Implementation context
+      description: Describe the flow, object, prototype, or integration you worked through. Do not include confidential material.
+    validations:
+      required: true
+  - type: textarea
+    id: worked
+    attributes:
+      label: What worked
+      description: Note the parts of the draft that were clear or implementable.
+  - type: textarea
+    id: unclear
+    attributes:
+      label: What was unclear or blocked
+      description: Explain ambiguity, missing details, interop risks, or operational concerns.
+    validations:
+      required: true
+  - type: dropdown
+    id: likely_followup
+    attributes:
+      label: Likely follow-up class
+      description: Choose the closest class. Maintainers may reclassify.
+      options:
+        - Documentation only
+        - Editorial clarification
+        - Semantic proposal
+        - Normative proposal
+        - Schema or example fix
+        - Unsure
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility or migration concerns
+      description: Describe effects on current or future implementers, if known.
+  - type: textarea
+    id: public_artifacts
+    attributes:
+      label: Public artifacts
+      description: Link public code, tests, diagrams, or writeups if available.
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation performed
+      description: List commands run, or explain why validation was not applicable.

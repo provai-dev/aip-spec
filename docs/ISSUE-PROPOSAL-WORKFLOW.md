@@ -17,12 +17,15 @@ That issue number is the traceability anchor for:
 - validation
 - final integration
 
+Implementation reports also use GitHub issues. They are evidence for future work, not approval to change the draft. See [IMPLEMENTATION-REPORTS.md](IMPLEMENTATION-REPORTS.md).
+
 ## Workflow Stages
 
 ### 1. Intake
 
 - A human opens or references a GitHub issue.
 - The issue is classified as errata, proposal, editorial clarification, defect, or maintenance.
+- Implementation reports are classified as implementation feedback and may later spawn errata, proposal, schema, example, or documentation follow-ups.
 - Scope and urgency are clarified.
 
 ### 2. Research

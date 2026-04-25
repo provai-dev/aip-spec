@@ -12,6 +12,7 @@ This repository should remain predictable for contributors and reviewers.
 - `drafts/`: append-only archived Internet-Draft revisions
 - `history/markdown-era/`: historical Markdown-era schema and example material
 - `docs/`: repository policy and contributor documentation
+- `ROADMAP.md`: public open-source workstreams and contribution paths
 - `.github/`: issue templates, PR template, and repository workflows
 
 Compatibility surface:
@@ -33,6 +34,8 @@ Put minted `-NN` revisions in `drafts/`. Do not overwrite an existing snapshot d
 ### Public process documentation
 
 Put contributor and maintainer documentation in `docs/` or top-level project files such as `README.md` and `CONTRIBUTING.md`.
+
+Use `ROADMAP.md` for public workstream direction. Use `docs/IMPLEMENTER-WALKTHROUGH.md` for non-normative implementer orientation. Use `docs/IMPLEMENTATION-REPORTS.md` for implementation-feedback guidance.
 
 ### Public templates
 

@@ -12,9 +12,12 @@ Read these first:
 - [docs/DRAFT_ARCHIVING.md](docs/DRAFT_ARCHIVING.md)
 - [docs/MIGRATION-FROM-MARKDOWN.md](docs/MIGRATION-FROM-MARKDOWN.md)
 - [docs/ISSUE-PROPOSAL-WORKFLOW.md](docs/ISSUE-PROPOSAL-WORKFLOW.md)
+- [docs/IMPLEMENTER-WALKTHROUGH.md](docs/IMPLEMENTER-WALKTHROUGH.md)
+- [docs/IMPLEMENTATION-REPORTS.md](docs/IMPLEMENTATION-REPORTS.md)
 - [docs/VERSIONING.md](docs/VERSIONING.md)
 - [docs/AUTHORSHIP.md](docs/AUTHORSHIP.md)
 - [docs/REPOSITORY-STRUCTURE.md](docs/REPOSITORY-STRUCTURE.md)
+- [ROADMAP.md](ROADMAP.md)
 
 ## Contribution Types
 
@@ -22,6 +25,7 @@ The repository accepts several kinds of contributions:
 
 - errata reports and defect analyses
 - proposal issues and proposal pull requests
+- implementation reports from prototypes, models, or interoperability experiments
 - editorial clarifications
 - normative changes with explicit rationale and compatibility analysis
 - build and repository maintenance improvements
@@ -49,6 +53,8 @@ All substantial work starts from a GitHub issue number.
 3. Record assumptions, affected sections, linked issues, prior discussion, and compatibility concerns.
 4. Obtain human maintainer approval before drafting normative text, applying fixes, or finalizing public-facing output.
 5. Submit a pull request tied to the tracked issue.
+
+Implementation reports also start as GitHub issues. They may become research inputs for later editorial, semantic, normative, schema, or example changes, but they do not approve those changes by themselves.
 
 ## Research Expectations
 
