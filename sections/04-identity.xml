@@ -1,7 +1,9 @@
 <section anchor="core-identity" numbered="true">
   <name>Core Identity (did:aip)</name>
-  <t>     Every AIP agent has a globally unique, persistent identifier conforming     to the W3C Decentralized Identifier (DID) standard [W3C-DID]. The AIP    DID method is <tt>did:aip</tt>, registered with the W3C DID method
-    registry.
+  <t>     Every AIP agent has a cryptographically derived, persistent identifier conforming     to the W3C Decentralized Identifier (DID) standard [W3C-DID]. This
+    document defines the AIP DID method <tt>did:aip</tt> and provides
+    non-IANA W3C DID Method Registry registration information in
+    <xref target="iana-did-method"/>.
   </t>
 
   <section anchor="aid-syntax" numbered="true">
@@ -10,13 +12,14 @@
       An Agent Identity Descriptor (AID) conforms to the following ABNF:
     </t>
     <artwork type="abnf"><![CDATA[
-AID        = "did:aip:" namespace ":" agent-id
-namespace  = LOALPHA *( LOALPHA / DIGIT / "-" )
-agent-id   = 32LOHEXDIG
-LOALPHA    = %x61-7A        ; a-z only, lowercase
-DIGIT      = %x30-39
-LOHEXDIG   = DIGIT / "a" / "b" / "c" / "d" / "e" / "f"
-                            ; lowercase hex digit only
+	AID        = "did:aip:" namespace ":" agent-id
+	namespace  = LOALPHA *( LOALPHA / DIGIT )
+	             *( "-" 1*( LOALPHA / DIGIT ) )
+	agent-id   = 32LOHEXDIG
+	LOALPHA    = %x61-7A        ; a-z only, lowercase
+	DIGIT      = %x30-39
+	LOHEXDIG   = DIGIT / "a" / "b" / "c" / "d" / "e" / "f"
+	                            ; lowercase hex digit only
     ]]></artwork>
     <t>
       Example: <tt>did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3</tt>
@@ -28,14 +31,15 @@ LOHEXDIG   = DIGIT / "a" / "b" / "c" / "d" / "e" / "f"
       uppercase namespace characters.
     </t>
     <ul>
-      <li><tt>namespace</tt>: A lowercase alphanumeric string (ALPHA followed
-        by any combination of ALPHA, DIGIT, or hyphens) identifying the agent
-        type. Registered namespaces include: <tt>personal</tt>,
-        <tt>enterprise</tt>, <tt>service</tt>, <tt>orchestrator</tt>,
-        <tt>ephemeral</tt>. Custom namespaces MAY be registered.</li>
+      <li><tt>namespace</tt>: A lowercase alphanumeric string with optional
+        single-hyphen-separated segments identifying the agent type. Each
+        hyphen MUST be followed by one or more lowercase alphanumeric
+        characters. Concrete namespace registrations are maintained in the AIP
+        Namespace Catalog (<xref target="scope-map-registry"/>).</li>
       <li><tt>agent-id</tt>: A 32-character hexadecimal string (lowercase)
-        computed as the SHA-256 hash of the agent's public Ed25519 key
-        material (the JWK <tt>x</tt> value base64url-decoded).</li>
+        computed as the leftmost 128 bits (first 16 octets) of the SHA-256
+        hash of the agent's public Ed25519 key material (the JWK <tt>x</tt>
+        value base64url-decoded).</li>
     </ul>
   </section>
 
@@ -51,57 +55,42 @@ LOHEXDIG   = DIGIT / "a" / "b" / "c" / "d" / "e" / "f"
         <tt>crv="Ed25519"</tt>, and the public key value in the <tt>x</tt>
         field (base64url-encoded).</li>
       <li>Compute <tt>SHA-256(base64url_decode(x))</tt> to obtain a 32-byte
-        hash.</li>
-      <li>Hex-encode the hash (lowercase) to form the <tt>agent-id</tt>.</li>
+        digest.</li>
+      <li>Take the leftmost 16 octets of that digest and hex-encode them
+        (lowercase) to form the 32-character <tt>agent-id</tt>.</li>
       <li>Combine with the chosen <tt>namespace</tt> to form the complete
         AID: <tt>did:aip:&lt;namespace&gt;:&lt;agent-id&gt;</tt>.</li>
     </ol>
     <t>
       This derivation is deterministic and cryptographically self-verifying:
-      possession of the private key is both necessary and sufficient to claim
-      ownership of the AID.
+      possession of the private key corresponding to the registered public key
+      is both necessary and sufficient to prove control of the AID.
     </t>
   </section>
 
   <section anchor="registered-namespaces" numbered="true">
-  <name>Registered Namespaces</name>
+  <name>AIP Namespace Catalog</name>
     <t>
-      The following namespaces are registered:
+      Standard and community AID namespace registrations are defined by the
+      immutable AIP Catalog Snapshot identified in
+      <xref target="scope-map-registry"/> and exposed by conformant
+      Registries through the Namespace Catalog endpoint defined there. The
+      Draft-02 Catalog Snapshot contains the standard namespace entries for
+      personal, enterprise, service, orchestrator, ephemeral, and registry
+      agents.
     </t>
-    <dl newline="false">
-      <dt><tt>personal</tt>:</dt>
-      <dd>An AI assistant serving a single human principal. Personal agents
-        declare this namespace.</dd>
-
-      <dt><tt>enterprise</tt>:</dt>
-      <dd>An agent deployed by an organisation for use within the
-        organisation.</dd>
-
-      <dt><tt>service</tt>:</dt>
-      <dd>A service-owned agent providing functionality to principals (e.g.,
-        payment processor, communication provider).</dd>
-
-      <dt><tt>orchestrator</tt>:</dt>
-      <dd><t>An agent that spawns and manages sub-agents. Typically has
-        <tt>spawn_agents.create</tt> and <tt>spawn_agents.manage</tt>
-        scopes.</t></dd>
-
-      <dt><tt>ephemeral</tt>:</dt>
-      <dd>A short-lived agent created for a single task. Ephemeral agents
-        MUST include a <tt>task_id</tt> in their Principal Token and MUST
-        have a limited <tt>delegation_valid_for_seconds</tt> (typically &lt;
-        1 hour).</dd>
-
-      <dt><tt>registry</tt>:</dt>
-      <dd>The <tt>registry</tt> namespace is reserved for Registry-owned
-        agent identities when a Registry deployment exposes agent-like
-        actors. It MUST NOT be used as the stable Registry service
-        identifier. The stable Registry service identifier is
-        <tt>registry_id</tt> as defined in Section 7.3.4.</dd>
-    </dl>
     <t>
-      Custom namespaces MAY be registered with the W3C and the AIP registry.
-      Namespaces are immutable once registered.
+      Namespace registration metadata is normative for namespace-level
+      lifecycle rules. If a namespace entry sets
+      <tt>requires_task_id: true</tt>, Principal Tokens for agents in that
+      namespace MUST contain a non-empty <tt>task_id</tt>. If a namespace
+      entry sets <tt>reserved: true</tt>, the namespace MUST NOT be registered
+      through the normal <tt>POST /v1/agents</tt> flow.
+    </t>
+    <t>
+      Namespaces are immutable once registered. Custom or community namespaces
+      MUST be registered in the AIP Namespace Catalog before they are treated
+      as interoperable AIP namespaces.
     </t>
   </section>
 
@@ -135,10 +124,17 @@ LOHEXDIG   = DIGIT / "a" / "b" / "c" / "d" / "e" / "f"
   <section anchor="aid-uniqueness" numbered="true">
   <name>Uniqueness and Immutability</name>
     <t>
-      An AID MUST be globally unique. Once an agent is registered in a
-      Registry, its AID is immutable. An AID cannot be reused or transferred.
+      An AID MUST be unique within the authoritative Registry namespace and is
+      cryptographically derived from the agent public key. Once an agent is
+      registered in a Registry, its AID is immutable. An AID cannot be reused
+      or transferred within that Registry.
       Two agents with identical public keys will derive identical AIDs, so
-      the cryptographic relationship is deterministic.
+      the cryptographic relationship is deterministic. If two different
+      public keys derive the same AID, the Registry MUST treat the later
+      registration as an AID collision and reject it as a duplicate AID.
+      If a registration attempt presents a public key that is already
+      associated with a registered, non-revoked AID in that Registry, the
+      Registry MUST reject the attempt with <tt>aid_already_registered</tt>.
     </t>
   </section>
 </section>

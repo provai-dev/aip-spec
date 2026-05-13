@@ -39,6 +39,51 @@
 
       <dt>TS-9: Action Hash Manipulation</dt>
       <dd>An agent executes different action than approved. Mitigation: Action hash verification at claim time.</dd>
+
+      <dt>TS-10: Step Execution Token Misuse</dt>
+      <dd>An adversary forges, replays, or re-targets a Step Execution Token
+        to execute an Approval Envelope step outside the authorized actor,
+        audience, or step context. Mitigation: SET validation profile,
+        Registry Trust Record step-execution keys, Step 10a verification,
+        DPoP binding, and per-step status checks.</dd>
+
+      <dt>TS-11: Approval Lifecycle Race</dt>
+      <dd>Concurrent approval, rejection, expiry, cancellation, or claim
+        operations produce inconsistent Approval Envelope state. Mitigation:
+        atomic lifecycle transitions, compare-and-set or equivalent locking,
+        terminal-state rules, and <tt>approval_state_conflict</tt>.</dd>
+
+      <dt>TS-12: Orchestrator Cascade</dt>
+      <dd>A compromised or over-privileged orchestrator uses one approval or
+        delegation to trigger a larger cascade of dependent actions than the
+        principal intended. Mitigation: pre-declared Approval Envelope steps,
+        per-step actor and action-hash verification, step count limits,
+        dedicated destructive-scope approval, and SAGA compensation rules.</dd>
+
+      <dt>TS-13: Overlay Injection</dt>
+      <dd>An adversary injects or replays a Capability Overlay to expand or
+        mis-scope an agent's effective capabilities. Mitigation: Overlay
+        signatures, issuer validation, monotonic overlay versions, CO-1
+        attenuation-only validation, engagement scoping, and catalog
+        constraint validation.</dd>
+
+      <dt>TS-14: Engagement Tampering</dt>
+      <dd>An adversary modifies Engagement Object participants, lifecycle
+        state, approval gates, or change-log entries to alter authorization
+        context. Mitigation: required countersignatures, append-only signed
+        change logs, strict sequence validation, participant authorization
+        checks, and termination cascade rules.</dd>
+
+      <dt>TS-15: Model Substitution</dt>
+      <dd>An agent deployer registers with a trusted model identifier but
+        executes a different model binary or version manifest. Mitigation:
+        <tt>model.attestation_hash</tt> SHOULD be present for Tier 2
+        deployments and MUST be present for Tier 3 deployments. The Registry
+        SHOULD accept a Tier 2 registration without
+        <tt>model.attestation_hash</tt> only when it persists and returns the
+        structured <tt>model_attestation_missing_tier2</tt> registration
+        warning defined in Section 6.2. The Registry MUST reject a Tier 3
+        registration when <tt>model.attestation_hash</tt> is absent.</dd>
     </dl>
   </section>
 
@@ -73,33 +118,80 @@
               <td><xref target="RFC7517"/></td>
               <td>MUST</td>
             </tr>
-            <tr>
-              <td>Key exchange (future)</td>
-              <td>X25519</td>
-              <td><xref target="RFC7748"/></td>
-              <td>MUST</td>
-            </tr>
           </tbody>
         </table>
 
     <t>
-      Optional suites: ES256 (ECDSA P-256) per <xref target="RFC7518"/>
-      for WebAuthn compatibility; RS256 (RSA-PKCS1) per
-      <xref target="RFC7518"/> for legacy enterprise only - MUST NOT be
-      the sole supported algorithm; RSA keys MUST be at least 2048 bits.
+      This specification does not define an AIP key-exchange or encryption
+      handshake. X25519 and other key-agreement mechanisms are reserved for a
+      future extension and are not mandatory-to-implement in Draft-02.
+      Implementations MUST NOT treat support for any key-agreement algorithm
+      as a condition for conformance to this specification.
+    </t>
+
+    <t>
+      This specification reserves ES256 (ECDSA P-256) and RS256 (RSA-PKCS1),
+      as defined by <xref target="RFC7518"/>, for possible future extensions
+      but does not define registration, resolution, rotation, AID derivation,
+      or DPoP binding rules for those suites in protocol version
+      <tt>0.3</tt>. Credential Tokens, Principal Tokens, Step Execution
+      Tokens, DPoP proofs, Agent Identity keys, and Registry public-key
+      responses conforming to this specification MUST use EdDSA over Ed25519.
+      Implementations MUST reject <tt>ES256</tt>, <tt>RS256</tt>, and other
+      algorithm values for those artifacts.
     </t>
 
     <t>
       Prohibited: none, HS256/384/512, RS512, MD5, SHA-1.
-      The alg header MUST be explicitly specified.
+      The alg header MUST be explicitly specified. A DID verification
+      method used to sign or verify a Credential Token, Principal Token, Step
+      Execution Token, or DPoP proof MUST be an Ed25519 signing verification
+      method. X25519 keys are key-agreement keys and MUST NOT be used for
+      signing.
     </t>
   </section>
 
   <section anchor="dpop" numbered="true">
   <name>Proof-of-Possession (DPoP)</name>
     <t>
-      DPoP is REQUIRED for transactions.*, communicate.*, and
-      filesystem.execute scopes. DPoP proofs MUST use EdDSA.
+      DPoP is REQUIRED for every Tier 2 or Tier 3 operation. It is also
+      REQUIRED when any requested Tier 1 scope has
+      <tt>requires_dpop: true</tt> in the synced AIP Scope Catalog, or when
+      the target endpoint requires DPoP independently of scope metadata. DPoP proofs MUST use
+      EdDSA.
+    </t>
+    <table>
+      <name>DPoP Applicability</name>
+      <thead>
+        <tr>
+          <th align="left">Operation or request class</th>
+          <th align="left">DPoP requirement</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Tier 1 operation with no DPoP-required scope and no endpoint policy</td><td>Not required by AIP.</td></tr>
+        <tr><td>Tier 1 operation containing any scope whose synced Catalog entry has <tt>requires_dpop: true</tt></td><td>Required.</td></tr>
+        <tr><td>Tier 1 Registry endpoint that independently requires DPoP, including key rotation, heartbeat submission, and RPNP subscription authentication</td><td>Required.</td></tr>
+        <tr><td>Tier 2 operation</td><td>Required for every request.</td></tr>
+        <tr><td>Tier 3 operation</td><td>Required for every request, in addition to mTLS.</td></tr>
+      </tbody>
+    </table>
+    <t>
+      Endpoint-level DPoP requirements are independent of the operation's
+      security Tier. For example, <tt>PUT /v1/agents/{aid}</tt> key rotation
+      and <tt>POST /v1/agents/{aid}/heartbeat</tt> require DPoP even when the
+      affected agent was originally registered only for Tier 1 scopes.
+    </t>
+    <t>
+      For standard AIP scopes, the Draft-02 catalog marks all destructive
+      scopes and selected high-risk external-effect scopes as DPoP-required.
+      This includes deletion scopes, filesystem mutation and execution scopes,
+      transactions, communication scopes, spawn-agent scopes, and the
+      non-destructive but high-risk <tt>email.send</tt>,
+      <tt>web.download</tt>, and <tt>web.forms_submit</tt> scopes.
+      The <tt>web.forms_submit</tt> scope is Tier 2 in the Draft-02 catalog
+      because form submissions can create external account, data, or financial
+      effects.
     </t>
 
     <t>
@@ -127,33 +219,165 @@
 {
   "jti": "<UUID v4>",
   "htm": "<HTTP method, uppercase>",
-  "htu": "<scheme + host + path>",
+  "htu": "<scheme + host + path, no query or fragment>",
   "iat": "<Unix timestamp>",
-  "ath": "<BASE64URL(SHA-256(token)))>"
+  "ath": "<BASE64URL(SHA-256(token))>"
 }
 ]]></artwork>
 
     <t>
-      Relying Party validation: Verify alg is EdDSA, verify jwk.kid
-      matches token kid, verify htm/htu/iat, check jti replay,
-      verify ath, verify signature.
+      Relying Party validation: Verify alg is EdDSA, verify htm/htu/iat,
+      check jti replay, verify ath, verify signature, and verify the DPoP
+      public key binding for the presented token type. For an agent-issued
+      Credential Token, <tt>jwk.kid</tt> MUST match the Credential Token
+      protected header <tt>kid</tt>. For a Step Execution Token,
+      <tt>jwk.kid</tt> MUST identify Ed25519 public key material controlled
+      by the SET <tt>sub</tt> actor AID; it MUST NOT be the Registry
+      step-execution key that signed the SET.
+    </t>
+    <t>
+      The <tt>htu</tt> claim is the DPoP target URI binding. It MUST match
+      the absolute target URI of the current request, excluding query and
+      fragment components and using the normalization rules in
+      <xref target="RFC9449"/>. A proof captured for one Relying Party,
+      Registry, host, path, or method is not transferable to another target:
+      validation MUST fail on <tt>htu</tt> or <tt>htm</tt> before replay-cache
+      state is considered.
+    </t>
+    <t>
+      The <tt>ath</tt> claim binds the proof to the presented token. Its
+      value MUST be the unpadded base64url encoding of the SHA-256 hash of
+      the exact compact Credential Token or Step Execution Token value from
+      the <tt>Authorization</tt> header, excluding the authorization scheme,
+      surrounding whitespace, and DPoP proof. When DPoP is required, the
+      authorization scheme is <tt>DPoP</tt>.
+    </t>
+    <t>
+      DPoP proof <tt>jti</tt> replay state is verifier-local. A verifier MUST
+      maintain a DPoP replay cache separate from the Credential Token replay
+      cache and keyed by <tt>(kid, jti)</tt>. The cache window MUST be at
+      least the accepted DPoP proof age window: 300 seconds before receipt
+      plus 30 seconds of future clock skew, unless a server-provided DPoP
+      nonce is required under <xref target="RFC9449"/>. When nonce validation
+      is used, the replay cache MUST retain entries for at least the nonce
+      lifetime. AIP does not require a global or cross-Registry DPoP replay
+      cache because cross-target replay is rejected by <tt>htu</tt>,
+      <tt>htm</tt>, and <tt>ath</tt> validation.
     </t>
   </section>
 
   <section anchor="key-management" numbered="true">
   <name>Key Management</name>
     <t>
-      Private keys MUST NOT be stored in plaintext on disk,
+      Private keys MUST NOT be stored in plaintext at rest,
       transmitted in protocol messages, or included in logs.
-      Private keys SHOULD be stored in HSM, secure enclave,
-      or OS-level keychain.
+      Private keys SHOULD be stored in an HSM, secure enclave,
+      OS-level keychain, or an equivalent protected key store where
+      available.
     </t>
 
     <t>
-      <strong>Key rotation:</strong> Generate new keypair, increment version,
-      include previous_key_signature signed by retiring key,
-      submit to Registry, retain retiring key until outstanding
-      tokens expire.
+      A private key satisfies the at-rest protection requirement when at least
+      one of the following conditions is met:
+    </t>
+
+    <ol>
+      <li>The key is generated and used inside an HSM, secure enclave,
+      operating-system keychain, cloud KMS, or comparable protected key store
+      that prevents ordinary application processes from reading the raw private
+      key material.</li>
+      <li>The key is stored only as ciphertext produced by envelope encryption
+      using AES-256-GCM, or an equivalent authenticated-encryption scheme with
+      at least 128-bit security strength, unique nonce or IV use per
+      encryption key, integrity authentication of the ciphertext, and
+      associated data that binds the ciphertext to the AID, key identifier,
+      key version, and intended key purpose.</li>
+    </ol>
+
+    <t>
+      A protected key store or encryption design is equivalent for this
+      specification only if it enforces access control for key use and key
+      administration, separates key-encryption keys from encrypted private-key
+      blobs, supports key-encryption-key rotation without exposing plaintext
+      private keys, records administrative key export or deletion events, and
+      does not depend on hard-coded wrapping keys or wrapping keys stored in
+      the same plaintext database row, file, or object as the encrypted
+      private key. Backup copies of private keys MUST satisfy the same
+      controls as primary copies.
+    </t>
+
+    <t>
+      The protected-key-store recommendation is a local implementation
+      conformance requirement, not a wire-verifiable protocol condition.
+      Registries and Relying Parties cannot determine from Credential Tokens
+      or Registry API requests whether an implementation uses an HSM, secure
+      enclave, keychain, or equivalent mechanism. They MUST NOT treat
+      protected-key-store use as a Registry acceptance check or Credential
+      Token validation precondition. Deployment profiles MAY require external
+      audit, attestation, or certification of key-storage controls using the
+      audit evidence profile below.
+    </t>
+
+    <t>
+      <strong>Deployment key-management audit evidence:</strong> A deployment
+      profile that requires audit evidence for local key-management controls
+      MUST define an audit interval and MUST collect, at minimum, the following
+      evidence without recording private key material, seed material, or
+      plaintext recovery secrets:
+    </t>
+
+    <ol>
+      <li>Key inventory records identifying each AID, key identifier,
+      <tt>identity.version</tt>, key creation time, key activation time, key
+      retirement time when applicable, and the protected storage boundary used
+      for the key.</li>
+      <li>Control evidence that private keys are not stored in plaintext at
+      rest, transmitted in protocol messages, or included in logs. Acceptable
+      evidence includes configuration attestations, HSM or secure-enclave
+      policy exports, operating-system keychain policy exports, or signed
+      operator attestations bound to a deployment profile.</li>
+      <li>Rotation records for every key rotation, including the old key
+      identifier, new key identifier, submitted Agent Identity version,
+      <tt>previous_key_signature</tt> verification result, Registry acceptance
+      time, and the time at which issuance with the retiring private key
+      stopped.</li>
+      <li>Compromise-response records for every
+      <tt>key_compromised</tt> event, including the Revocation Object
+      identifier, affected AID, time of revocation submission, and delegation
+      re-establishment records if a replacement AID is registered.</li>
+      <li>For sub-agent delegation where the parent generates the child key,
+      provisioning and deletion records containing the parent AID, child AID,
+      provisioning time, secure channel or key-wrapping mechanism identifier,
+      deletion time for any parent-held child private-key copy, and the local
+      process or operator identity that performed the deletion.</li>
+    </ol>
+
+    <t>
+      Audit records for <tt>key_compromised</tt> events MUST NOT include
+      verbatim Credential Token or Step Execution Token payloads. Token
+      metadata (AID, <tt>jti</tt>, scope list, <tt>iat</tt>, <tt>exp</tt>) is
+      sufficient for key-compromise timeline reconstruction and is the maximum
+      permissible audit record content for token-related events.
+    </t>
+
+    <t>
+      Audit evidence MAY be reviewed by deployment operators, external
+      auditors, or certification programs, but it is not exchanged as part of
+      Credential Token validation. A Registry or Relying Party MUST NOT reject
+      an otherwise valid protocol message solely because this audit evidence is
+      absent from the wire message. Unless a deployment claims the Deployment
+      Key-Management Audit Profile in <xref target="optional-feature-profiles"/>,
+      compliance with these local key-management controls is self-attested by
+      the implementation's conformance claim.
+    </t>
+
+    <t>
+      <strong>Key rotation:</strong> Generate a new keypair, increment
+      version, include <tt>previous_key_signature</tt> signed by the retiring
+      key, and submit the new public key to the Registry. The Registry MUST
+      retain the retiring public verification key according to the historical
+      key retention rule in Section 19.7. The agent MUST stop issuing new
+      tokens with the retiring private key after rotation succeeds.
     </t>
 
     <t>
@@ -174,12 +398,71 @@
     <t>
       <strong>JTI replay cache:</strong> Keyed by (iss, jti);
       window at least max TTL for served scopes;
-      shared cache for distributed deployments.
+      shared cache for distributed deployments. The issuer AID is the replay
+      domain: an agent MUST NOT reuse a <tt>jti</tt> across different
+      delegation chains, principals, grants, scopes, or audiences.
     </t>
 
     <t>
       <strong>Audience validation:</strong> MUST validate aud claim.
       Mismatch returns invalid_token.
+    </t>
+  </section>
+
+  <section anchor="mtls-certificate-profile" numbered="true">
+  <name>Tier 3 mTLS Certificate Profile</name>
+    <t>
+      Tier 3 operations require mutual TLS with an X.509 client certificate
+      that binds the TLS client to the effective actor AID. The binding MUST
+      use the certificate <tt>subjectAltName</tt> extension, not the subject
+      DN or common name.
+    </t>
+
+    <ol>
+      <li>The Relying Party MUST validate the client certificate path per
+      <xref target="RFC5280"/> to a trust anchor explicitly configured for the
+      target Registry, resource server, or deployment profile. The public Web
+      PKI MUST NOT be treated as sufficient for AIP actor binding unless that
+      CA set is explicitly configured as the deployment's Tier 3 client-certificate
+      trust anchor set.</li>
+      <li>The certificate MUST be within its validity interval, MUST permit
+      digital signatures in <tt>keyUsage</tt> when <tt>keyUsage</tt> is
+      present, and MUST contain the <tt>id-kp-clientAuth</tt> extended key
+      usage when <tt>extendedKeyUsage</tt> is present.</li>
+      <li>The certificate MUST contain exactly one URI
+      <tt>subjectAltName</tt> value that matches the <tt>did:aip</tt> AID
+      syntax. That URI SAN value is the certificate actor AID. The Relying
+      Party MUST compare it byte-for-byte to the effective actor AID after
+      ordinary URI SAN string extraction; it MUST NOT use subject DN, common
+      name, email SAN, DNS SAN, or organization fields for actor binding.</li>
+      <li>If the client certificate is absent, the Relying Party MUST reject
+      with <tt>mtls_required</tt>. If path validation fails, required
+      key-usage or EKU checks fail, the AIP URI SAN is absent, more than one
+      AIP URI SAN is present, or the AIP URI SAN does not equal the effective
+      actor AID, the Relying Party MUST reject with
+      <tt>invalid_token</tt>.</li>
+      <li>The Relying Party MUST perform certificate revocation checking using
+      OCSP per <xref target="RFC6960"/> or a deployment-profile mechanism that
+      provides at least equivalent freshness and issuer authorization. An
+      equivalent deployment-profile mechanism MUST, at minimum, bind status to
+      the certificate issuer or delegated status authority, provide signed or
+      otherwise authenticated certificate status, define a maximum status
+      freshness interval no weaker than the OCSP policy it replaces, fail
+      closed on unavailable or indeterminate status, and be documented in the
+      deployment's <tt>mtls_trust_anchors_uri</tt> material. A revoked client
+      certificate MUST be rejected with
+      <tt>agent_revoked</tt>. An unavailable, stale, or indeterminate
+      certificate revocation status MUST be rejected with
+      <tt>invalid_token</tt>.</li>
+    </ol>
+
+    <t>
+      A Registry or deployment that accepts Tier 3 registrations or advertises
+      Tier 3 operation support MUST document the client-certificate trust
+      anchor set and revocation-checking mechanism. If this information is
+      published through Registry Metadata, the fields are
+      <tt>mtls_client_certificate_profile</tt> and
+      <tt>mtls_trust_anchors_uri</tt>.
     </t>
   </section>
 
@@ -192,8 +475,23 @@
     </t>
 
     <t>
-      Ephemeral agents MUST have non-null task_id. Registry
-      SHOULD auto-revoke when expires_at passes.
+      Ephemeral agents MUST have non-null <tt>task_id</tt>. The Registry
+      MUST auto-revoke ephemeral agents when their
+      <tt>lifecycle_expires_at</tt> deadline passes, as defined in
+      Section 15. A Registry that leaves an ephemeral AID active after that
+      deadline is non-conformant, even if Relying Parties would separately
+      reject expired Principal Tokens or Capability Manifests during
+      validation.
+    </t>
+
+    <t>
+      Parent agents that generate child-agent private keys during
+      sub-agent delegation MUST delete any retained copy after successful
+      provisioning. This requirement is not wire-verifiable by Registries
+      or Relying Parties; it is an implementation conformance requirement
+      for the parent agent's key-management boundary. Deployment profiles that
+      audit this requirement MUST use the sub-agent provisioning and deletion
+      evidence defined in <xref target="key-management"/>.
     </t>
   </section>
 
@@ -201,13 +499,18 @@
   <name>Registry Security</name>
     <t>
       All write operations MUST be authenticated.
-      Revocation issued_by MUST be verified as in the target's
-      delegation chain.
+      Revocation <tt>issued_by</tt>, <tt>kid</tt>, issuer authorization, and
+      signature verification MUST follow the ordered Revocation Submission
+      Validation algorithm in <xref target="revocation-submission-validation"/>.
     </t>
 
     <t>
-      Registry read endpoints MUST target 99.9% uptime.
-      CRL MUST be served from CDN.
+      Registry read endpoint availability is an operational service-level
+      objective, not a wire-protocol conformance condition. Deployment
+      profiles MAY define measurable availability targets, measurement
+      intervals, exclusions, evidence, and remedies. This specification does
+      not define conformance failure solely by an uptime percentage. CRL MUST
+      be served from CDN.
     </t>
 
     <t>
@@ -227,14 +530,25 @@
 
     <t>
       <strong>Dead Man's Switch (Optional):</strong> Registry
-      MAY issue full_revoke for agents that fail to submit
-      a signed heartbeat within configured window
-      (RECOMMENDED: 24 hours).
+      MAY issue <tt>full_revoke</tt> for agents that fail to submit
+      an authenticated heartbeat to
+      <tt>POST /v1/agents/{aid}/heartbeat</tt> within a configured window
+      (RECOMMENDED: 24 hours). The heartbeat authentication and liveness
+      timestamp rules are defined in <xref target="agent-heartbeat-registry"/>.
     </t>
 
     <t>
-      <strong>Timing attack mitigation:</strong> Short sensitive-scope
-      TTLs (max 300s) limit exploitation window.
+      Registries that enable the Dead Man's Switch for an AID MUST measure
+      the timeout from the Registry-recorded <tt>last_heartbeat_at</tt> value
+      or, if no heartbeat has been accepted, from the AID registration time.
+      When issuing an automatic revocation for heartbeat timeout, the Registry
+      SHOULD use revocation reason <tt>heartbeat_timeout</tt>.
+    </t>
+
+    <t>
+      <strong>Timing attack mitigation:</strong> Short
+      <tt>ttl_max_seconds</tt> values for sensitive scopes in the synced AIP
+      Scope Catalog limit exploitation windows.
     </t>
   </section>
 
@@ -269,9 +583,9 @@
     </t>
 
     <t>
-      Registries MUST NOT log or retain Credential Token
-      payloads beyond validation. Relying Parties MUST NOT
-      store tokens after validation.
+      Registries MUST NOT log or retain Credential Token or Step Execution
+      Token payloads beyond validation. Relying Parties MUST NOT store tokens
+      after validation.
     </t>
 
     <t>

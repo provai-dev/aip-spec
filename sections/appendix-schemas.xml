@@ -1,22 +1,59 @@
-<section anchor="appendix-schemas-content" numbered="false">
-  <name>JSON Schema Index</name>
+<section anchor="appendix-schemas-content" numbered="true">
+  <name>JSON Schema and Catalog Artifact Index</name>
   <t>
-    The following JSON Schema definitions are normatively referenced throughout
-    this specification. They are available in JSON Schema Draft 2020-12 format
-    in the specification repository at <eref
-    target="https://github.com/provai-dev/aip-spec">aip-spec</eref> under
-    <tt>spec/v0.3/schemas/</tt>.
+    The following JSON Schema definitions are normatively referenced
+    throughout this specification. They are part of the archived publication
+    package for this draft in JSON Schema Draft 2020-12 format under
+    <tt>schemas/</tt>. The Draft-02 AIP Catalog Bundle is maintained as the
+    deterministic <tt>dist/catalog.json</tt> release artifact in the separate
+    <eref target="https://github.com/provai-dev/aip-catalog">aip-catalog</eref>
+    repository. The working repository at <eref
+    target="https://github.com/provai-dev/aip-rfc">aip-rfc</eref> is a
+    convenience mirror; a branch head, mutable tag, or <tt>/latest</tt>
+    schema URI is not a normative artifact.
+  </t>
+  <t>
+    For this draft, the immutable schema identifier for each listed schema is
+    the <tt>$id</tt> value ending in <tt>/draft-02</tt>. Implementations
+    claiming Draft-02 conformance MUST validate against those
+    <tt>/draft-02</tt> identifiers. If a local filename, repository URL, or
+    mirror URL conflicts with the schema identified by the <tt>$id</tt>, the
+    <tt>$id</tt> and the archived publication package are authoritative.
   </t>
 
   <dl newline="false">
     <dt>agent-identity.schema.json</dt>
     <dd>Defines the Agent Identity Object structure (Section 5.2).</dd>
 
+    <dt>agent-registration.schema.json</dt>
+    <dd>Defines the default <tt>GET /v1/agents/{aid}</tt> Agent Registration
+      Metadata response (<xref target="agent-registration-metadata-registry"/>).</dd>
+
+    <dt>aip-registry.schema.json</dt>
+    <dd>Defines the Registry Metadata returned by
+      <tt>GET /v1/registry-metadata</tt>
+      (<xref target="well-known-metadata-registry"/>).</dd>
+
+    <dt>aip-gateway-configuration.schema.json</dt>
+    <dd>Defines the AIP gateway OAuth Protected Resource Metadata returned by
+      <tt>GET /.well-known/oauth-protected-resource</tt>
+      (<xref target="aip-gateway-discovery-document"/>).</dd>
+
+    <dt>public-key-response.schema.json</dt>
+    <dd>Defines the Public-Key response returned by
+      <tt>GET /v1/agents/{aid}/public-key</tt> and
+      <tt>GET /v1/agents/{aid}/public-key/{key-id}</tt>
+      (<xref target="agent-public-key-registry"/>).</dd>
+
     <dt>capability-manifest.schema.json</dt>
     <dd>Defines the Capability Manifest structure (Section 5.3).</dd>
 
     <dt>credential-token.schema.json</dt>
     <dd>Defines the Credential Token JWT payload structure (Section 5.4).</dd>
+
+    <dt>step-execution-token.schema.json</dt>
+    <dd>Defines the Step Execution Token JWT payload structure (Sections
+      5.4.1 and 13.8).</dd>
 
     <dt>principal-token.schema.json</dt>
     <dd>Defines the Principal Token JWT payload structure (Section 5.5).</dd>
@@ -25,15 +62,43 @@
     <dd>Defines the Registration Envelope request body structure (Section
       5.6).</dd>
 
+    <dt>resource-record.schema.json</dt>
+    <dd>Defines the Registered Resource Record used by the Registry resource
+      registration endpoints (<xref target="resource-registration-registry"/>).</dd>
+
+    <dt>registry-trust-record.schema.json</dt>
+    <dd>Defines the Registry Trust Record structure used for Registry trust
+      bootstrapping and continuity (Section 7.3).</dd>
+
     <dt>revocation-object.schema.json</dt>
     <dd>Defines the Revocation Object structure (Section 5.7).</dd>
+
+    <dt>revocation-status.schema.json</dt>
+    <dd>Defines the live Revocation Status response for
+      <tt>GET /v1/agents/{aid}/revocation</tt>
+      (<xref target="agent-revocation-status-registry"/>).</dd>
+
+    <dt>crl.schema.json</dt>
+    <dd>Defines the signed AIP CRL document returned by <tt>GET /v1/crl</tt>
+      and signed <tt>endpoints.crl</tt> distribution URIs
+      (<xref target="crl"/> and <xref target="crl-response-registry"/>).</dd>
 
     <dt>endorsement.schema.json</dt>
     <dd>Defines the Endorsement Object structure (Section 5.8).</dd>
 
+    <dt>error-response.schema.json</dt>
+    <dd>Defines the standard AIP JSON error response body
+      (<xref target="error-response-format"/>).</dd>
+
     <dt>approval-envelope.schema.json</dt>
     <dd>Defines the Approval Envelope, Step, and Compensation Step structures
       (Section 13).</dd>
+
+    <dt>approval-step-endpoints.schema.json</dt>
+    <dd>Defines request and response body profiles for Approval Envelope
+      forward-step and compensation-step claim, complete, and fail endpoints
+      (<xref target="step-claim"/> and
+      <xref target="approval-endpoints-registry"/>).</dd>
 
     <dt>capability-overlay.schema.json</dt>
     <dd>Defines the Capability Overlay structure (Section 5.11).</dd>
@@ -47,11 +112,28 @@
 
     <dt>grant-response.schema.json</dt>
     <dd>Defines the Grant Response structure (Section 12.4).</dd>
+
+    <dt>rpnp.schema.json</dt>
+    <dd>Defines Registry Push Notification Protocol subscription request,
+      subscription response/status, and push payload structures
+      (<xref target="rpnp"/>).</dd>
   </dl>
 
   <t>
     All schema files conform to JSON Schema Draft 2020-12. Implementations MUST
     validate objects against these schemas. Validation failures MUST result in
     rejection.
+  </t>
+  <t>
+    The Draft-02 AIP Catalog Bundle is the immutable catalog artifact
+    identified by <tt>catalog_snapshot_id: "https://provai.dev/aip/catalog/draft-02"</tt>.
+    Its authoritative bytes are the bytes of the immutable
+    <tt>dist/catalog.json</tt> release artifact in the
+    <tt>provai-dev/aip-catalog</tt> repository, or a mirror whose SHA-256
+    digest exactly matches the
+    <tt>aip_catalog_sha256</tt> value published by the Registry. Catalog
+    retrieval, mirroring, and digest validation rules are defined in
+    <xref target="scope-map-registry"/>. A Registry MUST NOT use a mutable
+    catalog source to determine Draft-02 conformance.
   </t>
 </section>

@@ -1,5 +1,5 @@
 {
-  "_comment": "Example AIP delegation chain — three Principal Token JWTs shown decoded for readability. In production the aip_chain field in a Credential Token contains the compact JWT strings (header.payload.signature), not the decoded objects shown here. AIDs follow AIP spec §4.1: did:aip:<namespace>:<32-hex-chars>.",
+  "_comment": "Example AIP delegation chain — three Principal Token JWTs shown decoded for readability. In production the aip_chain field in a Credential Token contains the compact JWT strings (header.payload.signature), not the decoded objects shown here. AIDs follow the AID syntax did:aip:<namespace>:<32-hex agent-id>, where agent-id is the leftmost 128 bits of the SHA-256 public-key digest.",
   "aip_chain": [
     {
       "header": {

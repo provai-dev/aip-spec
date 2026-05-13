@@ -1,14 +1,15 @@
 {
-  "_comment": "Example AIP Step Execution Token — AIP spec §4.2.3 and §4.6.8. A Step Execution Token is a standard Credential Token whose payload includes aip_approval_id and aip_approval_step (both REQUIRED together). Issued by the Registry to the step actor when the actor claims a claimable step via POST /v1/approvals/{approval_id}/steps/{step_index}/claim. The Relying Party validates it using the standard validation algorithm (§7.3) plus Step 10a (approval step check). Signatures are placeholders.",
-  "compact_jwt": "eyJhbGciOiJFZERTQSIsInR5cCI6IkFJUCtKV1QiLCJraWQiOiJkaWQ6YWlwOm9yY2hlc3RyYXRvcjo0YTdiMmM4ZDFlOWYzYTZiMGM1ZDRlN2Y4YTliMWMyZCNrZXktMSJ9.<payload-base64url>.example-signature-placeholder",
+  "_comment": "Example AIP Step Execution Token. A Step Execution Token is a Registry-issued JWT whose payload includes aip_approval_id, aip_step_kind, and either aip_approval_step or aip_compensation_step. It is issued to the step actor when the actor claims a claimable step via POST /v1/approvals/{approval_id}/steps/{step_index}/claim. The Relying Party validates it using the SET validation profile, then Step 10a approval step verification. Signatures are placeholders.",
+  "compact_jwt": "<base64url-header-with-AIP-SET+JWT>.<payload-base64url>.example-signature-placeholder",
   "decoded": {
     "header": {
       "alg": "EdDSA",
-      "typ": "AIP+JWT",
-      "kid": "did:aip:service:8f9e0d1c2b3a4f5e6d7c8b9a0f1e2d3c#key-1"
+      "typ": "AIP-SET+JWT",
+      "kid": "https://registry.provai.dev#step-key-2",
+      "aip_trv": 2
     },
     "payload": {
-      "iss": "did:aip:service:8f9e0d1c2b3a4f5e6d7c8b9a0f1e2d3c",
+      "iss": "https://registry.provai.dev",
       "sub": "did:aip:service:8f9e0d1c2b3a4f5e6d7c8b9a0f1e2d3c",
       "aud": "https://payments.bank.example.com",
       "iat": 1744624800,
@@ -20,6 +21,7 @@
         "<compact JWT for Principal Token at delegation_depth=0 — see delegation-chain.json>"
       ],
       "aip_approval_id": "apr:7e3b4c0d-f5a6-4b8e-9c1d-2e3f4a5b6c7d",
+      "aip_step_kind": "forward",
       "aip_approval_step": 2,
       "aip_engagement_id": "eng:a1b2c3d4-e5f6-4789-8abc-def012345678",
       "aip_registry": "https://registry.provai.dev"
@@ -27,12 +29,13 @@
     "signature": "base64url-encoded-eddsa-signature-placeholder"
   },
   "_notes": {
-    "ttl": "exp - iat = 300 seconds — Tier 2 scope (transactions) TTL cap. DPoP is REQUIRED for transactions scope per §16.3.",
-    "aip_approval_id_and_step": "Both aip_approval_id and aip_approval_step MUST be present together. If one is present without the other, the Relying Party MUST reject with invalid_token.",
+    "ttl": "exp - iat = 300 seconds in this example. The effective TTL cap is the lowest ttl_max_seconds value across requested scopes in the synced AIP Scope Catalog; the example assumes transactions has ttl_max_seconds=300. DPoP is REQUIRED for Tier 2 operations.",
+    "issuer": "iss is the Registry ID, not the actor AID. The header aip_trv selects the locally pinned Registry Trust Record version, and kid is listed under active_verification_keys.step_execution in that version.",
+    "aip_approval_id_and_step": "aip_approval_id and aip_step_kind are REQUIRED in every Step Execution Token. For forward steps, aip_approval_step is REQUIRED and aip_compensation_step MUST be absent. For compensation steps, aip_compensation_step is REQUIRED and aip_approval_step MUST be absent.",
     "aip_approval_step_1based": "aip_approval_step=2 is 1-based — it identifies step_index=2 in the Approval Envelope. The Relying Party MUST verify this equals the step it is executing. The path parameter {n} in GET /v1/approvals/{id}/steps/{n} MUST equal this value verbatim.",
-    "relying_party_validation": "The Relying Party (payments.bank.example.com) validates: (1) standard 12-step algorithm §7.3, (2) Step 10a: verify aip_approval_id envelope is approved/executing, step 2 is claimed (not already completed), and action_hash matches the expected action, (3) DPoP proof required for transactions scope.",
-    "step_claim_flow": "The service agent (payment-processor) calls POST /v1/approvals/apr:7e3b4c0d-.../steps/2/claim. The Registry checks: envelope is approved/executing, step 2 triggered_by=1 is completed, step 2 is pending. If valid, Registry issues this token (status→claimed, claimed_at set) and the agent presents it to payments.bank.example.com.",
-    "engagement_scope": "aip_engagement_id links this token to the procurement engagement. The Relying Party MUST verify the engagement is active per §7.3 Step 9e.",
-    "iss_equals_sub": "Single-element aip_chain: iss=sub=service agent's AID. Validation Step 8 Post-Check B enforces this."
+    "relying_party_validation": "The Relying Party (payments.bank.example.com) validates: (1) SET validation profile, (2) Step 10a: verify aip_approval_id envelope is approved/executing, step 2 is claimed (not already completed), and action_hash matches the expected action, (3) DPoP proof required for transactions scope and bound to the actor AID in sub.",
+    "step_claim_flow": "The service agent (payment-processor) calls POST /v1/approvals/apr:7e3b4c0d-f5a6-4b8e-9c1d-2e3f4a5b6c7d/steps/2/claim. The Registry checks: envelope is approved/executing, step 2 triggered_by=1 is completed, step 2 is pending. If valid, Registry issues this token (status→claimed, claimed_at set) and the agent presents it to payments.bank.example.com.",
+    "engagement_scope": "aip_engagement_id links this token to the procurement engagement. The Relying Party MUST verify the engagement is active during Step 6b engagement validation.",
+    "actor_binding": "The actor AID is sub. The SET validation profile requires aip_chain[n-1].sub to equal this value."
   }
 }

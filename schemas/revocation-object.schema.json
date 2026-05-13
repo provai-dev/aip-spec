@@ -1,15 +1,16 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://provai.dev/schemas/aip/revocation-object/latest",
-  "$comment": "Normatively defined in AIP spec §9.1. Canonical signing field order: revocation_id, target_aid, type, issued_by, reason, timestamp, propagate_to_children, scopes_revoked, signature (set to '' during signing). See AIP spec §9.1 and AIP spec §16.8.",
+  "$id": "https://provai.dev/schemas/aip/revocation-object/draft-02",
+  "$comment": "Normatively defined by the AIP Revocation Object rules. Canonical signing field order: revocation_id, target_id, type, issued_by, kid, reason, timestamp, propagate_to_children, scopes_revoked, signature (set to '' during signing).",
   "title": "AIP Revocation Object",
-  "description": "A signed object submitted to the Registry to revoke or modify an agent's credentials. Defined in AIP spec §9.1. Registries MUST verify the signature before processing. Signing canonical field order: (revocation_id, target_aid, type, issued_by, reason, timestamp, propagate_to_children, scopes_revoked, signature) with signature set to empty string during signing.",
+  "description": "A signed object submitted to the Registry to revoke or modify an agent's credentials. Registries MUST verify the signature before processing. Signing canonical field order: (revocation_id, target_id, type, issued_by, kid, reason, timestamp, propagate_to_children, scopes_revoked, signature) with signature set to empty string during signing.",
   "type": "object",
   "required": [
     "revocation_id",
-    "target_aid",
+    "target_id",
     "type",
     "issued_by",
+    "kid",
     "reason",
     "timestamp",
     "signature"
@@ -21,10 +22,10 @@
       "pattern": "^rev:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
       "description": "Unique identifier for this revocation event. Format: 'rev:' prefix followed by a UUID v4 in canonical lowercase hyphenated form. Consistent prefix convention with manifest_id ('cm:') and endorsement_id ('end:')."
     },
-    "target_aid": {
+    "target_id": {
       "type": "string",
-      "pattern": "^did:aip:[a-z][a-z0-9]*(-[a-z0-9]+)*:[0-9a-f]{32}$",
-      "description": "AID of the agent being revoked or modified. MUST be registered in the Registry."
+      "pattern": "^did:[a-z][a-z0-9]*:.+$",
+      "description": "Target identifier. For full_revoke, scope_revoke, and delegation_revoke this MUST be a registered did:aip AID. For principal_revoke this MAY be either a registered did:aip AID or the root Principal DID whose entire authorisation is being revoked."
     },
     "type": {
       "type": "string",
@@ -34,12 +35,17 @@
         "delegation_revoke",
         "principal_revoke"
       ],
-      "description": "The class of revocation. Semantics: full_revoke — permanently revokes the AID; no further tokens accepted; sets deactivated:true in DID Document metadata. scope_revoke — removes specific scopes from the Capability Manifest (requires scopes_revoked field); does NOT invalidate outstanding tokens — bounded by TTL. delegation_revoke — invalidates all delegation chains rooted at the target AID; child agents lose authority; the target AID itself remains valid for direct principal interactions. principal_revoke — issued by the root principal to revoke their entire authorisation of the target agent; equivalent to full_revoke from the principal's perspective; child agents are also invalidated."
+      "description": "The class of revocation. Semantics: full_revoke — permanently revokes the target AID; no further tokens accepted; sets deactivated:true in DID Document metadata. scope_revoke — removes specific scopes from the Capability Manifest (requires scopes_revoked field); Relying Parties reject tokens containing revoked scopes during revocation validation. delegation_revoke — invalidates delegation chains rooted at the target AID; child agents lose authority; the target AID itself remains valid for direct principal interactions. principal_revoke — issued by the root principal to revoke authorisation for the target AID, or all authorisations rooted at the target Principal DID. Existing Credential Tokens and Step Execution Tokens depending on the revoked authorisation become invalid immediately, regardless of propagate_to_children."
     },
     "issued_by": {
       "type": "string",
-      "pattern": "^did:[a-z][a-z0-9]*:.+$",
-      "description": "W3C DID of the party issuing this revocation. MUST be either: (a) the root principal's DID (any W3C DID method), or (b) a did:aip AID of a parent agent present in the target agent's delegation chain. The Registry MUST verify this before accepting. For Registry-generated child propagation revocations, issued_by is set to the parent AID's target_aid and signed with the Registry's administrative key."
+      "pattern": "^(did:[a-z][a-z0-9]*:.+|https://.+)$",
+      "description": "Identifier of the party issuing this revocation. For externally submitted revocations this MUST be either the root principal's DID or a did:aip AID of an ancestor agent in the target agent's delegation chain. For Registry-generated revocations with reason parent_revoked, heartbeat_timeout, or lifecycle_expired, this MUST be the Registry's registry_id HTTPS URI."
+    },
+    "kid": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Key identifier for the Ed25519 verification key used to sign this Revocation Object. For DID issuers, this MUST be a DID URL controlled by issued_by. For Registry-generated revocations, this MUST identify an active Registry CRL verification key in the Registry Trust Record current at timestamp."
     },
     "reason": {
       "type": "string",
@@ -50,10 +56,12 @@
         "policy_violation",
         "principal_request",
         "account_closure",
+        "heartbeat_timeout",
+        "lifecycle_expired",
         "parent_revoked",
         "other"
       ],
-      "description": "Machine-readable reason code. Semantics: device_compromised — the principal's device holding the agent's key was compromised. key_compromised — the agent's private key was directly compromised. task_complete — the agent completed its assigned task (used by ephemeral agents; also used by the Registry's Dead Man's Switch for auto-revocation). policy_violation — the agent violated a usage policy. principal_request — the principal requested revocation for unspecified reasons. account_closure — the principal's account is being closed. parent_revoked — generated exclusively by the Registry when propagating child revocations; MUST NOT be used by external parties. other — catch-all; include detail in any associated audit log."
+      "description": "Machine-readable reason code. Semantics: device_compromised — the principal's device holding the agent's key was compromised. key_compromised — the agent's private key was directly compromised. task_complete — the agent completed its assigned task. policy_violation — the agent violated a usage policy. principal_request — the principal requested revocation for unspecified reasons. account_closure — the principal's account is being closed. heartbeat_timeout — generated by the Registry's Dead Man's Switch after the configured heartbeat window expires. lifecycle_expired — generated by the Registry when an ephemeral agent's lifecycle_expires_at deadline passes. parent_revoked — generated exclusively by the Registry when propagating child revocations; MUST NOT be used by external parties. other — catch-all; include detail in any associated audit log."
     },
     "timestamp": {
       "type": "string",
@@ -63,48 +71,70 @@
     "propagate_to_children": {
       "type": "boolean",
       "default": false,
-      "description": "OPTIONAL. When true, the Registry MUST also revoke all agents that were delegated by the target AID (depth-first recursive). The Registry uses its parent-child index (populated at registration time from delegated_by fields) to identify descendants. Each child revocation is issued with reason 'parent_revoked' and propagate_to_children: true, causing cascading revocation to all descendants. The entire propagation MUST complete within 15 seconds on the authoritative Registry. When absent, defaults to false (no propagation)."
+      "description": "OPTIONAL. When true, the Registry MUST also revoke all agents that were delegated by the target AID (depth-first recursive). The Registry uses its parent-child index (populated at registration time from delegated_by fields) to identify descendants. Each child revocation is issued with reason 'parent_revoked' and propagate_to_children: true, causing cascading revocation to all descendants. The entire propagation MUST complete within 15 seconds on the authoritative Registry. When absent, defaults to false (no propagation). For principal_revoke, token invalidation does not depend on this flag; the flag only controls whether descendant Revocation Objects are materialised."
     },
     "scopes_revoked": {
       "type": "array",
       "items": {
         "type": "string",
-        "pattern": "^[a-z_]+([.][a-z_]+)*$",
-        "description": "A scope identifier in dot-notation format as defined in AIP spec §4.3."
+        "pattern": "^[a-z_][a-z0-9_]*([.][a-z_][a-z0-9_]*)*$",
+        "description": "A scope identifier in dot-notation format. Each segment begins with a lowercase letter or underscore and may then contain lowercase letters, digits, or underscores. Concrete registered values and metadata come from the synced AIP Scope Catalog."
       },
       "minItems": 1,
       "uniqueItems": true,
-      "description": "REQUIRED when type is scope_revoke. MUST NOT be present for any other revocation type (enforced by the else clause below — setting this field schema to false actively prohibits its presence for non-scope_revoke types). Each entry MUST be a defined scope identifier from AIP spec §4.3. Scope revocation does NOT invalidate outstanding tokens — it removes scopes from future Capability Manifest lookups only."
+      "description": "REQUIRED when type is scope_revoke. MUST NOT be present for any other revocation type (enforced by the else clause below — setting this field schema to false actively prohibits its presence for non-scope_revoke types). Each entry MUST be a registered scope identifier from the synced AIP Scope Catalog or an explicitly documented local extension. Relying Parties reject outstanding tokens containing revoked scopes during revocation validation; Registries also remove or disable the scopes for future Capability Manifest lookups."
     },
     "signature": {
       "type": "string",
       "pattern": "^[A-Za-z0-9_-]+$",
-      "description": "Base64url-encoded EdDSA signature of this RevocationObject. Computed by: serialise to JSON in canonical field order (revocation_id, target_aid, type, issued_by, reason, timestamp, propagate_to_children, scopes_revoked, signature) with signature set to empty string '', then sign with the issued_by party's Ed25519 private key. Registries MUST verify this signature before processing the revocation. Invalid or unsigned revocations MUST be rejected."
+      "description": "Base64url-encoded EdDSA signature of this RevocationObject. Computed by: serialise to JSON in canonical field order (revocation_id, target_id, type, issued_by, kid, reason, timestamp, propagate_to_children, scopes_revoked, signature) with signature set to empty string '', then sign with the private key identified by kid. Registries MUST verify this signature before processing the revocation. Invalid or unsigned revocations MUST be rejected."
     }
   },
-  "if": {
-    "properties": { "type": { "const": "scope_revoke" } },
-    "required": ["type"]
-  },
-  "then": {
-    "required": ["scopes_revoked"],
-    "description": "When type is scope_revoke, scopes_revoked MUST be present and non-empty."
-  },
-  "else": {
-    "properties": {
-      "scopes_revoked": false
+  "allOf": [
+    {
+      "if": {
+        "properties": { "type": { "const": "scope_revoke" } },
+        "required": ["type"]
+      },
+      "then": {
+        "required": ["scopes_revoked"],
+        "description": "When type is scope_revoke, scopes_revoked MUST be present and non-empty."
+      },
+      "else": {
+        "properties": {
+          "scopes_revoked": false
+        },
+        "description": "When type is not scope_revoke, scopes_revoked MUST NOT be present. Setting the property schema to false (JSON Schema 2020-12) actively prohibits the field — it is not merely non-required but disallowed."
+      }
     },
-    "description": "When type is not scope_revoke, scopes_revoked MUST NOT be present. Setting the property schema to false (JSON Schema 2020-12) actively prohibits the field — it is not merely non-required but disallowed."
-  },
+    {
+      "if": {
+        "properties": { "type": { "const": "principal_revoke" } },
+        "required": ["type"]
+      },
+      "then": {
+        "description": "A principal_revoke target_id MAY be a registered did:aip AID or a root Principal DID."
+      },
+      "else": {
+        "properties": {
+          "target_id": {
+            "type": "string",
+            "pattern": "^did:aip:[a-z][a-z0-9]*(-[a-z0-9]+)*:[0-9a-f]{32}$"
+          }
+        },
+        "description": "Non-principal revocations target registered did:aip AIDs only."
+      }
+    }
+  ],
   "$defs": {
     "revocation_tiers": {
-      "$comment": "Revocation check tiers (AIP spec §9.2): Tier 1 (standard scopes): CRL checked at issuance, TTL max 3600s. Tier 2 (transactions.*, communicate.*, filesystem.execute): real-time Registry check on every request, TTL max 300s, MUST deny on Registry unavailability. Tier 3 (enterprise): mTLS + OCSP supplementing Tier 2."
+      "$comment": "Revocation check tiers: tiers are derived from the synced AIP Scope Catalog. Tier 1 uses bounded-staleness CRL checks. Tier 2 performs a live Registry check on every request and MUST deny on Registry unavailability. Tier 3 uses mTLS + OCSP supplementing Tier 2."
     },
     "propagation_sla": {
-      "$comment": "Propagation SLA (AIP spec §9.2): authoritative Registry completes recursive child propagation within 15s. Replica Registries sync within 45s. Combined end-to-end: max 60s."
+      "$comment": "Propagation SLA: authoritative Registry completes recursive child propagation within 15s. Replica Registries sync within 45s. Combined end-to-end: max 60s."
     },
     "scope_revoke_semantics": {
-      "$comment": "scope_revoke has delayed effect (AIP spec §9.3): Credential Tokens are signed artefacts whose aip_scope field cannot be altered post-issuance. scope_revoke updates future Capability Manifest lookups only. Outstanding tokens remain valid until TTL expiry. For immediate scope removal: use full_revoke then re-register with reduced manifest."
+      "$comment": "scope_revoke effect: Credential Tokens are signed artefacts whose aip_scope field cannot be altered post-issuance, but Relying Parties reject tokens containing revoked scopes during revocation validation Step 7. Registries also update future Capability Manifest lookups."
     }
   }
 }

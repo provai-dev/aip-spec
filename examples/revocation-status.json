@@ -1,0 +1,16 @@
+{
+  "_comment": "Example AIP Revocation Status response for GET /v1/agents/{aid}/revocation. This is the HTTP 200 response for a registered AID with no active revocations.",
+  "aid": "did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3",
+  "checked_at": "2026-04-14T10:31:00Z",
+  "status": "active",
+  "revoked": false,
+  "delegation_revoked": false,
+  "scopes_revoked": [],
+  "active_revocations": [],
+  "_notes": {
+    "not_revoked": "A registered, not-revoked AID returns HTTP 200 with status='active', revoked=false, delegation_revoked=false, empty scopes_revoked, and empty active_revocations.",
+    "unknown_aid": "If the AID is not registered in the authoritative Registry, the endpoint returns unknown_aid (HTTP 404) instead of this body.",
+    "revoked": "If a full_revoke or principal_revoke applies, status='revoked', revoked=true, and active_revocations contains the signed Revocation Object(s).",
+    "restricted": "If only scope_revoke or delegation_revoke applies, status='restricted'; callers evaluate scopes_revoked and delegation_revoked according to Section 9 Step 7."
+  }
+}

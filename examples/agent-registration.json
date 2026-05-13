@@ -1,0 +1,34 @@
+{
+  "_comment": "Example default application/json response for GET /v1/agents/{aid} when no DID-specific Accept header is used.",
+  "aid": "did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3",
+  "identity": {
+    "aid": "did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3",
+    "name": "Alice-Personal-Assistant",
+    "type": "personal",
+    "model": {
+      "provider": "anthropic",
+      "model_id": "claude-sonnet-4-6",
+      "attestation_hash": "sha256:a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456"
+    },
+    "created_at": "2026-03-22T10:00:00Z",
+    "version": 1,
+    "public_key": {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+      "kid": "did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3#key-1"
+    }
+  },
+  "grant_tier": "G2",
+  "registered_at": "2026-03-22T10:00:01Z",
+  "updated_at": "2026-03-22T10:00:01Z",
+  "public_key_uri": "/v1/agents/did%3Aaip%3Apersonal%3A9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3/public-key",
+  "capability_manifest_uri": "/v1/agents/did%3Aaip%3Apersonal%3A9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3/capabilities",
+  "revocation_status_uri": "/v1/agents/did%3Aaip%3Apersonal%3A9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3/revocation",
+  "registration_warnings": [],
+  "_notes": {
+    "content_type": "Returned with Content-Type: application/json unless the client requests application/did+json or application/did+ld+json.",
+    "did_document": "DID-specific Accept headers return the generated DID Document instead of this metadata object.",
+    "grant_tier": "Relying Parties use this persisted grant_tier during Step 9d Grant Tier Conformance validation."
+  }
+}

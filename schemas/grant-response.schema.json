@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://provai.dev/schemas/aip/grant-response/latest",
-  "$comment": "Normatively defined in AIP spec §4.5.4. The GrantResponse is constructed and signed by the Principal Wallet after the principal completes or declines the signing ceremony. The deployer MUST perform 7 validation steps on receipt (§4.5.4). When status is 'partial', the deployer MUST use approved_capabilities — not the originally requested set — to construct the Capability Manifest.",
+  "$id": "https://provai.dev/schemas/aip/grant-response/draft-02",
+  "$comment": "Normatively defined by the AIP-GRANT GrantResponse rules. The GrantResponse is constructed and signed by the Principal Wallet after the principal completes or declines the signing ceremony. The deployer MUST perform the GrantResponse validation checklist on receipt. When status is 'partial', the deployer MUST use approved_capabilities — not the originally requested set — to construct the Capability Manifest.",
   "title": "AIP Grant Response",
-  "description": "The response object constructed by the Principal Wallet after the principal completes the AIP-GRANT signing ceremony. Delivered to the deployer via the callback_uri (Web Redirect / QR) or returned synchronously (SDK In-Process). Defined in AIP spec §4.5.4.",
+  "description": "The response object constructed by the Principal Wallet after the principal completes the AIP-GRANT signing ceremony. Delivered to the deployer via the callback_uri (Web Redirect / QR) or returned synchronously (SDK In-Process).",
   "type": "object",
   "required": [
     "grant_request_id",
@@ -42,7 +42,7 @@
     "principal_token": {
       "type": "string",
       "pattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$",
-      "description": "CONDITIONAL. Compact JWT (header.payload.signature) encoding the Principal Token issued by the wallet. REQUIRED when status is 'approved' or 'partial'. Absent when status is 'rejected'. The JWT payload MUST conform to principal-token.schema.json. The sub field MUST equal the agent's AID from the GrantRequest."
+      "description": "CONDITIONAL. Compact JWT (header.payload.signature) encoding the Principal Token issued by the wallet. REQUIRED when status is 'approved' or 'partial'. Absent when status is 'rejected'. The JWT payload MUST conform to principal-token.schema.json. The sub field MUST equal the original GrantRequest agent_aid."
     },
     "signed_capability_manifest": {
       "type": "object",
@@ -58,7 +58,7 @@
       "type": "integer",
       "minimum": 300,
       "maximum": 31536000,
-      "description": "CONDITIONAL. REQUIRED when status is 'approved' or 'partial'. The delegation validity window the principal approved. MAY differ from the requested delegation_valid_for_seconds."
+      "description": "CONDITIONAL. REQUIRED when status is 'approved' or 'partial'. The delegation validity window the principal approved. MAY be shorter than the requested delegation_valid_for_seconds, but MUST NOT exceed it. The Principal Token expires_at claim MUST equal issued_at plus this number of seconds."
     },
     "approved_max_delegation_depth": {
       "type": "integer",
@@ -74,7 +74,7 @@
     "signed_at": {
       "type": "string",
       "format": "date-time",
-      "description": "ISO 8601 UTC timestamp of the actual signing event. The deployer MUST verify this is not in the future and not more than 24 hours in the past."
+      "description": "ISO 8601 UTC timestamp of the actual signing event, computed from the issuer's reliable current UTC clock. When principal_token is present, this MUST represent the same instant as the Principal Token issued_at claim. The deployer MUST verify this is not more than 30 seconds in the future and not more than 24 hours in the past."
     }
   },
   "if": {

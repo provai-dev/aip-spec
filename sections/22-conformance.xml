@@ -1,0 +1,284 @@
+<section anchor="conformance" numbered="true">
+  <name>Conformance</name>
+
+  <t>
+    An implementation claiming conformance to this specification MUST identify
+    each conformance class and optional feature profile it implements. A
+    conformance claim MUST state the AIP protocol compatibility version
+    (<tt>0.3</tt> for this specification), the implemented class names from
+    this section, any optional profiles, and the AIP Catalog Snapshot
+    identifier and digest used for catalog-bound validation.
+  </t>
+
+  <t>
+    A conformant implementation MUST satisfy every MUST and REQUIRED
+    requirement that applies to each claimed class or profile. A SHOULD or
+    RECOMMENDED requirement applies unless the implementation documents a
+    specific reason for deviation and the deviation does not violate any MUST
+    requirement. Optional profiles are not required for a base class claim, but
+    an implementation that claims an optional profile MUST satisfy all
+    requirements listed for that profile.
+  </t>
+
+  <section anchor="common-conformance" numbered="true">
+    <name>Common Requirements</name>
+    <t>
+      Every conformance class MUST implement the conventions, identifiers,
+      algorithms, and serialization rules in <xref target="conventions"/>,
+      <xref target="terminology"/>, and <xref target="core-identity"/> that are
+      needed for the messages it sends, receives, signs, or validates.
+      Implementations that process JSON schemas MUST use the Draft-02 schema
+      identifiers listed in <xref target="appendix-schemas-content"/>.
+      Implementations that send or receive AIP-aware HTTP messages MUST
+      implement the version-header rules in <xref target="token-structure"/>
+      and <xref target="versioning"/>. Implementations that return AIP error
+      responses MUST use <xref target="error-handling"/>.
+    </t>
+  </section>
+
+  <section anchor="conformance-classes" numbered="true">
+    <name>Conformance Classes</name>
+    <table>
+      <name>AIP Conformance Classes</name>
+      <thead>
+        <tr>
+          <th align="left">Class</th>
+          <th align="left">Implementation role</th>
+          <th align="left">Required requirement set</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>AIP Registry</td>
+          <td>Authoritative registry, resolver, and metadata service</td>
+          <td>Registration processing in <xref target="registration-protocol"/>,
+          <tt>did:aip</tt> resolution and Registry trust records in
+          <xref target="agent-resolution"/>, revocation submission and CRL
+          publication in <xref target="revocation"/> and
+          <xref target="revocation-submission-registry"/>, unconditional
+          Registry endpoints and catalog sync in <xref target="registry"/>,
+          rate limiting in <xref target="rate-limiting"/>, versioning in
+          <xref target="versioning"/>, Registry security requirements in
+          <xref target="security"/>, and Token Payload Non-Retention. A
+          conformant Registry MUST NOT persist Credential Token or Step
+          Execution Token payloads, meaning the full JWT payload object, in any
+          log, database, or audit record beyond completion of the validation
+          algorithm for that token. A Registry MAY retain token metadata (AID,
+          <tt>jti</tt>, <tt>aip_scope</tt> list, <tt>exp</tt> timestamp, and
+          validation outcome) for audit purposes. This requirement can be
+          demonstrated through audit log schema inspection showing no payload
+          field in stored validation records.</td>
+        </tr>
+        <tr>
+          <td>AIP Relying Party</td>
+          <td>Service or agent that accepts AIP Credential Tokens or Step
+          Execution Tokens</td>
+          <td>Credential Token validation in
+          <xref target="credential-token-validation"/>, Tier conformance in
+          <xref target="tier-conformance"/>, revocation checking in
+          <xref target="revocation-checking"/>, DPoP and mTLS checks when
+          required by <xref target="security"/>, catalog-bound scope
+          validation in <xref target="scope-map-registry"/>, and applicable
+          rate-limit client behavior in <xref target="rate-limiting"/>.</td>
+        </tr>
+        <tr>
+          <td>AIP Agent Issuer</td>
+          <td>Agent runtime or signer that issues Credential Tokens for its
+          own AID</td>
+          <td>Credential Token structure and issuance rules in
+          <xref target="token-structure"/>, token lifetime and refresh rules
+          in <xref target="token-issuance"/> and <xref target="token-refresh"/>,
+          delegation-chain rules in <xref target="delegation-rules"/>, DPoP
+          proof construction when required by <xref target="security"/>, and
+          private-key handling requirements in <xref target="security"/>.</td>
+        </tr>
+        <tr>
+          <td>AIP Agent Deployer</td>
+          <td>Party that constructs GrantRequests, agent identity material,
+          Capability Manifests, and Registration Envelopes</td>
+          <td>Agent Identity and Capability Manifest construction in
+          <xref target="resource-model"/>, AIP-GRANT initiation and
+          GrantResponse validation in <xref target="principal-grant"/>, and
+          Registration Envelope submission requirements in
+          <xref target="registration-protocol"/>.</td>
+        </tr>
+        <tr>
+          <td>Principal Wallet</td>
+          <td>Principal-controlled grant, consent, and root Principal Token
+          signing component</td>
+          <td>A Principal Wallet is conformant if it satisfies all of the
+          following: (1) it holds the principal's DID private key in a manner
+          consistent with the key-protection requirements in
+          <xref target="key-management"/>; (2) it implements the AIP-GRANT
+          consent ceremony (<xref target="principal-grant"/>) for at least one
+          grant tier, G1, G2, or G3; (3) for scopes whose AIP Scope Catalog
+          entry has <tt>destructive: true</tt>, it MUST display a mandatory
+          two-step confirmation flow requiring explicit principal
+          acknowledgement before signing the GrantRequest, including at
+          minimum display of the destructive scope's Catalog description and a
+          distinct user action separate from initial grant submission; (4) it
+          MUST NOT sign a GrantRequest whose requested scopes are denied by
+          local principal policy or whose display metadata cannot be resolved
+          from the trusted AIP Scope Catalog; and (5) its conformance claim
+          MUST identify which grant tiers are implemented and whether Tier 3
+          mTLS client certificates are supported.</td>
+        </tr>
+        <tr>
+          <td>AIP OAuth Authorization Server</td>
+          <td>OAuth AS used for G3 grant ceremonies or token exchange</td>
+          <td>OAuth metadata and endpoint requirements in
+          <xref target="oauth-registry"/>, G3 binding checks in
+          <xref target="g3-grant"/>, token exchange rules in
+          <xref target="token-exchange-mcp"/>, and applicable OAuth error
+          handling required by the referenced OAuth specifications.</td>
+        </tr>
+        <tr>
+          <td>AIP RPNP Subscriber</td>
+          <td>Webhook receiver for Registry Push Notification Protocol
+          deliveries</td>
+          <td>Subscription request authentication, HMAC verification, JWT
+          payload verification, timestamp tolerance, replay handling, and
+          fallback behavior in <xref target="rpnp"/>.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section anchor="optional-feature-profiles" numbered="true">
+    <name>Optional Feature Profiles</name>
+    <table>
+      <name>AIP Optional Feature Profiles</name>
+      <thead>
+        <tr>
+          <th align="left">Profile</th>
+          <th align="left">Claiming implementation</th>
+          <th align="left">Additional required requirement set</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>G3 Grant Profile</td>
+          <td>AIP Registry, AIP OAuth Authorization Server, Principal Wallet,
+          or Agent Deployer</td>
+          <td>G3 ceremony, PKCE, OAuth binding, authorization-code binding,
+          and identity-proofing claim requirements in
+          <xref target="g3-grant"/> and <xref target="oauth-registry"/>.</td>
+        </tr>
+        <tr>
+          <td>Approval Envelope Registry Profile</td>
+          <td>AIP Registry</td>
+          <td>Approval Envelope storage, lifecycle, step claim, complete,
+          fail, compensation, SET issuance, and idempotency requirements in
+          <xref target="approval-envelopes"/> and the corresponding endpoints
+          in <xref target="registry"/>.</td>
+        </tr>
+        <tr>
+          <td>Approval Envelope Relying Party Profile</td>
+          <td>AIP Relying Party</td>
+          <td>Step Execution Token validation and Approval Envelope step
+          verification in <xref target="credential-token-validation"/> Step
+          10a and the SET validation profile.</td>
+        </tr>
+        <tr>
+          <td>Engagement Object Profile</td>
+          <td>AIP Registry, Agent Deployer, or Relying Party</td>
+          <td>Engagement Object, Capability Overlay, participant lifecycle,
+          countersignature, and engagement-gate requirements in
+          <xref target="engagement-objects"/>,
+          <xref target="capability-overlays"/>, and
+          <xref target="engagement-endpoints-registry"/>.</td>
+        </tr>
+        <tr>
+          <td>RPNP Registry Profile</td>
+          <td>AIP Registry</td>
+          <td>RPNP subscription, delivery, retry, degraded-state, and
+          endpoint requirements in <xref target="rpnp"/> and
+          <xref target="rpnp-endpoints-registry"/>.</td>
+        </tr>
+        <tr>
+          <td>Dead Man's Switch Profile</td>
+          <td>AIP Registry or Agent Issuer</td>
+          <td>Heartbeat endpoint, authenticated liveness, timeout, and
+          revocation behavior in <xref target="registry-security"/> and
+          <xref target="registry"/>.</td>
+        </tr>
+        <tr>
+          <td>Deployment Key-Management Audit Profile</td>
+          <td>Principal Wallet, Agent Issuer, Agent Deployer, or deployment
+          operator</td>
+          <td>Protected-key-store evidence, key inventory, rotation,
+          compromise-response, and sub-agent provisioning/deletion evidence in
+          <xref target="key-management"/>. This profile is not a wire
+          validation profile and does not change Registry or Relying Party
+          acceptance rules.</td>
+        </tr>
+        <tr>
+          <td>Endorsement Acceptance (Optional Feature)</td>
+          <td>AIP Registry</td>
+          <td>A Registry that implements <tt>POST /v1/endorsements</tt> MUST
+          enforce the minimum acceptance rules in
+          <xref target="endorsement-acceptance-requirements"/>. Reputation
+          scoring beyond these minimums is implementation-defined and not
+          subject to conformance testing. A Registry that does not implement
+          the endorsement endpoint is still a conformant Registry; it MUST
+          respond to <tt>POST /v1/endorsements</tt> with HTTP 501 Not
+          Implemented.</td>
+        </tr>
+        <tr>
+          <td>Reputation Output (Optional Feature)</td>
+          <td>AIP Registry</td>
+          <td>A Registry that implements
+          <tt>GET /v1/agents/{aid}/reputation</tt> MUST return the required
+          fields and numeric range invariants in
+          <xref target="reputation-scoring"/>. The conformance surface for this
+          profile is limited to endpoint availability, required fields, response
+          types, pagination of <tt>revocation_history</tt>, and the score range
+          0.0 through 5.0. The scoring algorithm, weighting, aggregation, and
+          decay policy remain implementation-defined.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section anchor="conformance-testing-methodology" numbered="true">
+    <name>Conformance Testing Methodology</name>
+    <t>
+      A conformance claim MUST be supported by test evidence for every claimed
+      class and optional feature profile. At minimum, the implementation MUST
+      execute schema-validation tests for every JSON object it emits or
+      accepts, positive and negative tests for each applicable validation step
+      in <xref target="credential-token-validation"/>, and endpoint behavior
+      tests for every Registry, Relying Party, wallet, deployer, or subscriber
+      endpoint included in the claim.
+    </t>
+    <t>
+      Test evidence MUST include the AIP protocol version, Catalog Snapshot
+      identifier and digest, implementation version, tested conformance classes,
+      optional profiles, test execution timestamp, and pass/fail status for each
+      applicable MUST-level requirement. A failed MUST-level test invalidates
+      the corresponding conformance claim until corrected or until the
+      implementation removes that class or profile from its claim.
+    </t>
+    <t>
+      Until a separate AIP test-vector document is published, implementations
+      MAY self-attest by publishing a machine-readable conformance claim and a
+      reproducible test report. Self-attestation does not create certification
+      by this specification, but it is the minimum evidence required for a
+      conformant claim.
+    </t>
+  </section>
+
+  <section anchor="conformance-claim-format" numbered="true">
+    <name>Conformance Claim Content</name>
+    <t>
+      A conformance claim SHOULD be machine-readable. When published as JSON,
+      it SHOULD include at least: <tt>aip_version</tt>, <tt>draft</tt>,
+      <tt>classes</tt>, <tt>profiles</tt>, <tt>catalog_snapshot_id</tt>,
+      <tt>catalog_sha256</tt>, implementation identifier,
+      <tt>test_report_uri</tt>, test execution timestamp, and contact or
+      audit URI. A Registry MAY publish this information in or alongside
+      <tt>/v1/registry-metadata</tt>. Absence of a conformance claim MUST
+      NOT be interpreted as conformance to any class or optional profile.
+    </t>
+  </section>
+</section>

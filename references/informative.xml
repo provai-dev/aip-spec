@@ -9,6 +9,12 @@
   <reference anchor="MCP">
     <front><title>Model Context Protocol Specification</title><author><organization>Anthropic</organization></author><date year="2024"/></front>
   </reference>
+  <reference anchor="MCP-STATELESS">
+    <front><title>MCP Stateless Transport Specification (draft)</title><author><organization>Anthropic</organization></author><date year="2026"/></front>
+  </reference>
+  <reference anchor="MS-ENTRAAGENTID" target="https://learn.microsoft.com/en-us/entra/agent-id/agent-identities">
+    <front><title>Overview of agent identities in Microsoft Entra</title><author><organization>Microsoft</organization></author><date month="April" year="2026"/></front>
+  </reference>
   <reference anchor="SP-800-207">
     <front><title>Zero Trust Architecture</title><author><organization>Rose, S., Borchert, O., Mitchell, S., and S. Connelly</organization></author><date month="August" year="2020"/></front>
     <seriesInfo name="NIST Special Publication" value="800-207"/>

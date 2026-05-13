@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provai.dev/schemas/aip/aip-gateway-protected-resource-metadata/draft-02",
+  "$comment": "Normatively defined by the AIP Gateway Protected Resource Metadata rules. This schema describes the RFC 9728 /.well-known/oauth-protected-resource document published by AIP-protected MCP gateways.",
+  "title": "AIP Gateway Protected Resource Metadata",
+  "description": "OAuth Protected Resource Metadata published at /.well-known/oauth-protected-resource by an MCP gateway that enforces AIP authentication.",
+  "type": "object",
+  "required": [
+    "resource",
+    "authorization_servers"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "resource": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://[^#]+$",
+      "description": "RFC 9728 protected resource identifier for the gateway."
+    },
+    "authorization_servers": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uri",
+        "pattern": "^https://[^#]+$"
+      },
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "AIP Registry OAuth authorization-server issuer identifiers accepted for this gateway."
+    },
+    "scopes_supported": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/scope"
+      },
+      "uniqueItems": true,
+      "description": "AIP scope strings accepted by this protected resource."
+    },
+    "bearer_methods_supported": {
+      "type": "array",
+      "contains": {
+        "const": "header"
+      },
+      "items": {
+        "type": "string",
+        "enum": ["header", "body", "query"]
+      },
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "RFC 9728 bearer token presentation methods. AIP gateways MUST support the HTTP Authorization header method."
+    },
+    "dpop_signing_alg_values_supported": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "description": "JWS algorithms accepted for DPoP proof JWTs. AIP DPoP profiles require EdDSA."
+    },
+    "dpop_bound_access_tokens_required": {
+      "type": "boolean",
+      "description": "Whether the protected resource always requires DPoP-bound access tokens."
+    },
+    "tls_client_certificate_bound_access_tokens": {
+      "type": "boolean",
+      "description": "Whether the protected resource requires mutual-TLS client certificate-bound access tokens."
+    },
+    "resource_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable resource name."
+    },
+    "resource_documentation": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://.+$",
+      "description": "Human-readable resource documentation URL."
+    },
+    "resource_policy_uri": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://.+$",
+      "description": "Human-readable resource policy URL."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "dpop_bound_access_tokens_required": { "const": true }
+        },
+        "required": ["dpop_bound_access_tokens_required"]
+      },
+      "then": {
+        "properties": {
+          "dpop_signing_alg_values_supported": {
+            "type": "array",
+            "contains": { "const": "EdDSA" }
+          }
+        },
+        "required": ["dpop_signing_alg_values_supported"],
+        "description": "When DPoP-bound access tokens are required, EdDSA DPoP proof JWTs MUST be supported."
+      }
+    }
+  ],
+  "$defs": {
+    "scope": {
+      "type": "string",
+      "pattern": "^[a-z_][a-z0-9_]*([.][a-z_][a-z0-9_]*)*$"
+    }
+  }
+}

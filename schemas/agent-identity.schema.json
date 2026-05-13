@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://provai.dev/schemas/aip/agent-identity/latest",
-  "$comment": "Normatively defined in AIP spec §4.2.1. Canonical signing field order for previous_key_signature: aid, name, type, model, created_at, version, public_key, previous_key_signature (set to '' during signing). See AIP spec §4.2 signing note and §16.4.",
+  "$id": "https://provai.dev/schemas/aip/agent-identity/draft-02",
+  "$comment": "Normatively defined by the AIP Agent Identity Object rules. Canonical signing field order for previous_key_signature: aid, name, type, model, created_at, version, public_key, previous_key_signature (set to '' during signing).",
   "title": "AIP Core Identity Object",
-  "description": "The persistent identity record for an AIP agent. Defined in AIP spec §4.2.1. Signing order for previous_key_signature: (aid, name, type, model, created_at, version, public_key, previous_key_signature) with previous_key_signature set to empty string during signing.",
+  "description": "The persistent identity record for an AIP agent. Signing order for previous_key_signature: (aid, name, type, model, created_at, version, public_key, previous_key_signature) with previous_key_signature set to empty string during signing.",
   "type": "object",
   "required": [
     "aid",
@@ -19,7 +19,7 @@
     "aid": {
       "type": "string",
       "pattern": "^did:aip:[a-z][a-z0-9]*(-[a-z0-9]+)*:[0-9a-f]{32}$",
-      "description": "W3C DID-conformant Agent Identity. MUST match did:aip ABNF defined in AIP spec §4.1. Format: did:aip:<namespace>:<32-hex-chars>. Both namespace and unique-id MUST be lowercase only."
+      "description": "W3C DID-conformant Agent Identity. MUST match the did:aip ABNF. Format: did:aip:<namespace>:<32-hex-chars>, where the 32-hex agent-id is the leftmost 128 bits of SHA-256 over the decoded Ed25519 public key. Both namespace and agent-id MUST be lowercase only."
     },
     "name": {
       "type": "string",
@@ -30,7 +30,7 @@
     "type": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
-      "description": "Agent type. MUST exactly match the namespace component of the agent's aid. Registered values: personal, enterprise, service, ephemeral, orchestrator. Community namespaces registered in the AIP Namespace Registry are also valid. Implementations receiving an unrecognised type SHOULD treat the agent as type 'service' and MUST log a warning."
+      "description": "Agent type. MUST exactly match the namespace component of the agent's aid. The namespace MUST be an active, non-reserved entry in the synced AIP Namespace Catalog unless the Registry explicitly documents a private local namespace policy."
     },
     "model": {
       "type": "object",
@@ -53,7 +53,7 @@
         "attestation_hash": {
           "type": "string",
           "pattern": "^sha256:[0-9a-f]{64}$",
-          "description": "OPTIONAL. SHA-256 hash of the model binary or version manifest, prefixed with 'sha256:'. Used for verifiable model pinning in high-assurance deployments."
+          "description": "OPTIONAL for Tier 1, SHOULD be present for Tier 2, and REQUIRED by Registry registration validation for Tier 3. SHA-256 hash of the model binary or version manifest, prefixed with 'sha256:'. Used for verifiable model pinning and model-substitution detection in high-assurance deployments."
         }
       }
     },
@@ -69,7 +69,7 @@
     },
     "public_key": {
       "type": "object",
-      "description": "The agent's current public key in JWK format per RFC 7517. MUST be an Ed25519 key (kty=OKP, crv=Ed25519) per RFC 8037. This is the mandatory-to-implement key type; ES256 and RS256 are optional suites handled separately.",
+      "description": "The agent's current public key in JWK format per RFC 7517. MUST be an Ed25519 key (kty=OKP, crv=Ed25519) per RFC 8037. This protocol version does not define ES256 or RS256 Agent Identity keys.",
       "required": ["kty", "crv", "x", "kid"],
       "additionalProperties": false,
       "properties": {
@@ -98,7 +98,7 @@
     "previous_key_signature": {
       "type": "string",
       "pattern": "^[A-Za-z0-9_-]+$",
-      "description": "OPTIONAL on initial registration (version=1). REQUIRED on key rotation (version>=2). Base64url-encoded EdDSA signature proving continuity of identity across key rotation. Computed by: serialise this Core Identity Object to JSON in canonical field order (aid, name, type, model, created_at, version, public_key, previous_key_signature) with previous_key_signature set to empty string '', then sign with the retiring private key. Verifiers retrieve the key at version-1 from /v1/agents/{aid}/public-key/{key-id} to verify."
+      "description": "OPTIONAL on initial registration (version=1). REQUIRED on key rotation (version>=2). Base64url-encoded EdDSA signature proving continuity of identity across key rotation. Computed by serializing the complete new Agent Identity Object using the Section 2.1 canonical JSON procedure with previous_key_signature set to empty string '', then signing with the retiring previous private key. The computed signature replaces the empty string in the stored object. Verifiers retrieve the immediately previous public key from /v1/agents/{aid}/public-key/{key-id} to verify; signing with the new private key does not satisfy this continuity proof."
     }
   },
   "if": {

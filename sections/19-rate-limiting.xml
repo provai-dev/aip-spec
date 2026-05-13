@@ -19,17 +19,17 @@
         <tr><th>Header</th><th>Required</th><th>Description</th></tr>
       </thead>
       <tbody>
-        <tr><td>`Retry-After`</td><td>MUST</td><td>Seconds until the client may retry, or a HTTP-date per [RFC9110]</td></tr>
-        <tr><td>`X-RateLimit-Limit`</td><td>SHOULD</td><td>The request limit for this window</td></tr>
-        <tr><td>`X-RateLimit-Remaining`</td><td>SHOULD</td><td>Remaining requests in this window</td></tr>
-        <tr><td>`X-RateLimit-Reset`</td><td>SHOULD</td><td>Unix timestamp when the window resets</td></tr>
-        <tr><td>`X-RateLimit-Policy`</td><td>MAY</td><td>Human-readable description of the applicable policy</td></tr>
+        <tr><td><tt>Retry-After</tt></td><td>MUST</td><td>Seconds until the client may retry, or a HTTP-date per [RFC9110]</td></tr>
+        <tr><td><tt>X-RateLimit-Limit</tt></td><td>SHOULD</td><td>The request limit for this window</td></tr>
+        <tr><td><tt>X-RateLimit-Remaining</tt></td><td>SHOULD</td><td>Remaining requests in this window</td></tr>
+        <tr><td><tt>X-RateLimit-Reset</tt></td><td>SHOULD</td><td>Unix timestamp when the window resets</td></tr>
+        <tr><td><tt>X-RateLimit-Policy</tt></td><td>MAY</td><td>Human-readable description of the applicable policy</td></tr>
       </tbody>
     </table>
     <t>
       The response body MUST conform to the error response format (Section 18.1)
-      with `error: "rate_limit_exceeded"` and a human-readable
-      `error_description` identifying the rate-limited operation and the
+      with <tt>error: "rate_limit_exceeded"</tt> and a human-readable
+      <tt>error_description</tt> identifying the rate-limited operation and the
       applicable window.
     </t>
   </section>
@@ -38,15 +38,22 @@
     <name>Per-Endpoint Rate Limit Categories</name>
     <t>
       The Registry MUST implement separate rate limit buckets for each of
-      the following operation categories. The limits below are RECOMMENDED
-      minimums; Registry operators MAY enforce stricter limits based on
-      observed traffic patterns and threat models.
+      the following operation categories. The numeric limits below are
+      RECOMMENDED default ceilings for unauthenticated or baseline clients.
+      Registry operators MAY enforce lower ceilings when observed traffic
+      patterns or threat models require stricter throttling, and MAY grant
+      higher ceilings to authenticated or verified clients where this section
+      allows higher limits.
+      Rate-limit conformance is based on implementing the separate buckets,
+      enforcing a documented effective limit for each bucket, and returning the
+      response format in Section 19.1. The exact numeric thresholds are
+      operational policy unless a requirement below uses MUST.
     </t>
 
     <section anchor="rate-limit-category-r1">
       <name>Category R1 - Registration writes</name>
       <t>
-        (`POST /v1/agents`):
+        (<tt>POST /v1/agents</tt>):
       </t>
       <ul>
         <li>
@@ -69,7 +76,7 @@
     <section anchor="rate-limit-category-r2">
       <name>Category R2 - Key rotation writes</name>
       <t>
-        (`PUT /v1/agents/{aid}`):
+        (<tt>PUT /v1/agents/{aid}</tt>):
       </t>
       <ul>
         <li>
@@ -83,7 +90,7 @@
     <section anchor="rate-limit-category-r3">
       <name>Category R3 - Revocation writes</name>
       <t>
-        (`POST /v1/revocations`):
+        (<tt>POST /v1/revocations</tt>):
       </t>
       <ul>
         <li>
@@ -93,8 +100,9 @@
           verified principals.
         </li>
         <li>
-          Registries MUST apply special throttling to `propagate_to_children:
-          true` revocations that would cascade to more than 100 descendants,
+          Registries MUST apply special throttling to
+          <tt>propagate_to_children: true</tt> revocations that would cascade
+          to more than 100 descendants,
           as these trigger recursive Registry writes. A revocation that would
           cascade to more than 100 descendants SHOULD be queued and processed
           asynchronously, with the Registry returning HTTP 202 (Accepted) and
@@ -106,8 +114,8 @@
     <section anchor="rate-limit-category-r4">
       <name>Category R4 - Validation-driven key reads</name>
       <t>
-        (`GET /v1/agents/{aid}/public-key/{key-id}`,
-        `GET /v1/agents/{aid}/revocation`):
+        (<tt>GET /v1/agents/{aid}/public-key/{key-id}</tt>,
+        <tt>GET /v1/agents/{aid}/revocation</tt>):
       </t>
       <ul>
         <li>
@@ -132,15 +140,16 @@
     <section anchor="rate-limit-category-r5">
       <name>Category R5 - CRL reads</name>
       <t>
-        (`GET /v1/crl`):
+        (<tt>GET /v1/crl</tt> direct-origin reads and the published
+        <tt>endpoints.crl</tt> retrieval URI):
       </t>
       <ul>
         <li>
-          The CRL endpoint MUST be served from a CDN or distributed
-          infrastructure (Section 11.2). Direct-origin CRL reads SHOULD be rate
-           limited per IP to 100 requests per minute to protect against CDN
-          bypass attacks. CDN-served responses have no normative rate limit
-          constraint.
+          The published CRL retrieval URI MUST be served from a CDN or
+          distributed infrastructure (<xref target="crl"/>). Direct-origin CRL reads
+          to <tt>/v1/crl</tt> SHOULD be rate limited per IP to 100 requests
+          per minute to protect against CDN bypass attacks. CDN-served
+          responses have no normative rate limit constraint.
         </li>
       </ul>
     </section>
@@ -148,16 +157,16 @@
     <section anchor="rate-limit-category-r6">
       <name>Category R6 - Endorsement writes</name>
       <t>
-        (`POST /v1/endorsements`):
+        (<tt>POST /v1/endorsements</tt>):
       </t>
       <ul>
         <li>
           Per-from-AID: RECOMMENDED limit of 500 endorsements per hour. This
           prevents an AID from artificially inflating another AID's
-          `endorsement_count` through automated submission.
+          <tt>endorsement_count</tt> through automated submission.
         </li>
         <li>
-          Self-endorsement (`from_aid` == `to_aid`) MUST be rejected at the
+          Self-endorsement (<tt>from_aid</tt> == <tt>to_aid</tt>) MUST be rejected at the
           application layer before rate limits are checked.
         </li>
       </ul>
@@ -166,7 +175,7 @@
     <section anchor="rate-limit-category-r7">
       <name>Category R7 - Approval Envelope writes and step claims</name>
       <t>
-        (`POST /v1/approvals`, `POST /v1/approvals/{id}/steps/{n}/claim`):
+        (<tt>POST /v1/approvals</tt>, <tt>POST /v1/approvals/{id}/steps/{n}/claim</tt>):
       </t>
       <ul>
         <li>
@@ -203,33 +212,39 @@
     <section anchor="principal-delegation-chain-verification">
       <name>Principal delegation chain verification at registration</name>
       <t>
-        The Registry MUST verify that the `principal_token` in the Registration
+        The Registry MUST verify that the <tt>principal_token</tt> in the Registration
         Envelope was issued by a DID that is resolvable and has not been
-        subjected to a `full_revoke` or `principal_revoke` RevocationObject
+        subjected to a <tt>full_revoke</tt> or <tt>principal_revoke</tt> RevocationObject
         in the Registry. A revoked principal MUST NOT be permitted to
         register new agents.
       </t>
       <t>
-        For the purposes of this check, a **revoked principal** is defined as
-        a principal DID (`principal_token.principal.id`) against which a
-        `principal_revoke` Revocation Object has been submitted to this
-        Registry. The Registry MUST maintain an index of principal DIDs
-        associated with `principal_revoke` revocations and MUST reject new
-        Registration Envelopes where `principal_token.principal.id` matches a
-        DID in this index, unless the `principal_revoke` object explicitly
-        scopes the revocation to a specific agent AID other than the one being
-        registered.
+        For the purposes of this check, a <strong>revoked principal</strong> is
+        defined as a principal DID (<tt>principal_token.principal.id</tt>)
+        against which a <tt>principal_revoke</tt> Revocation Object has been
+        submitted to this Registry. The Registry MUST maintain an index of
+        principal DIDs associated with <tt>principal_revoke</tt> revocations and
+        MUST reject new Registration Envelopes where
+        <tt>principal_token.principal.id</tt> matches a DID in this index. A
+        <tt>principal_revoke</tt> whose <tt>target_id</tt> is a Principal DID is
+        principal-wide. A <tt>principal_revoke</tt> whose <tt>target_id</tt> is a
+        specific agent AID is scoped to that AID's authorisation and does not by
+        itself block registration of unrelated AIDs for the same principal.
       </t>
     </section>
 
     <section anchor="registration-flood-from-shared-principals">
       <name>Registration flood from shared principals</name>
       <t>
-        If a single principal DID registers more than 1,000 agents (across
-        all time), the Registry SHOULD require the deployer to present proof
-        of legitimate use (out-of-band, implementation-specific). This is a
-        SHOULD, not a MUST, because legitimate orchestrator-heavy deployments
-        may reach this threshold.
+        Operational guidance (non-normative): a high number of registrations
+        under a single principal DID can be an abuse signal. A Registry can
+        apply local policy, such as deployer review or out-of-band business
+        verification, when registrations from one principal exceed an
+        implementation-defined threshold. A value such as 1,000 agents can be
+        used as an example review trigger, but this specification does not
+        define a protocol-visible proof of legitimate use, an interoperable
+        review mechanism, or a conformance threshold for shared-principal
+        registration volume.
       </t>
     </section>
 
@@ -238,8 +253,9 @@
       <t>
         Registries that permit registration without deployer authentication
         (open Registries) SHOULD implement a lightweight proof-of-work or
-        CAPTCHA mechanism for registrations where `deployer_did` is absent
-        from the principal_token context.
+        CAPTCHA mechanism for registrations where the deployer DID is
+        self-asserted, unauthenticated to the Registry, or otherwise not
+        trusted by local Registry policy.
       </t>
     </section>
   </section>
@@ -248,16 +264,16 @@
     <name>Validation-Driven Lookup Limits</name>
     <t>
       Key lookup amplification occurs when an adversary presents many tokens
-      with distinct `kid` values, forcing the Registry to perform a lookup
+      with distinct <tt>kid</tt> values, forcing the Registry to perform a lookup
       for each. Mitigations:
     </t>
 
     <section anchor="key-version-caching">
       <name>Key version caching</name>
       <t>
-        Relying Parties MUST cache resolved public keys for a given `kid`
+        Relying Parties MUST cache resolved public keys for a given <tt>kid</tt>
         for up to 300 seconds. Repeated validation of tokens
-        with the same `kid` SHOULD NOT trigger repeated Registry lookups
+        with the same <tt>kid</tt> SHOULD NOT trigger repeated Registry lookups
         within the cache window.
       </t>
     </section>
@@ -265,23 +281,28 @@
     <section anchor="historical-key-depth-limit">
       <name>Historical key depth limit</name>
       <t>
-        Registries MAY reject requests for key versions older than a
-        configurable retention window (RECOMMENDED: 90 days past the key
-        rotation date, since all tokens issued with that key must have
-        expired within 3600s of rotation). This prevents adversaries from
-        constructing tokens with ancient, never-rotated keys to force deep
-        history lookups.
+        Registries MAY reject requests for key versions older than the
+        historical key retention window defined in Section 19.7. This prevents
+        adversaries from constructing tokens with ancient, never-rotated keys
+        to force deep history lookups without invalidating any conforming
+        unexpired token.
+      </t>
+      <t>
+        Relying Parties perform the Step 2a expiration preflight before
+        historical key lookup. Therefore an expired token MUST be rejected with
+        <tt>token_expired</tt> before a missing historical key can produce
+        <tt>unknown_aid</tt>.
       </t>
     </section>
 
     <section anchor="kid-validation-at-relying-party">
-      <name>`kid` validation at the Relying Party</name>
+      <name><tt>kid</tt> validation at the Relying Party</name>
       <t>
-        Relying Parties MUST validate that the `kid` in the token header
+        Relying Parties MUST validate that the <tt>kid</tt> in the token header
         matches the pattern:
         <tt>did:aip:&lt;lowercase-namespace&gt;:&lt;32-lowercase-hex&gt;#key-&lt;positive-integer&gt;</tt>
         before performing any Registry lookup (Validation Step 3).
-        Malformed `kid` values MUST be rejected with `invalid_token`
+        Malformed <tt>kid</tt> values MUST be rejected with <tt>invalid_token</tt>
         without making a Registry call.
       </t>
     </section>
@@ -305,19 +326,28 @@
     <section anchor="pending-envelope-limit">
       <name>Pending envelope limit</name>
       <t>
-        A Registry SHOULD enforce a maximum of 1,000 `pending_approval`
+        A Registry SHOULD enforce a maximum of 1,000 <tt>pending_approval</tt>
         envelopes per principal DID at any time. Envelopes that expire
-        transition to `expired` and free this quota.
+        transition to <tt>expired</tt> and free this quota.
       </t>
     </section>
 
     <section anchor="step-claim-timeout">
       <name>Step claim timeout</name>
       <t>
-        Step claims that are not completed or failed within 600 seconds
-        MUST be automatically failed by the Registry.
+        Step claims that are not completed or failed within the Registry's
+        published <tt>step_claim_timeout_seconds</tt> value MUST be
+        automatically failed by the Registry. The timeout interval starts at
+        the step's <tt>claimed_at</tt> timestamp. The
+        <tt>step_claim_timeout_seconds</tt> value MUST be an integer from 1
+        to 600 seconds inclusive and MUST be published in
+        <tt>/v1/registry-metadata</tt>.
+      </t>
+      <t>
         This prevents a claimed step from blocking the workflow indefinitely
-        due to a crashed or unresponsive agent.
+        due to a crashed or unresponsive agent. Timeout-induced failure MUST
+        trigger the same envelope failure and compensation evaluation as an
+        explicit step failure reported by the actor.
       </t>
     </section>
 
@@ -337,7 +367,7 @@
     <t>
       Clients that receive HTTP 429 responses MUST implement exponential
       backoff with jitter. The minimum retry interval is the value in the
-      `Retry-After` header. Clients MUST NOT retry before `Retry-After`
+      <tt>Retry-After</tt> header. Clients MUST NOT retry before <tt>Retry-After</tt>
       expires.
     </t>
     <t>
@@ -352,10 +382,10 @@ jitter         = random(0, BACKOFF_BASE)
 retry_delay    = max(computed_delay + jitter, Retry-After)
     ]]></artwork>
     <t>
-      The `Retry-After` value from the 429 response acts as a mandatory
-      minimum: clients MUST NOT retry before `Retry-After` seconds have
-      elapsed, even if `computed_delay + jitter` is smaller. When no
-      `Retry-After` header is present, clients MUST treat it as 0 and
+      The <tt>Retry-After</tt> value from the 429 response acts as a mandatory
+      minimum: clients MUST NOT retry before <tt>Retry-After</tt> seconds have
+      elapsed, even if <tt>computed_delay + jitter</tt> is smaller. When no
+      <tt>Retry-After</tt> header is present, clients MUST treat it as 0 and
       rely solely on the exponential formula.
     </t>
     <t>
@@ -369,6 +399,38 @@ retry_delay    = max(computed_delay + jitter, Retry-After)
       MAY temporarily block their source IPs or API keys after sustained
       abuse. Blocking decisions are implementation-specific and are not
       normatively constrained by this specification.
+    </t>
+  </section>
+
+  <section anchor="historical-key-retention-requirements">
+    <name>Historical Key Retention Requirements</name>
+    <t>
+      A Registry that accepts key rotation for an AID MUST retain each retired
+      public verification key for historical validation until at least:
+    </t>
+    <artwork type="pseudocode"><![CDATA[
+retention_not_before =
+  retired_key.valid_until
+  + max_credential_token_ttl_for_registry
+  + accepted_clock_skew
+    ]]></artwork>
+    <t>
+      <tt>max_credential_token_ttl_for_registry</tt> is the largest effective
+      Credential Token TTL that the Registry could have accepted for any active
+      scope at the time the key was retired, after applying the Tier ceilings in
+      <xref target="token-issuance"/> and the synced AIP Scope Catalog. The
+      <tt>accepted_clock_skew</tt> value MUST be at least 30 seconds.
+      Registries MAY retain retired keys longer than this minimum. The
+      RECOMMENDED operational retention window is 90 days after
+      <tt>valid_until</tt>, but that window MUST be extended when the formula
+      above yields a later time.
+    </t>
+    <t>
+      Historical key retention is a validation-availability rule, not an
+      authority extension. Agents MUST stop issuing Credential Tokens with a
+      retired private key immediately after a successful rotation, and Relying
+      Parties MUST still reject tokens whose <tt>exp</tt>, delegation chain, or
+      revocation state fails validation.
     </t>
   </section>
 </section>

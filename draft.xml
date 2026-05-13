@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <rfc xmlns:xi="http://www.w3.org/2001/XInclude"
      version="3"
-     docName="draft-singla-agent-identity-protocol-01"
+     docName="draft-singla-agent-identity-protocol-02"
      ipr="trust200902"
      category="std"
      submissionType="IETF"
@@ -11,7 +11,7 @@
   <front>
     <title abbrev="AIP">Agent Identity Protocol (AIP): Decentralized Identity and Delegation for AI Agents</title>
 
-    <seriesInfo name="Internet-Draft" value="draft-singla-agent-identity-protocol-01"/>
+    <seriesInfo name="Internet-Draft" value="draft-singla-agent-identity-protocol-02"/>
 
     <author fullname="Paras Singla" initials="P." surname="Singla">
       <organization>Independent</organization>
@@ -21,7 +21,7 @@
       </address>
     </author>
 
-    <date year="2026" month="April" day="18"/>
+    <date year="2026" month="May" day="14"/>
 
     <area>Security</area>
 
@@ -74,13 +74,14 @@
     <xi:include href="sections/19-rate-limiting.xml"/>
     <xi:include href="sections/20-versioning.xml"/>
     <xi:include href="sections/21-security.xml"/>
+    <xi:include href="sections/appendix-schemas.xml"/>
+    <xi:include href="sections/22-conformance.xml"/>
     <xi:include href="sections/22-iana.xml"/>
   </middle>
 
   <back>
     <xi:include href="references/normative.xml"/>
     <xi:include href="references/informative.xml"/>
-    <xi:include href="sections/appendix-schemas.xml"/>
     <section anchor="acknowledgements" numbered="false">
       <name>Acknowledgements</name>
       <t>
@@ -89,56 +90,29 @@
         Authorization Concept Paper (2026).
       </t>
     </section>
-    <section anchor="appendix-a" numbered="false">
-      <name>Appendix A: Changes from Version 0.1</name>
-      <t>This appendix is informative.</t>
+    <section anchor="appendix-implementation-considerations" numbered="false">
+      <name>Appendix A: Implementation Considerations (Non-Normative)</name>
       <t>
-        This version addresses four operational and security additions relative
-        to v0.1:
+        AIP implementations may integrate the Enterprise IdP Federation
+        Profile (<xref target="enterprise-idp-federation-profile"/>) with
+        enterprise identity providers by registering as an OAuth client with
+        the enterprise IdP and using the RFC 7523 JWT Bearer grant or RFC 8693
+        Token Exchange grant type as described in
+        <xref target="enterprise-idp-federation-profile"/>.
       </t>
-      <ul>
-        <li><strong>Section 4.5 - AIP-GRANT Principal Authorization Protocol.</strong> Defines the standardised ceremony by which a human principal reviews, consents to, and cryptographically authorises an agent delegation. Analogous to the OAuth 2.0 Authorization Code Flow.</li>
-        <li><strong>Section 4.6 - Chained Approval Envelopes.</strong> Defines a workflow-level authorisation primitive. A single human approval covers a pre-declared sequence of dependent agent actions, including SAGA compensation steps. Addresses the cascading-approval problem and the token-expiry-while-pending problem for Tier 2 workflows.</li>
-        <li><strong>Section 7.4 - Token Refresh and Long-Running Tasks.</strong> Specifies when and how agents re-issue Credential Tokens, pre-emptive refresh requirements, and handling of delegation chain expiry.</li>
-        <li><strong>Section 14 (revised) - Rate Limiting and Abuse Prevention.</strong> Defines per-endpoint rate limit categories, required response headers, anti-abuse rules for registration and validation-driven lookups, and graduated backoff requirements.</li>
-      </ul>
-    </section>
-    <section anchor="appendix-b" numbered="false">
-      <name>Appendix B: Changes from Version 0.2</name>
-      <t>This appendix is informative.</t>
       <t>
-        v0.3 introduces the following changes relative to v0.2. Items marked
-        <strong>(breaking)</strong> are not backward compatible.
+        For stateless or horizontally-scaled deployments, the shared token
+        cache backend requirement is defined normatively in
+        <xref target="token-cache-requirements-stateless"/>. Development
+        deployments can use any single-instance cache store consistent with
+        the definition of a non-production deployment in
+        <xref target="terminology"/>.
       </t>
-      <t><strong>Breaking changes:</strong></t>
-      <ul>
-        <li><strong>(breaking) §3 - Tiers reframed as threat-model declarations.</strong> Tier 1 (bounded-staleness), Tier 2 (real-time revocation), Tier 3 (enterprise/regulated). Each Tier now enumerates its security property declarations rather than just listing scopes.</li>
-        <li><strong>(breaking) §3, §4.5.3, §7.2 - spawn_agents scope retired.</strong> Replaced by spawn_agents.create and spawn_agents.manage, both classified as Tier 2 with 300s max TTL and DPoP requirement.</li>
-        <li><strong>(breaking) §4.5 - Three-tier grant model.</strong> AIP-GRANT restructured into G1 (Registry-Mediated), G2 (Direct Deployer), and G3 (Full Ceremony with OAuth 2.1). Registration Envelopes MUST include grant_tier. did:key principals forbidden for Tier 2.</li>
-        <li><strong>(breaking) §6.2 - AIPRegistry service entry.</strong> Principal DID Documents authorising Tier 2 agents MUST include an AIPRegistry service entry.</li>
-        <li><strong>(breaking) §6.3.4 - Well-known schema extended.</strong> The /.well-known/aip-registry response MUST include signature, registry_name, and endpoints fields.</li>
-        <li><strong>(breaking) §7.1 - Version header.</strong> X-AIP-Version updated from "0.2" to "0.3".</li>
-      </ul>
-      <t><strong>Additive changes:</strong></t>
-      <ul>
-        <li><strong>§1.2 - MCP integration note.</strong> Informative note clarifying AIP's relationship with Model Context Protocol.</li>
-        <li><strong>§4.2.3 - New claims.</strong> aip_approval_step (integer) and aip_engagement_id (string) added to Credential Token schema.</li>
-        <li><strong>§4.2.4 - Principal Token claims.</strong> acr and amr claims added for G3 identity proofing. iss field added.</li>
-        <li><strong>§4.7 - Capability Overlays.</strong> New section defining context-specific capability attenuation with Rules CO-1 through CO-6.</li>
-        <li><strong>§4.8 - Engagement Objects.</strong> New section defining multi-party engagement lifecycle, append-only change log, and approval gates.</li>
-        <li><strong>§7.3 - Validation steps.</strong> Step 6a (Registry Trust Anchoring), Step 6b (Engagement validation), and Step 9e (Overlay application) added.</li>
-        <li><strong>§7.5 - Token Exchange.</strong> New section for RFC 8693 token exchange with DPoP binding, enabling AIP-to-OAuth bridging for MCP.</li>
-        <li><strong>§9.4 - RPNP.</strong> Registry Push Notification Protocol for near-real-time event delivery (5s SLA).</li>
-        <li><strong>§13.2 - Error codes.</strong> 26 new error codes for all v0.3 features.</li>
-        <li><strong>§14.6 - Backoff formula corrected.</strong> BACKOFF_BASE separated from Retry-After; jitter bounded by BACKOFF_BASE.</li>
-        <li><strong>§15.5 - OAuth 2.1 AS.</strong> Authorization server interface for G3.</li>
-        <li><strong>§15.6 - Scope Map.</strong> urn:aip:scope: URI namespace and GET /v1/scopes endpoint.</li>
-        <li><strong>§15.7 - Engagement Endpoints.</strong> CRUD for Engagement Objects.</li>
-        <li><strong>§15.8 - RPNP Endpoints.</strong> Subscription management.</li>
-        <li><strong>§16.1 - Tier Conformance table.</strong> Maps Tiers to required security properties.</li>
-        <li><strong>§17.1 - Threat scenarios.</strong> TS-12 (orchestrator cascade), TS-13 (overlay injection), TS-14 (engagement tampering).</li>
-        <li><strong>§19 - References.</strong> 10 new normative references (RFC 6454, 6960, 7636, 8176, 8414, 8693, 8707, 9068, 9728; RFC 8785 already present). 1 new informative reference (OWASP LLM Top 10).</li>
-      </ul>
+      <t>
+        Specific implementation guides for individual products or platforms
+        are published separately by their respective maintainers and are not
+        part of this specification.
+      </t>
     </section>
   </back>
 

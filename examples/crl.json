@@ -1,0 +1,36 @@
+{
+  "_comment": "Example AIP CRL document. Signatures are placeholders over the JCS canonical serialization of the signed object only.",
+  "signed": {
+    "registry_id": "https://registry.provai.dev",
+    "trust_record_version": 2,
+    "crl_id": "crl:87654321-4321-4678-8abc-123456789def",
+    "issued_at": "2026-04-17T12:00:00Z",
+    "next_update": "2026-04-17T12:15:00Z",
+    "sequence": 42,
+    "publication_mode": "complete",
+    "revocation_count": 1,
+    "revocations": [
+      {
+        "revocation_id": "rev:12345678-1234-4678-8abc-123456789def",
+        "target_id": "did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3",
+        "type": "full_revoke",
+        "issued_by": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2do7",
+        "kid": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2do7#key-1",
+        "reason": "key_compromised",
+        "timestamp": "2026-03-22T15:30:00Z",
+        "propagate_to_children": true,
+        "signature": "base64url-encoded-eddsa-signature-placeholder"
+      }
+    ]
+  },
+  "signatures": [
+    {
+      "keyid": "https://registry.provai.dev#crl-key-2",
+      "sig": "base64url-encoded-crl-signature-placeholder"
+    }
+  ],
+  "_notes": {
+    "trust_binding": "The signature keyid references active_verification_keys.crl in Registry Trust Record version 2.",
+    "freshness": "Relying Parties refresh before next_update and must not use this CRL for new validation after that timestamp."
+  }
+}

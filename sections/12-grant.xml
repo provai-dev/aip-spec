@@ -3,7 +3,8 @@
   <t>
     The AIP-GRANT ceremony provides a standardised protocol for principals
     to authorise AI agents. AIP-GRANT is analogous to the OAuth 2.0
-    Authorization Code Flow, adapted for the agent identity use case.
+    Authorization Code Flow <xref target="RFC6749"/>, adapted for the agent
+    identity use case.
     Two independent implementations following this section MUST
     produce interoperable grant interactions.
   </t>
@@ -27,7 +28,7 @@
       <dt>Principal Wallet</dt>
       <dd>
         Software that holds the principal's DID private key and executes
-        the signing ceremony. The wallet MUST verify the deployer's
+        the signing ceremony. The Principal Wallet MUST verify the deployer's
         signature and MUST obtain explicit human approval before signing.
       </dd>
 
@@ -47,7 +48,8 @@
    Agent Deployer      Principal Wallet      AIP Registry
          |                     |                  |
          |-- GrantRequest ---->|                  |
-         | (capabilities,      |                  |
+         | (agent_aid,         |                  |
+         |  capabilities,      |                  |
          |  purpose, nonce)    |                  |
          |                     |                  |
          |             [Display consent UI]       |
@@ -70,106 +72,161 @@
     <t>
       The GrantRequest is a JSON object constructed by the Agent Deployer.
       It MUST be signed by the deployer's Ed25519 key when transmitted
-      over the Web Redirect or QR Code bindings. The nonce MUST be
+      over the Web Redirect or QR Code bindings. For G2, the signed
+      request MUST identify the deployer through the <tt>deployer_did</tt>
+      field and the signature key MUST be bound to that DID. The nonce MUST be
       cryptographically random and MUST contain at least 128 bits of
       entropy.
     </t>
+    <t>
+      The request MUST also include <tt>deployer_name</tt> for consent UI
+      display. The <tt>deployer_name</tt> value is human-readable metadata
+      only; it is not a trust anchor and MUST NOT replace verification of
+      <tt>deployer_did</tt> and the signed GrantRequest envelope.
+    </t>
 
-                <table>
-          <name>GrantRequest Fields</name>
-          <thead>
-            <tr>
-              <th align="left">Field</th>
-              <th align="left">Type</th>
-              <th align="center">Required</th>
-              <th align="left">Constraints</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>grant_request_id</td>
-              <td>string</td>
-              <td>REQUIRED</td>
-              <td>pattern: gr:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}</td>
-            </tr>
-            <tr>
-              <td>aip_version</td>
-              <td>string</td>
-              <td>REQUIRED</td>
-              <td>MUST be "0.3"</td>
-            </tr>
-            <tr>
-              <td>agent_name</td>
-              <td>string</td>
-              <td>REQUIRED</td>
-              <td>maxLength: 64; displayed in consent UI</td>
-            </tr>
-            <tr>
-              <td>agent_type</td>
-              <td>string</td>
-              <td>REQUIRED</td>
-              <td>registered namespace value</td>
-            </tr>
-            <tr>
-              <td>model.provider</td>
-              <td>string</td>
-              <td>REQUIRED</td>
-              <td>displayed in consent UI</td>
-            </tr>
-            <tr>
-              <td>model.model_id</td>
-              <td>string</td>
-              <td>REQUIRED</td>
-              <td>displayed in consent UI</td>
-            </tr>
-            <tr>
-              <td>requested_capabilities</td>
-              <td>object</td>
-              <td>REQUIRED</td>
-              <td>Capability Manifest capabilities sub-schema</td>
-            </tr>
-            <tr>
-              <td>purpose</td>
-              <td>string</td>
-              <td>REQUIRED</td>
-              <td>minLength: 1; maxLength: 512</td>
-            </tr>
-            <tr>
-              <td>delegation_valid_for_seconds</td>
-              <td>integer</td>
-              <td>REQUIRED</td>
-              <td>min: 300; max: 31536000</td>
-            </tr>
-            <tr>
-              <td>nonce</td>
-              <td>string</td>
-              <td>REQUIRED</td>
-              <td>minLength: 22; cryptographically random</td>
-            </tr>
-            <tr>
-              <td>request_expires_at</td>
-              <td>string</td>
-              <td>REQUIRED</td>
-              <td>ISO 8601 UTC</td>
-            </tr>
-            <tr>
-              <td>callback_uri</td>
-              <td>string</td>
-              <td>CONDITIONAL</td>
-              <td>REQUIRED for Web Redirect; MUST use HTTPS</td>
-            </tr>
-          </tbody>
-        </table>
+    <t><strong>GrantRequest Fields:</strong></t>
+
+    <dl newline="true" spacing="normal">
+                  <dt><tt>grant_request_id</tt> (string; REQUIRED)</dt>
+
+
+                  <dd>pattern: gr:&lt;UUIDv4-lowerhex&gt;</dd>
+
+
+                  <dt><tt>aip_version</tt> (string; REQUIRED)</dt>
+
+
+                  <dd>AIP protocol compatibility version; MUST be "0.3"; not the Internet-Draft revision</dd>
+
+
+                  <dt><tt>agent_aid</tt> (string; REQUIRED)</dt>
+
+
+                  <dd>MUST match did:aip ABNF; pre-derived AID of the agent being authorised; Principal Token sub MUST equal this value</dd>
+
+
+                  <dt><tt>agent_name</tt> (string; REQUIRED)</dt>
+
+
+                  <dd>maxLength: 64; displayed in consent UI</dd>
+
+
+                  <dt><tt>agent_type</tt> (string; REQUIRED)</dt>
+
+
+                  <dd>registered namespace value</dd>
+
+
+                  <dt><tt>model.provider</tt> (string; REQUIRED)</dt>
+
+
+                  <dd>displayed in consent UI</dd>
+
+
+                  <dt><tt>model.model_id</tt> (string; REQUIRED)</dt>
+
+
+                  <dd>displayed in consent UI</dd>
+
+
+                  <dt><tt>requested_capabilities</tt> (object; REQUIRED)</dt>
+
+
+                  <dd>Capability Manifest capabilities sub-schema</dd>
+
+
+                  <dt><tt>purpose</tt> (string; REQUIRED)</dt>
+
+
+                  <dd>minLength: 1; maxLength: 512</dd>
+
+
+                  <dt><tt>delegation_valid_for_seconds</tt> (integer; REQUIRED)</dt>
+
+
+                  <dd>requested maximum delegation lifetime; min: 300; max: 31536000; approved value MUST NOT exceed this value</dd>
+
+
+                  <dt><tt>nonce</tt> (string; REQUIRED)</dt>
+
+
+                  <dd>minLength: 22; cryptographically random</dd>
+
+
+                  <dt><tt>request_expires_at</tt> (string; REQUIRED)</dt>
+
+
+                  <dd>ISO 8601 UTC</dd>
+
+
+                  <dt><tt>callback_uri</tt> (string; CONDITIONAL)</dt>
+
+
+                  <dd>REQUIRED for Web Redirect and G3 OAuth authorization requests; MUST use HTTPS; for G3, MUST equal the OAuth redirect_uri</dd>
+
+
+                  <dt><tt>state</tt> (string; CONDITIONAL)</dt>
+
+
+                  <dd>REQUIRED for G3 OAuth authorization requests; echoed unchanged and MUST equal the OAuth state parameter</dd>
+
+
+                  <dt><tt>deployer_did</tt> (string; REQUIRED)</dt>
+
+
+                  <dd>W3C DID of the deployer; used to verify signed GrantRequests and displayed in consent UI</dd>
+
+
+                  <dt><tt>deployer_name</tt> (string; REQUIRED)</dt>
+
+
+                  <dd>minLength: 1; maxLength: 128; displayed alongside deployer_did; display metadata only, not a trust anchor</dd>
+
+
+                  <dt><tt>deployer_public_key</tt> (object; OPTIONAL)</dt>
+
+
+                  <dd>JWK key hint only; MUST match the verification method resolved from deployer_did and MUST NOT replace DID resolution</dd>
+
+
+                </dl>
 
     <t>
       The deployer MUST generate the agent's AID before constructing
-      the GrantRequest so that the resulting Principal Token correctly
-      names the agent's AID in its sub field.
+      the GrantRequest and MUST include that value as <tt>agent_aid</tt>.
+      The Principal Token produced from this grant MUST use the original
+      GrantRequest <tt>agent_aid</tt> as its <tt>sub</tt> claim.
+    </t>
+
+    <t>
+      <strong>Signed GrantRequest envelope:</strong> A GrantRequest sent
+      directly to a Principal Wallet using the Web Redirect or QR Code
+      binding MUST be carried as a compact JWS whose payload is the UTF-8
+      JSON serialization of the GrantRequest object. The protected JWS
+      header MUST contain <tt>typ</tt> equal to
+      <tt>"aip-grant+jws"</tt>, <tt>alg</tt> equal to
+      <tt>"EdDSA"</tt>, and <tt>kid</tt> as a DID URL. The DID portion of
+      <tt>kid</tt> MUST equal the GrantRequest <tt>deployer_did</tt>. The
+      referenced verification method MUST resolve from the
+      <tt>deployer_did</tt> DID Document, MUST be controlled by
+      <tt>deployer_did</tt>, and MUST be an Ed25519 signing key. If
+      <tt>deployer_public_key</tt> is present, it is a cache hint only; the
+      Principal Wallet MUST verify that it is byte-for-byte equivalent to
+      the resolved verification method before using it and MUST NOT trust a
+      self-supplied key that is not present in the resolved DID Document.
+    </t>
+    <t>
+      The same signed GrantRequest envelope format is used by the G3 OAuth
+      binding. In that case, the compact JWS is carried in the
+      <tt>aip_grant_request</tt> authorization request parameter and is
+      verified by the Registry acting as OAuth Authorization Server before
+      any authentication or consent ceremony is started.
     </t>
   </section>
 
   <section anchor="grant-consent" numbered="true">
-  <name>Wallet Consent Requirements</name>
+  <name>Principal Wallet Consent Requirements</name>
     <t>
       The Principal Wallet MUST implement the following requirements
       before signing any grant.
@@ -183,6 +240,27 @@
       grant_request_id values for at least 30 days and MUST reject
       replays with grant_request_replayed.
     </t>
+    <t>
+      The Principal Wallet MUST use its own reliable UTC clock for
+      <tt>request_expires_at</tt> checks and MAY allow a 30-second clock
+      skew tolerance. If the Principal Wallet's current time is more than 30
+      seconds after <tt>request_expires_at</tt>, the request is expired. If
+      the Principal Wallet cannot determine reliable current UTC time, it MUST reject
+      with <tt>grant_request_invalid</tt> rather than issuing a back-dated
+      or future-dated Principal Token.
+    </t>
+
+    <t>
+      <strong>Signed request checks:</strong> For a G2 GrantRequest, the
+      Principal Wallet MUST verify the signed GrantRequest envelope before
+      displaying the consent UI. The Principal Wallet MUST reject with
+      <tt>grant_request_invalid</tt> and MUST NOT show the consent UI if
+      the request is unsigned, if <tt>deployer_did</tt> is absent, if the
+      JWS <tt>kid</tt> DID does not equal <tt>deployer_did</tt>, if the
+      deployer DID cannot be resolved, if the referenced key is not an
+      Ed25519 signing key controlled by <tt>deployer_did</tt>, or if the
+      JWS signature verification fails.
+    </t>
 
     <t>
       <strong>Mandatory display elements:</strong> The consent UI
@@ -195,17 +273,115 @@
       <li>AI model - provider and model_id</li>
       <li>Purpose - the purpose field verbatim</li>
       <li>Deployer identity - deployer_name and deployer_did</li>
-      <li>All requested capabilities in canonical human-readable strings</li>
-      <li>Delegation validity - expiry computed from delegation_valid_for_seconds</li>
-      <li><strong>Destructive Operations:</strong> Any scope marked as <tt>destructive: true</tt> in the Registry's Scope Map MUST be highlighted in the UI with a mandatory "confirm destructive action" checkbox or equivalent additional friction.</li>
+      <li>All requested capabilities using trusted AIP Scope Catalog display metadata</li>
+      <li>Delegation validity - requested duration and the approximate expiry computed from delegation_valid_for_seconds using the Principal Wallet's current UTC clock</li>
+        <li><strong>Destructive Operations:</strong> Any scope whose active
+        AIP Scope Catalog entry has <tt>destructive: true</tt> MUST be
+        highlighted in the UI using the mandatory two-step confirmation flow
+        required for Principal Wallet conformance in
+        <xref target="conformance-classes"/>.</li>
     </ol>
 
     <t>
-      <strong>Canonical human-readable capability strings:</strong>
+      Before displaying the consent UI, the Principal Wallet MUST resolve
+      <tt>requested_capabilities</tt> to the concrete requested scope
+      identifiers using the scope-to-capability rules in
+      <xref target="field-constraints"/> and any explicit private extension
+      policy accepted by the Principal Wallet. The Principal Wallet MUST use a trusted immutable
+      AIP Scope Catalog Snapshot for this resolution. For each requested
+      scope, the Principal Wallet MUST find an <tt>active</tt> or
+      <tt>experimental</tt> scope entry and MUST find complete trusted
+      <tt>display</tt> metadata for the Principal Wallet's selected locale or for the
+      entry's <tt>display.default_locale</tt>. If no trusted catalog snapshot
+      is available, if a requested capability cannot be resolved to a
+      concrete scope identifier, if the scope entry is unknown, removed,
+      reserved, or outside an accepted private extension policy, or if the
+      required display metadata is absent or incomplete, the Principal Wallet MUST
+      reject with <tt>grant_request_invalid</tt> and MUST NOT show the
+      consent UI.
+    </t>
+
+    <t>
+      The Principal Wallet MUST NOT synthesize consent text from raw scope
+      identifiers, capability field names, deployer-supplied display strings,
+      generic family names, or untrusted catalog data. The title value in
+      <tt>display.strings[locale].title</tt> is the canonical
+      human-readable capability string for that locale. The Principal Wallet MAY also
+      display <tt>display.strings[locale].summary</tt>, but it MUST NOT use
+      the summary to replace or weaken required destructive-operation
+      highlighting.
+    </t>
+
+    <t>
+      If an issued Principal Token includes a <tt>purpose</tt> claim, the
+      claim value MUST be either the exact GrantRequest <tt>purpose</tt>
+      value or a shorter summary that was displayed to and approved by the
+      principal before signing. A Principal Token issuer MUST NOT include a
+      deployer-supplied or issuer-generated <tt>purpose</tt> claim that was
+      not presented during consent.
+    </t>
+
+    <t>
+      <strong>Principal Token signing profile:</strong> For a root Principal
+      Token, the token issuer is always the root principal identified by
+      <tt>principal.id</tt>. A Principal Wallet or other principal-controlled
+      signing component that constructs a root Principal Token after consent
+      MUST sign the JWT with EdDSA, MUST set <tt>iss</tt> to
+      <tt>principal.id</tt>, and MUST use a JOSE header <tt>kid</tt>
+      identifying an Ed25519 verification method controlled by
+      <tt>principal.id</tt>. A Registry or authorization server MAY prepare
+      the payload, mediate consent, collect high-assurance authentication
+      context, store the GrantResponse, or deliver the signed token, but it
+      MUST NOT sign a root Principal Token with a Registry-controlled or
+      authorization-server-controlled key and MUST NOT set <tt>iss</tt> to
+      the Registry or authorization server. The Principal Token payload
+      <tt>sub</tt> claim MUST equal the <tt>agent_aid</tt> value from the
+      original GrantRequest. A service that cannot obtain a
+      principal-controlled Ed25519 signature MUST NOT issue a root Principal
+      Token with that principal as <tt>iss</tt>.
+    </t>
+    <t>
+      <strong>Delegation expiry derivation:</strong> The Principal Token
+      issuer MUST compute a single issuance timestamp from its current
+      reliable UTC clock at the moment of signing. It MUST set the Principal
+      Token <tt>issued_at</tt> claim and the GrantResponse
+      <tt>signed_at</tt> field to that same instant. The approved delegation
+      lifetime MUST be represented as
+      <tt>approved_delegation_valid_for_seconds</tt>, MUST be at least 300
+      seconds, and MUST NOT exceed the original GrantRequest
+      <tt>delegation_valid_for_seconds</tt>. The issuer MAY approve a
+      shorter lifetime than requested.
+    </t>
+    <t>
+      The Principal Token <tt>expires_at</tt> claim MUST equal
+      <tt>issued_at</tt> plus
+      <tt>approved_delegation_valid_for_seconds</tt> seconds. No clock skew
+      tolerance is applied to this calculation; clock skew tolerance applies
+      only when validators compare timestamps to their local current time.
+      The issuer MUST NOT use the deployer's clock, callback receipt time, or
+      <tt>request_expires_at</tt> as the Principal Token <tt>issued_at</tt>
+      value.
+    </t>
+
+    <t>
+      <strong>Draft-02 Catalog display metadata:</strong>
+    </t>
+
+    <t>
+      The AIP Scope Catalog is the normative source of capability display
+      metadata. Each scope entry's <tt>display</tt> member is defined in
+      <xref target="scope-map-registry"/>. For standard Draft-02 scopes,
+      <tt>display.strings["en-US"].title</tt> MUST equal the display string
+      listed below. The corresponding <tt>summary</tt> value MUST be
+      non-empty and MUST describe the same capability without broadening the
+      authorization represented by the scope. Extension and private scopes
+      MUST provide equivalent catalog display metadata through their catalog
+      entry or accepted private extension policy before a Principal Wallet can present
+      consent for them.
     </t>
 
                 <table>
-          <name>Canonical Capability Display Strings</name>
+          <name>Draft-02 Standard Scope Display Titles</name>
           <thead>
             <tr>
               <th align="left">Scope</th>
@@ -305,7 +481,8 @@
   <name>GrantResponse Object</name>
     <t>
       The GrantResponse is constructed and signed by the Principal Wallet
-      after the principal completes the signing ceremony.
+      after the principal approves, partially approves, or declines the
+      signing ceremony.
     </t>
 
                 <table>
@@ -343,8 +520,21 @@
               <td>CONDITIONAL</td>
               <td>REQUIRED when status is "approved" or "partial"</td>
             </tr>
+            <tr>
+              <td>signed_at</td>
+              <td>REQUIRED</td>
+              <td>ISO 8601 UTC; same instant as Principal Token issued_at when principal_token is present</td>
+            </tr>
           </tbody>
         </table>
+
+    <t>
+      A GrantResponse with status "approved" or "partial" MUST also include
+      <tt>approved_delegation_valid_for_seconds</tt>. The value MUST be an
+      integer from 300 through the original GrantRequest
+      <tt>delegation_valid_for_seconds</tt>, inclusive, and is used to derive
+      the Principal Token <tt>expires_at</tt> claim.
+    </t>
 
     <t>
       <strong>Deployer validation of GrantResponse:</strong> Upon receipt the deployer
@@ -353,11 +543,41 @@
 
     <ol>
       <li>Verify grant_request_id matches the original request</li>
-      <li>Verify nonce matches - mismatch MUST be treated as forgery</li>
-      <li>If status is "rejected", halt - no agent is registered</li>
+      <li>Verify nonce matches. If mismatch, the deployer MUST reject the
+      GrantResponse with <tt>grant_nonce_mismatch</tt>; the mismatch MUST be
+      treated as a forgery attempt and no agent is registered.</li>
+      <li>If status is "rejected", the deployer MUST treat the grant as a
+      terminal failure with <tt>grant_rejected_by_principal</tt> and no agent
+      is registered.</li>
+      <li>Verify <tt>approved_delegation_valid_for_seconds</tt> is present
+      for "approved" or "partial" responses, is at least 300 seconds, and
+      does not exceed the original GrantRequest
+      <tt>delegation_valid_for_seconds</tt></li>
       <li>Decode and verify the principal_token JWT signature</li>
-      <li>Verify the principal_token payload sub matches the agent's AID</li>
+      <li>Verify the principal_token payload sub exactly matches
+      <tt>agent_aid</tt> from the original GrantRequest</li>
+      <li>Verify the principal_token payload <tt>issued_at</tt> represents
+      the same instant as the GrantResponse <tt>signed_at</tt></li>
+      <li>Verify <tt>signed_at</tt> and <tt>issued_at</tt> are not more than
+      30 seconds in the future relative to the deployer's current UTC clock,
+      and that <tt>signed_at</tt> is not more than 24 hours in the past</li>
+      <li>Verify the principal_token payload <tt>expires_at</tt> equals
+      <tt>issued_at</tt> plus
+      <tt>approved_delegation_valid_for_seconds</tt> seconds</li>
     </ol>
+    <t>
+      If any GrantResponse validation check fails, the deployer MUST treat
+      the GrantResponse as invalid and MUST NOT submit a Registration
+      Envelope based on it.
+    </t>
+    <t>
+      When a deployer, Registry, Principal Wallet, or authorization server returns an
+      AIP error response for a rejected grant, the error code MUST be
+      <tt>grant_rejected_by_principal</tt>. When it returns an AIP error
+      response for a GrantResponse whose <tt>nonce</tt> does not match the
+      original GrantRequest, the error code MUST be
+      <tt>grant_nonce_mismatch</tt>.
+    </t>
   </section>
 
   <section anchor="grant-transport" numbered="true">
@@ -372,7 +592,7 @@
 
     <artwork type="example"><![CDATA[
 https://wallet.example.com/aip-grant
-  ?request=<base64url-signed-GrantRequest>
+  ?request=<compact-JWS-signed-GrantRequest>
   &aip_version=0.3
 ]]></artwork>
 
@@ -397,7 +617,18 @@ Content-Type: application/json
   <name>Sub-Agent Delegation Flow</name>
     <t>
       When a parent agent delegates to a child agent, the parent acts as
-      the Principal Wallet. No human consent UI is required.
+      the delegation issuer for the child. No new human consent UI is
+      required, because the parent can only delegate scopes and constraints
+      that are already within its own accepted authority.
+    </t>
+    <t>
+      The child is registered with a delegated Principal Token, not a second
+      root Principal Token. The delegated token's <tt>sub</tt> is the child
+      AID, <tt>delegated_by</tt> is the parent AID, and
+      <tt>delegation_depth</tt> is the parent's depth plus one. The Registry
+      validates the submitted Registration Envelope using Registration Check 9
+      and stores the reconstructed parent-plus-child chain for later runtime
+      validation.
     </t>
 
     <t>
@@ -419,6 +650,23 @@ Content-Type: application/json
       successful provisioning. Retaining the child's private key enables
       the parent to forge Credential Tokens in the child's name and
       constitutes a violation of the principle of least privilege.
+      This is a local implementation conformance and key-management
+      requirement. The Registry and Relying Parties cannot determine from
+      protocol messages whether the parent retained a copy of the child's
+      private key, and MUST NOT treat private-key deletion as a Registry
+      acceptance check or Credential Token validation precondition.
+      Deployment profiles that audit this requirement MUST collect the
+      sub-agent provisioning and deletion evidence defined in
+      <xref target="key-management"/>.
+    </t>
+
+    <t>
+      For sub-agent delegation, a parent agent MAY include a <tt>purpose</tt>
+      claim in the child's Principal Token to describe the delegated work.
+      That claim is signed audit metadata only. It MUST NOT expand the child
+      agent's scopes or constraints and MUST NOT be treated by Relying
+      Parties as a substitute for Capability Manifest or Approval Envelope
+      validation.
     </t>
   </section>
 
@@ -468,7 +716,7 @@ Content-Type: application/json
 
     <t>
       <strong>Actors:</strong> Agent Deployer, AIP Registry, Principal
-      (via Registry-hosted or redirected wallet consent UI).
+      (via Registry-hosted or redirected Principal Wallet consent UI).
     </t>
 
     <artwork type="example"><![CDATA[
@@ -480,12 +728,12 @@ Content-Type: application/json
          |<-- 201 grant_id + ---|                      |
          |    wallet_redirect   |                      |
          |                      |                      |
-         |-- [redirect principal to wallet URI] ------>|
+         |-- [redirect principal to Principal Wallet URI] ------>|
          |                      |                      |
          |                      |<--- authenticates ---|
          |                      |<-- approve/decline --|
          |                      |                      |
-         |      [Registry signs Principal Token]       |
+         | [Principal-controlled signer signs token]   |
          |                      |                      |
          |<--- POST callback ---|                      |
          |    (GrantResponse)   |                      |
@@ -509,8 +757,16 @@ Content-Type: application/json
         The Registry presents a consent UI.
       </li>
       <li>
-        On approval, the Registry MUST construct the Principal Token
-        and store the GrantResponse.
+        On approval, the Registry MUST obtain a root Principal Token signed
+        using the Principal Token signing profile above, with <tt>iss</tt>
+        equal to the approving principal's DID and <tt>sub</tt> equal to the
+        stored GrantRequest <tt>agent_aid</tt>. The Registry MAY construct
+        the unsigned payload and present it to a principal-controlled
+        Principal Wallet
+        or signing component, but the final compact JWT MUST be signed by an
+        Ed25519 verification method controlled by <tt>principal.id</tt>. The
+        Registry MUST store the resulting GrantResponse without altering or
+        re-signing the Principal Token.
       </li>
       <li>
         The deployer receives the GrantResponse and submits the
@@ -523,6 +779,26 @@ Content-Type: application/json
       deployer whose deployer_did appears in the original GrantRequest
       MUST be permitted to retrieve the GrantResponse.
     </t>
+    <t>
+      If <tt>grant_id</tt> does not identify a stored G1 grant, or if the
+      referenced grant is expired and no GrantResponse is retrievable, the
+      Registry MUST reject the request with <tt>grant_not_found</tt>.
+    </t>
+    <t>
+      If <tt>grant_id</tt> identifies a stored, retrievable G1 grant but the
+      authenticated requester does not match the <tt>deployer_did</tt> in the
+      original GrantRequest, the Registry MUST reject the request with
+      <tt>grant_deployer_mismatch</tt>.
+    </t>
+    <t>
+      If <tt>grant_id</tt> identifies a stored G1 grant whose principal
+      outcome is <tt>"rejected"</tt>, the Registry MUST reject the retrieval
+      request with <tt>grant_rejected_by_principal</tt>. If the stored
+      GrantResponse <tt>nonce</tt> does not match the original GrantRequest
+      <tt>nonce</tt>, the Registry MUST reject the retrieval request with
+      <tt>grant_nonce_mismatch</tt> and MUST NOT return the stored
+      GrantResponse.
+    </t>
   </section>
 
   <section anchor="g2-grant" numbered="true">
@@ -531,7 +807,8 @@ Content-Type: application/json
       The G2 (Direct Deployer) grant profile is the standard flow for
       applications that integrate directly with Principal Wallets.
       The deployer signs the GrantRequest directly and transmits it
-      to the wallet via a front-channel binding (Web Redirect or QR Code).
+      to the Principal Wallet via a front-channel binding (Web Redirect or QR
+      Code).
     </t>
 
     <t>
@@ -543,11 +820,13 @@ Content-Type: application/json
     </t>
 
     <ol>
-      <li>The deployer generates the agent's Ed25519 keypair and constructs a GrantRequest.</li>
-      <li>The deployer signs the GrantRequest with its own Ed25519 key (deployer_did).</li>
+      <li>The deployer generates the agent's Ed25519 keypair, derives the
+      agent AID, and constructs a GrantRequest that includes
+      <tt>agent_aid</tt> and <tt>deployer_did</tt>.</li>
+      <li>The deployer signs the GrantRequest as a compact JWS using the Ed25519 key identified by a <tt>kid</tt> under <tt>deployer_did</tt>.</li>
       <li>The deployer transmits the request to the Principal Wallet via a front-channel binding.</li>
-      <li>The Principal Wallet verifies the deployer's signature and presents the consent UI to the principal.</li>
-      <li>On approval, the Principal Wallet signs the Principal Token and returns a GrantResponse to the deployer's callback_uri.</li>
+      <li>The Principal Wallet resolves <tt>deployer_did</tt>, verifies the signed GrantRequest envelope, and presents the consent UI to the principal only after successful verification.</li>
+      <li>On approval, the Principal Wallet signs the Principal Token using the Principal Token signing profile above and returns a GrantResponse to the deployer's callback_uri.</li>
       <li>The deployer submits the Registration Envelope to the Registry with grant_tier: "G2".</li>
     </ol>
   </section>
@@ -567,15 +846,133 @@ Content-Type: application/json
     </t>
 
     <t>
+      <strong>OAuth binding of the GrantRequest:</strong> Before initiating
+      the OAuth authorization request, the deployer MUST construct and sign a
+      GrantRequest using the signed GrantRequest envelope defined in Section
+      12.2. The G3 OAuth authorization request MUST carry that compact JWS in
+      an <tt>aip_grant_request</tt> form parameter. The authorization request
+      MUST also include <tt>response_type=code</tt>, <tt>client_id</tt>,
+      <tt>redirect_uri</tt>, <tt>scope</tt>, <tt>state</tt>,
+      <tt>code_challenge</tt>, <tt>code_challenge_method=S256</tt>,
+      <tt>acr_values</tt>, and <tt>aip_version=0.3</tt>.
+    </t>
+
+    <artwork type="example"><![CDATA[
+POST /v1/oauth/authorize
+Content-Type: application/x-www-form-urlencoded
+
+response_type=code
+&client_id=did:web:assistant.example.com
+&redirect_uri=https://assistant.example.com/aip/grant-callback
+&scope=email.read%20calendar.read
+&state=sess_abc123_csrf_xyz789
+&code_challenge=<S256-code-challenge>
+&code_challenge_method=S256
+&acr_values=<requested-acr>
+&aip_version=0.3
+&aip_grant_request=<compact-JWS-signed-GrantRequest>
+]]></artwork>
+
+    <t>
+      The Registry Authorization Server MUST verify the signed
+      GrantRequest envelope before redirecting the principal to a Principal
+      Wallet or displaying any consent UI. Verification MUST include the signed
+      GrantRequest checks in Section 12.2 and the following G3 binding
+      checks:
+    </t>
+    <ol type="%d">
+      <li>The <tt>aip_grant_request</tt> parameter is present and contains a
+      compact JWS whose payload is a GrantRequest object.</li>
+      <li>The OAuth <tt>client_id</tt> either equals the GrantRequest
+      <tt>deployer_did</tt> or identifies a pre-registered OAuth client whose
+      Registry metadata maps to that same <tt>deployer_did</tt>.</li>
+      <li>The OAuth <tt>redirect_uri</tt> exactly matches the GrantRequest
+      <tt>callback_uri</tt>.</li>
+      <li>The OAuth <tt>state</tt> exactly matches the GrantRequest
+      <tt>state</tt>.</li>
+      <li>The GrantRequest <tt>request_expires_at</tt> has not passed,
+      allowing at most 30 seconds of clock skew.</li>
+      <li>The OAuth <tt>scope</tt> parameter does not request authority
+      outside the GrantRequest <tt>requested_capabilities</tt>. If the
+      Authorization Server cannot map a requested scope string to the
+      GrantRequest capabilities under the synced AIP Scope Catalog, it MUST
+      treat the authorization request as invalid.</li>
+    </ol>
+    <t>
+      If any binding check fails, the Authorization Server MUST reject the
+      authorization request with <tt>grant_request_invalid</tt> and MUST NOT
+      issue an authorization code. After successful verification, the
+      Authorization Server MUST store an immutable authorization-code binding
+      that includes the JCS hash of the GrantRequest payload, the compact JWS
+      signature value, <tt>grant_request_id</tt>, <tt>agent_aid</tt>,
+      <tt>deployer_did</tt>, <tt>nonce</tt>, <tt>state</tt>,
+      <tt>callback_uri</tt>, <tt>requested_capabilities</tt>, and
+      <tt>delegation_valid_for_seconds</tt>. The token endpoint MUST use this
+      stored binding when redeeming the authorization code and MUST reject
+      any code that lacks such a binding with <tt>grant_request_invalid</tt>.
+    </t>
+
+    <t>
+      <strong>G3 token endpoint response mapping:</strong> A successful
+      <tt>POST /v1/oauth/token</tt> response for a G3 grant ceremony is an
+      OAuth token response that transports, but does not replace, an AIP
+      GrantResponse. The response body MUST be a JSON object with the following
+      fields:
+    </t>
+
+    <ul>
+      <li><tt>token_type</tt>: REQUIRED. MUST be <tt>"AIP+JWT"</tt>.</li>
+      <li><tt>access_token</tt>: REQUIRED. The compact Principal Token JWT.
+      This value is an OAuth transport alias only.</li>
+      <li><tt>expires_in</tt>: REQUIRED. Integer seconds until the Principal
+      Token expires; MUST equal
+      <tt>grant_response.approved_delegation_valid_for_seconds</tt>.</li>
+      <li><tt>state</tt>: REQUIRED. MUST equal the OAuth
+      <tt>state</tt> value stored in the authorization-code binding.</li>
+      <li><tt>grant_response</tt>: REQUIRED. A JSON object conforming to the
+      GrantResponse schema in Section 12.4 with <tt>status</tt> equal to
+      <tt>"approved"</tt> or <tt>"partial"</tt>.</li>
+    </ul>
+
+    <t>
+      The <tt>access_token</tt> value MUST be byte-for-byte identical to
+      <tt>grant_response.principal_token</tt>. The deployer MUST validate the
+      nested <tt>grant_response</tt> using the GrantResponse validation rules in
+      Section 12.4 and MUST use <tt>grant_response.principal_token</tt> when
+      constructing the Registration Envelope. The <tt>access_token</tt> field
+      exists only for OAuth client interoperability and MUST NOT be interpreted
+      as replacing the <tt>principal_token</tt> field. The Principal Token
+      payload MUST include the <tt>acr</tt> and <tt>amr</tt> claims from the
+      completed G3 ceremony. If the principal rejects the grant or the ceremony
+      fails before approval, the Authorization Server MUST return an OAuth error
+      response and MUST NOT return a successful token response.
+    </t>
+
+    <t>
       <strong>Step-by-step definition:</strong>
     </t>
 
     <ol>
-      <li>The deployer initiates an OAuth 2.1 Authorization Code Flow with PKCE at the Registry's authorization endpoint.</li>
+      <li>The deployer constructs and signs a GrantRequest, then initiates an
+      OAuth 2.1 Authorization Code Flow with PKCE at the Registry's
+      authorization endpoint using the G3 OAuth binding above.</li>
       <li>The Registry redirects the principal to their configured Principal Wallet for authentication and consent.</li>
-      <li>The wallet performs high-assurance authentication (e.g., FIDO2/WebAuthn) and obtains consent.</li>
-      <li>The wallet returns an authorization code to the Registry.</li>
-      <li>The Registry issues a signed Principal Token to the deployer's token endpoint. The token MUST include acr and amr claims.</li>
+      <li>The Principal Wallet performs high-assurance authentication (e.g., FIDO2/WebAuthn) and obtains consent.</li>
+      <li>The Principal Wallet returns an authorization code or equivalent signed
+      ceremony result to the Registry.</li>
+      <li>The Registry MUST obtain a root Principal Token signed using the
+      Principal Token signing profile above by a principal-controlled Ed25519
+      verification method. The Registry MAY prepare the token payload and
+      include the high-assurance <tt>acr</tt> and <tt>amr</tt> values from the
+      OAuth ceremony, but it MUST NOT sign the root Principal Token with the
+      Registry's authorization-server key and MUST NOT change <tt>iss</tt>
+      away from <tt>principal.id</tt>. The token <tt>sub</tt> MUST equal the
+      <tt>agent_aid</tt> value from the stored authorization-code binding,
+      and the token MUST include <tt>acr</tt> and <tt>amr</tt> claims from
+      the completed ceremony.</li>
+      <li>The token endpoint returns the G3 token endpoint response defined
+      above. Its <tt>grant_response</tt> member is the AIP GrantResponse used
+      by the deployer for Registration Envelope construction.</li>
       <li>The deployer submits the Registration Envelope to the Registry with grant_tier: "G3".</li>
     </ol>
   </section>

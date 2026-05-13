@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provai.dev/schemas/aip/crl/draft-02",
+  "$comment": "Normatively defined by the AIP Revocation Management CRL rules and Registry Interface CRL response rules. The CRL uses the same detached-signature envelope pattern as the Registry Trust Record: signatures are computed over the JCS canonical serialization of the signed object only.",
+  "title": "AIP Certificate Revocation List",
+  "description": "Signed JSON CRL document returned by GET /v1/crl and by the signed Registry Trust Record endpoints.crl URI. This is an AIP revocation artifact, not an RFC 5280 X.509 CRL.",
+  "type": "object",
+  "required": [
+    "signed",
+    "signatures"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "signed": {
+      "type": "object",
+      "required": [
+        "registry_id",
+        "trust_record_version",
+        "crl_id",
+        "issued_at",
+        "next_update",
+        "sequence",
+        "publication_mode",
+        "revocation_count",
+        "revocations"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "registry_id": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://.+$",
+          "description": "Registry identifier. MUST equal the accepted Registry Trust Record signed.registry_id."
+        },
+        "trust_record_version": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Registry Trust Record version whose active_verification_keys.crl verifies this CRL."
+        },
+        "crl_id": {
+          "type": "string",
+          "pattern": "^crl:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+          "description": "Unique identifier for this CRL publication."
+        },
+        "issued_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 UTC timestamp at which the CRL was issued."
+        },
+        "next_update": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 UTC timestamp after which Relying Parties MUST NOT use this CRL for new validations. MUST be no later than 15 minutes after issued_at."
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Monotonically increasing CRL sequence number per Registry."
+        },
+        "publication_mode": {
+          "type": "string",
+          "enum": [
+            "complete",
+            "index",
+            "segment"
+          ],
+          "description": "complete: revocations contains the full active CRL. index: revocations is empty and segments lists signed CRL segment documents. segment: revocations contains only the Revocation Objects assigned to segment_id."
+        },
+        "revocation_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of active Revocation Objects represented by this CRL document. For an index document, this is the total across all referenced segments. For a segment document, this is the number in the segment."
+        },
+        "segment_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "Present when publication_mode is segment. Identifies the CRL segment within crl_id."
+        },
+        "partition_key_alg": {
+          "type": "string",
+          "enum": [
+            "sha-256-target-id-hex"
+          ],
+          "description": "Present when publication_mode is index or segment. Partition key algorithm for segmented CRLs."
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "segment_id",
+              "uri",
+              "first_partition_key",
+              "last_partition_key",
+              "revocation_count",
+              "sha256"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "segment_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "uri": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Relative path or absolute HTTPS URI returning the signed CRL segment document."
+              },
+              "first_partition_key": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "description": "Inclusive lower bound over lowercase hexadecimal SHA-256 target_id partition keys."
+              },
+              "last_partition_key": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "description": "Inclusive upper bound over lowercase hexadecimal SHA-256 target_id partition keys."
+              },
+              "revocation_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+                "description": "SHA-256 digest of the JCS canonicalization of the full signed CRL segment document."
+              }
+            }
+          },
+          "description": "Present when publication_mode is index. Segment references for a segmented CRL."
+        },
+        "revocations": {
+          "type": "array",
+          "items": {
+            "$ref": "https://provai.dev/schemas/aip/revocation-object/draft-02"
+          },
+          "uniqueItems": true,
+          "description": "Full signed Revocation Objects active for bounded-staleness validation at issued_at."
+        }
+      }
+    },
+    "signatures": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "keyid",
+          "sig"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "keyid": {
+            "type": "string",
+            "format": "uri-reference",
+            "description": "MUST match an active_verification_keys.crl JWK keyid in the referenced Registry Trust Record."
+          },
+          "sig": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "description": "Base64url-encoded Ed25519 signature over the JCS canonical serialization of the signed object."
+          }
+        }
+      }
+    }
+  }
+}

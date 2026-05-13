@@ -3,16 +3,59 @@
 
   <section anchor="error-response-format">
     <name>Error Response Format</name>
+    <t>
+      Unless a referenced OAuth binding normatively requires OAuth-native
+      error syntax, every AIP protocol error response MUST use HTTP status
+      code 4xx or 5xx, MUST use
+      <tt>Content-Type: application/json</tt>, and MUST carry a body
+      conforming to <tt>error-response.schema.json</tt> in the JSON Schema
+      Index. Implementations MUST NOT return HTTP 200 for error conditions.
+    </t>
+    <t>
+      The error response body MUST include <tt>error</tt>,
+      <tt>error_description</tt>, and <tt>aip_version</tt>. It MAY include
+      <tt>error_uri</tt>, <tt>correlation_id</tt>, and <tt>details</tt>.
+      The <tt>error</tt> value MUST be the exact registered error-code
+      string. The <tt>error_description</tt> value is human-readable
+      diagnostics only; clients MUST NOT parse it for protocol decisions.
+      Machine-readable metadata MUST be carried in <tt>details</tt> using
+      one of the detail object profiles defined below and in the schema.
+    </t>
+    <t>
+      Every AIP-aware error response MUST include an
+      <tt>X-AIP-Version</tt> response header as defined in
+      <xref target="token-structure"/>. The body <tt>aip_version</tt> value
+      MUST equal the <tt>X-AIP-Version</tt> response header. For
+      <tt>unsupported_version</tt>, the responder MUST set
+      <tt>X-AIP-Version</tt> to a protocol version it supports for that
+      endpoint and SHOULD include <tt>X-AIP-Supported-Versions</tt>. The
+      <tt>details</tt> object for <tt>unsupported_version</tt> MUST include
+      <tt>supported_versions</tt> and SHOULD include the rejected version
+      values when they are available.
+    </t>
+    <t>
+      For error responses conforming to this specification,
+      <tt>X-AIP-Version</tt> and the body <tt>aip_version</tt> value MUST be
+      <tt>"0.3"</tt>, except that a responder rejecting an unsupported version
+      uses the supported version it selected for the error response.
+    </t>
     <t>EXAMPLE (informative):</t>
     <artwork type="json"><![CDATA[
 {
-  "error": "<error_code>",
-  "error_description": "<human-readable description>",
-  "error_uri": "https://provai.dev/errors/<error_code>"
+  "error": "unsupported_version",
+  "error_description": "Unsupported AIP version.",
+  "aip_version": "0.3",
+  "error_uri": "https://provai.dev/errors/unsupported_version",
+  "correlation_id": "err_01HZX7M7N2M6M2T8K8F5Z3Q9Y1",
+  "details": {
+    "type": "unsupported_version",
+    "requested_version": "0.2",
+    "header_aip_version": "0.2",
+    "token_aip_version": null,
+    "supported_versions": ["0.3"]
+  }
 }
     ]]></artwork>
-    <t>Implementations MUST use exact string values for `error`.</t>
-    <t>Implementations MUST NOT return HTTP 200 for error conditions.</t>
   </section>
 
   <section anchor="error-codes">
@@ -21,41 +64,60 @@
       <dt><tt>invalid_token</tt></dt><dd><t>HTTP 401. Token malformed, invalid signature, or invalid claims.</t></dd>
       <dt><tt>token_expired</tt></dt><dd><t>HTTP 401. Token <tt>exp</tt> is in the past.</t></dd>
       <dt><tt>token_replayed</tt></dt><dd><t>HTTP 401. Token <tt>jti</tt> seen before within validity window.</t></dd>
-      <dt><tt>dpop_proof_required</tt></dt><dd><t>HTTP 401. DPoP proof absent or invalid.</t></dd>
-      <dt><tt>delegation_chain_refresh_required</tt></dt><dd><t>HTTP 401. Principal Token in chain has expired; agent must re-establish delegation.</t></dd>
+      <dt><tt>invalid_request</tt></dt><dd><t>HTTP 400. Request syntax, query parameter, pagination cursor, or endpoint-specific request parameter is invalid.</t></dd>
+      <dt><tt>unsupported_version</tt></dt><dd><t>HTTP 400. <tt>X-AIP-Version</tt> or token <tt>aip_version</tt> is missing, unsupported, or mutually inconsistent.</t></dd>
+      <dt><tt>dpop_proof_required</tt></dt><dd><t>HTTP 401. DPoP proof is required for the request but the <tt>DPoP</tt> header is absent. Malformed or invalid DPoP proofs return <tt>invalid_token</tt>.</t></dd>
       <dt><tt>agent_revoked</tt></dt><dd><t>HTTP 403. The AID has been revoked.</t></dd>
       <dt><tt>insufficient_scope</tt></dt><dd><t>HTTP 403. Operation not within granted scopes.</t></dd>
       <dt><tt>invalid_delegation_depth</tt></dt><dd><t>HTTP 403. <tt>delegation_depth</tt> mismatch or exceeds <tt>max_delegation_depth</tt>.</t></dd>
       <dt><tt>chain_token_expired</tt></dt><dd><t>HTTP 403. Principal Token in <tt>aip_chain</tt> expired.</t></dd>
       <dt><tt>delegation_chain_invalid</tt></dt><dd><t>HTTP 403. Structural error in delegation chain.</t></dd>
-      <dt><tt>manifest_invalid</tt></dt><dd><t>HTTP 403. Capability Manifest signature failed or unavailable.</t></dd>
+      <dt><tt>manifest_invalid</tt></dt><dd><t>HTTP 403. Capability Manifest unavailable, signature failed, or AIP Scope Catalog constraint validation failed.</t></dd>
       <dt><tt>manifest_expired</tt></dt><dd><t>HTTP 403. Capability Manifest <tt>expires_at</tt> passed.</t></dd>
-      <dt><tt>approval_envelope_invalid</tt></dt><dd><t>HTTP 400. Approval Envelope malformed, circular dependencies, or hash mismatch.</t></dd>
-      <dt><tt>approval_envelope_expired</tt></dt><dd><t>HTTP 403. <tt>approval_window_expires_at</tt> has passed.</t></dd>
+      <dt><tt>approval_envelope_invalid</tt></dt><dd><t>HTTP 400. Approval Envelope malformed, signature failed, dependency invalid, or value/hash mismatch.</t></dd>
+      <dt><tt>approval_envelope_expired</tt></dt><dd><t>HTTP 403. The Approval Envelope was not approved before <tt>approval_window_expires_at</tt>.</t></dd>
       <dt><tt>approval_not_found</tt></dt><dd><t>HTTP 404. Approval Envelope ID not found.</t></dd>
+      <dt><tt>approval_state_conflict</tt></dt><dd><t>HTTP 409. Approval Envelope state changed before the requested approval or rejection transition could be committed.</t></dd>
       <dt><tt>approval_step_prerequisites_unmet</tt></dt><dd><t>HTTP 403. <tt>triggered_by</tt> step not yet completed.</t></dd>
       <dt><tt>approval_step_already_claimed</tt></dt><dd><t>HTTP 409. Step already claimed by another actor.</t></dd>
+      <dt><tt>approval_step_not_claimed</tt></dt><dd><t>HTTP 409. Step Execution Token presented before the Registry has accepted a claim for that step.</t></dd>
       <dt><tt>approval_step_action_mismatch</tt></dt><dd><t>HTTP 403. Presented <tt>action_parameters</tt> hash does not match stored <tt>action_hash</tt>.</t></dd>
       <dt><tt>approval_step_invalid</tt></dt><dd><t>HTTP 403. Step Execution Token verification against Registry failed.</t></dd>
+      <dt><tt>compensation_failed</tt></dt><dd><t>HTTP 409. An Approval Envelope compensation step failed and the envelope is in terminal failed state requiring out-of-band remediation.</t></dd>
+      <dt><tt>engagement_cancelled</tt></dt><dd><t>HTTP 409. The referenced Approval Envelope or step was cancelled because its parent Engagement Object was terminated. The operation cannot proceed.</t></dd>
       <dt><tt>grant_request_expired</tt></dt><dd><t>HTTP 400. AIP-GRANT <tt>request_expires_at</tt> passed.</t></dd>
       <dt><tt>grant_request_replayed</tt></dt><dd><t>HTTP 400. AIP-GRANT <tt>grant_request_id</tt> seen before.</t></dd>
-      <dt><tt>grant_request_invalid</tt></dt><dd><t>HTTP 400. GrantRequest malformed or signature failed.</t></dd>
+      <dt><tt>grant_request_invalid</tt></dt><dd><t>HTTP 400. GrantRequest malformed, expired, missing from a G3 authorization request, signature failed, inconsistent with OAuth request binding, or cannot be resolved to trusted catalog scope display metadata for consent.</t></dd>
       <dt><tt>grant_rejected_by_principal</tt></dt><dd><t>HTTP 403. Principal declined the grant.</t></dd>
       <dt><tt>grant_nonce_mismatch</tt></dt><dd><t>HTTP 400. GrantResponse nonce does not match.</t></dd>
+      <dt><tt>grant_tier_insufficient</tt></dt><dd><t>HTTP 403. Registered <tt>grant_tier</tt> is absent, unrecognised, or below the Grant Tier required for the operation's security Tier.</t></dd>
+      <dt><tt>registration_invalid</tt></dt><dd><t>HTTP 400. Registration Envelope malformed or failed validation, including missing or invalid <tt>grant_tier</tt>.</t></dd>
+      <dt><tt>aid_already_registered</tt></dt><dd><t>HTTP 409. The submitted AID or public key is already associated with a registered, non-revoked AID.</t></dd>
       <dt><tt>unknown_aid</tt></dt><dd><t>HTTP 404. AID not registered in any accessible Registry.</t></dd>
-      <dt><tt>registry_unavailable</tt></dt><dd><t>HTTP 503. Registry could not be reached.</t></dd>
+      <dt><tt>identity_version_conflict</tt></dt><dd><t>HTTP 409. Agent Identity key rotation version is stale, skips a version, or conflicts with a committed rotation.</t></dd>
+      <dt><tt>revocation_invalid</tt></dt><dd><t>HTTP 400. Revocation Object is malformed, uses a reserved externally submitted reason, has an invalid timestamp, or has an invalid or unverifiable signature.</t></dd>
+      <dt><tt>revocation_unauthorized</tt></dt><dd><t>HTTP 403. Revocation issuer is not authorized for the target or revocation type.</t></dd>
+      <dt><tt>revocation_conflict</tt></dt><dd><t>HTTP 409. Revocation identifier was previously accepted with different object content.</t></dd>
+      <dt><tt>registry_unavailable</tt></dt><dd><t>HTTP 503. Registry or a required DID resolver could not be reached or timed out.</t></dd>
       <dt><tt>rate_limit_exceeded</tt></dt><dd><t>HTTP 429. Rate limit for this operation exceeded; see Section 19.</t></dd>
-      <dt><tt>revocation_stale</tt></dt><dd><t>HTTP 403. Tier 2 operation with cached revocation status.</t></dd>
-      <dt><tt>dpop_required</tt></dt><dd><t>HTTP 401. Tier 2 operation without DPoP proof.</t></dd>
       <dt><tt>mtls_required</tt></dt><dd><t>HTTP 403. Tier 3 operation without mTLS.</t></dd>
-      <dt><tt>invalid_scope</tt></dt><dd><t>HTTP 400. Token contains retired bare <tt>spawn_agents</tt> scope.</t></dd>
-      <dt><tt>principal_did_method_forbidden</tt></dt><dd><t>HTTP 403. Principal uses <tt>did:key</tt> for Tier 2 scope.</t></dd>
-      <dt><tt>identity_proofing_insufficient</tt></dt><dd><t>HTTP 403. G3 identity proofing below requested <tt>acr_values</tt>.</t></dd>
+      <dt><tt>invalid_scope</tt></dt><dd><t>HTTP 400. Requested scope is unknown, reserved, removed, retired (including bare <tt>spawn_agents</tt>), conflicting with the synced AIP Scope Catalog, or outside an explicitly documented local/private extension policy.</t></dd>
+      <dt><tt>principal_did_method_forbidden</tt></dt><dd><t>HTTP 403. Principal DID method is not permitted for the operation Tier; Tier 2 and Tier 3 require <tt>did:web</tt>.</t></dd>
+      <dt><tt>identity_proofing_insufficient</tt></dt><dd><t>HTTP 403. G3 identity proofing is absent or does not satisfy requested <tt>acr_values</tt>.</t></dd>
+      <dt><tt>enterprise_policy_denied</tt></dt><dd><t>HTTP 403. The enterprise IdP denied the token exchange request due to Conditional Access, ABAC, or equivalent enterprise policy. The agent's principal lacks sufficient enterprise-level authorization for the requested resource. Context: <xref target="enterprise-idp-error-handling"/>.</t></dd>
+      <dt><tt>idp_client_misconfigured</tt></dt><dd><t>HTTP 500. The AIP Registry's enterprise IdP client credentials are invalid or expired. This is a Registry configuration error, not an agent error. Context: <xref target="enterprise-idp-error-handling"/>.</t></dd>
+      <dt><tt>invalid_grant</tt></dt><dd><t>HTTP 400. The enterprise IdP rejected the secondary token exchange grant. Context: <xref target="enterprise-idp-error-handling"/>.</t></dd>
+      <dt><tt>enterprise_assertion_missing</tt></dt><dd><t>HTTP 403. Tier 3 validation required an <tt>aip_principal_assertion</tt> claim, but the Credential Token did not contain one.</t></dd>
+      <dt><tt>enterprise_assertion_invalid</tt></dt><dd><t>HTTP 403. The <tt>aip_principal_assertion</tt> JWT was malformed, could not be verified against the enterprise IdP JWKS, or used an issuer that is not accepted for the deployment.</t></dd>
+      <dt><tt>enterprise_assertion_principal_mismatch</tt></dt><dd><t>HTTP 403. The verified <tt>aip_principal_assertion</tt> subject did not match the root Principal Token's <tt>principal.id</tt>.</t></dd>
+      <dt><tt>a2a_originator_invalid</tt></dt><dd><t>HTTP 400. The <tt>aip_originator_aid</tt> claim is absent in an A2A delegated context, does not conform to the <tt>did:aip</tt> ABNF, equals the acting agent's own AID, or cannot be traced to the validated delegation chain. Context: <xref target="delegated-identity-chaining-a2a"/>.</t></dd>
+      <dt><tt>endorsement_invalid</tt></dt><dd><t>HTTP 400. Endorsement Object validation failed, including invalid signature or out-of-range score. Context: <xref target="reputation-scoring"/>.</t></dd>
+      <dt><tt>gateway_config_invalid</tt></dt><dd><t>HTTP 400. A gateway OAuth Protected Resource Metadata document is internally inconsistent or violates AIP gateway metadata constraints. Context: <xref target="aip-gateway-discovery-document"/>.</t></dd>
       <dt><tt>grant_not_found</tt></dt><dd><t>HTTP 404. G1 <tt>grant_id</tt> not found or expired.</t></dd>
       <dt><tt>grant_deployer_mismatch</tt></dt><dd><t>HTTP 403. G1 <tt>grant_id</tt> does not match deployer.</t></dd>
-      <dt><tt>pkce_required</tt></dt><dd><t>HTTP 400. G3 authorization request missing PKCE.</t></dd>
+      <dt><tt>pkce_required</tt></dt><dd><t>HTTP 400. G3 authorization request missing PKCE or not using <tt>code_challenge_method</tt> <tt>S256</tt>.</t></dd>
       <dt><tt>registry_untrusted</tt></dt><dd><t>HTTP 403. Registry does not match principal DID-Document-declared Registry.</t></dd>
-      <dt><tt>overlay_exceeds_manifest</tt></dt><dd><t>HTTP 400. Overlay violates CO-1 attenuation rule.</t></dd>
+      <dt><tt>overlay_exceeds_manifest</tt></dt><dd><t>HTTP 400. Overlay violates CO-1 attenuation rule or AIP Scope Catalog constraint validation.</t></dd>
       <dt><tt>overlay_issuer_invalid</tt></dt><dd><t>HTTP 400. Overlay issuer uses <tt>did:key</tt>.</t></dd>
       <dt><tt>overlay_version_conflict</tt></dt><dd><t>HTTP 409. Overlay version not strictly increasing.</t></dd>
       <dt><tt>overlay_signature_invalid</tt></dt><dd><t>HTTP 400. Overlay signature verification failure.</t></dd>
@@ -64,10 +126,11 @@
       <dt><tt>engagement_participant_removed</tt></dt><dd><t>HTTP 403. Agent removed from engagement.</t></dd>
       <dt><tt>engagement_gate_pending</tt></dt><dd><t>HTTP 403. Required approval gate not yet approved.</t></dd>
       <dt><tt>engagement_not_found</tt></dt><dd><t>HTTP 404. Engagement ID not found.</t></dd>
-      <dt><tt>engagement_countersign_required</tt></dt><dd><t>HTTP 400. Missing required countersignature.</t></dd>
+      <dt><tt>engagement_countersign_required</tt></dt><dd><t>HTTP 400. Missing required Engagement Object countersignature.</t></dd>
+      <dt><tt>engagement_signature_invalid</tt></dt><dd><t>HTTP 400. Engagement Object top-level signature or change-log entry signature is missing, malformed, bound to the wrong DID, uses an unsupported key, or fails verification.</t></dd>
       <dt><tt>change_log_immutable</tt></dt><dd><t>HTTP 400. Attempt to modify change log entry.</t></dd>
       <dt><tt>change_log_sequence_invalid</tt></dt><dd><t>HTTP 400. Out-of-sequence change log append.</t></dd>
-      <dt><tt>subscription_auth_required</tt></dt><dd><t>HTTP 401. RPNP subscription without DPoP.</t></dd>
+      <dt><tt>subscription_auth_required</tt></dt><dd><t>HTTP 401. RPNP subscription request missing DPoP, using an invalid DPoP proof, or failing to bind <tt>subscriber_did</tt> to the DPoP key or Authorization credential.</t></dd>
       <dt><tt>subscription_scope_forbidden</tt></dt><dd><t>HTTP 403. <tt>scope_filter: "all"</tt> rejected by Registry policy.</t></dd>
       <dt><tt>invalid_webhook_uri</tt></dt><dd><t>HTTP 400. Webhook URI not HTTPS.</t></dd>
       <dt><tt>subscription_limit_exceeded</tt></dt><dd><t>HTTP 429. RPNP subscription limit reached.</t></dd>
@@ -77,8 +140,102 @@
 
   <section anchor="error-detail-types">
     <name>Error Detail Types</name>
-    <t>For `registry_unavailable` (503): SHOULD include `Retry-After` per <xref target="RFC9110"/>.</t>
-    <t>For `rate_limit_exceeded` (429): MUST include `Retry-After` per <xref target="RFC6585"/> Section 4 and rate limit headers per Section 19.1.</t>
-    <t>For `delegation_chain_refresh_required` (401): the response SHOULD include an `error_description` indicating which delegation depth's Principal Token has expired, to help the agent identify which delegation level to renew.</t>
+    <t>
+      The <tt>details</tt> member is optional unless this section states that
+      it is REQUIRED for a specific error. When present, it MUST conform to
+      one of the detail object profiles in
+      <tt>error-response.schema.json</tt>. A detail object MUST NOT weaken,
+      contradict, or replace the registered meaning of the top-level
+      <tt>error</tt> value.
+    </t>
+
+    <dl newline="false">
+      <dt><tt>unsupported_version</tt></dt>
+      <dd><t>The response MUST include an
+        <tt>unsupported_version</tt> detail object containing
+        <tt>supported_versions</tt>. It SHOULD include
+        <tt>requested_version</tt>, <tt>header_aip_version</tt>, and
+        <tt>token_aip_version</tt> when those values are available.</t></dd>
+
+      <dt><tt>rate_limit_exceeded</tt></dt>
+      <dd><t>The response MUST include <tt>Retry-After</tt> per
+        <xref target="RFC6585"/> Section 4, the rate limit headers defined
+        in Section 19.1, and a <tt>rate_limit</tt> detail object containing
+        <tt>operation</tt>, <tt>limit</tt>, and <tt>reset_at</tt>.</t></dd>
+
+      <dt><tt>registry_unavailable</tt></dt>
+      <dd><t>The response SHOULD include <tt>Retry-After</tt> per
+        <xref target="RFC9110"/> and SHOULD include a
+        <tt>registry_dependency</tt> detail object identifying the unavailable
+        dependency and whether the condition is retryable.</t></dd>
+
+      <dt><tt>chain_token_expired</tt></dt>
+      <dd><t>The response SHOULD include a
+        <tt>delegation_depth</tt> detail object identifying the expired chain
+        element's <tt>delegation_depth</tt>, and MAY include
+        <tt>chain_index</tt>, <tt>principal_token_jti</tt>, and
+        <tt>expires_at</tt>.</t></dd>
+
+      <dt><tt>invalid_delegation_depth</tt></dt>
+      <dd><t>The response SHOULD include a
+        <tt>delegation_depth</tt> detail object containing the submitted
+        <tt>delegation_depth</tt> and, when applicable,
+        <tt>max_delegation_depth</tt>.</t></dd>
+
+      <dt><tt>invalid_scope</tt> and <tt>insufficient_scope</tt></dt>
+      <dd><t>The response SHOULD include a <tt>scope</tt> detail object
+        listing the scope or scopes that caused rejection and, when catalog
+        metadata influenced the decision, the <tt>catalog_snapshot_id</tt>
+        and <tt>catalog_sha256</tt> used.</t></dd>
+
+      <dt><tt>manifest_invalid</tt> and <tt>overlay_exceeds_manifest</tt></dt>
+      <dd><t>When rejection is caused by scope-catalog constraint validation,
+        the response SHOULD include a <tt>scope</tt> detail object listing
+        the failing scopes and catalog snapshot metadata.</t></dd>
+
+      <dt>Conflict errors</dt>
+      <dd><t>For <tt>identity_version_conflict</tt>,
+        <tt>approval_state_conflict</tt>, <tt>revocation_conflict</tt>,
+        <tt>overlay_version_conflict</tt>, and
+        <tt>change_log_sequence_invalid</tt>, the response SHOULD include a
+        <tt>conflict</tt> detail object identifying the resource and the
+        current, submitted, or expected version, sequence, or state when
+        available.</t></dd>
+
+      <dt>Approval step errors</dt>
+      <dd><t>For <tt>approval_step_prerequisites_unmet</tt>,
+        <tt>approval_step_already_claimed</tt>,
+        <tt>approval_step_not_claimed</tt>,
+        <tt>approval_step_action_mismatch</tt>, and
+        <tt>approval_step_invalid</tt>, the response SHOULD include an
+        <tt>approval_step</tt> detail object containing
+        <tt>approval_id</tt> and <tt>step_id</tt>.</t></dd>
+
+      <dt>Grant request errors</dt>
+      <dd><t>For <tt>grant_request_expired</tt>,
+        <tt>grant_request_replayed</tt>, <tt>grant_request_invalid</tt>, and
+        <tt>grant_nonce_mismatch</tt>, the response SHOULD include a
+        <tt>grant</tt> detail object containing
+        <tt>grant_request_id</tt> when the request identifier is known.</t></dd>
+
+      <dt>Field validation errors</dt>
+      <dd><t>For <tt>invalid_request</tt>, <tt>registration_invalid</tt>,
+        <tt>revocation_invalid</tt>, <tt>approval_envelope_invalid</tt>,
+        <tt>overlay_signature_invalid</tt>,
+        <tt>engagement_countersign_required</tt>,
+        <tt>engagement_signature_invalid</tt>,
+        <tt>change_log_immutable</tt>, <tt>pkce_required</tt>,
+        <tt>invalid_webhook_uri</tt>, and <tt>invalid_target</tt>, the
+        response SHOULD include a <tt>field</tt> detail object identifying
+        the rejected field or parameter when a single field caused the
+        rejection.</t></dd>
+
+      <dt>Subscription errors</dt>
+      <dd><t>For <tt>subscription_auth_required</tt>,
+        <tt>subscription_scope_forbidden</tt>, and
+        <tt>subscription_limit_exceeded</tt>, the response SHOULD include a
+        <tt>subscription</tt> detail object when a subscription identifier,
+        subscriber DID, or limit value is known.</t></dd>
+    </dl>
   </section>
 </section>

@@ -1,5 +1,5 @@
 <section anchor="terminology" numbered="true">
-  <name>Terminology</name>
+  <name>Definitions and Terminology</name>
   <t>
     The following terms are used throughout this specification:
   </t>
@@ -11,9 +11,24 @@
       in the world on behalf of a principal.</dd>
 
     <dt>Agent Identity Descriptor (AID):</dt>
-    <dd><t>A globally unique, persistent identifier for an agent conforming
-      to the did:aip DID method defined in Section 4.1. An AID is
-      a W3C DID.</t></dd>
+    <dd><t>A cryptographically derived, persistent identifier for an agent
+      conforming to the did:aip DID method defined in Section 4.1. An AID is
+      a W3C DID. A standalone <tt>did:aip</tt> string does not encode its
+      authoritative Registry; resolution requires Registry context as defined
+      in Section 7.</t></dd>
+
+    <dt>Decentralized Identifier (DID):</dt>
+    <dd>A W3C Decentralized Identifier. DID Documents, DID URLs, and DID
+      resolution are used as defined by W3C DID Core.</dd>
+
+    <dt>Production Deployment:</dt>
+    <dd>Any AIP Registry or Relying Party deployment where more than one
+      process, container, or server instance may validate tokens for the same
+      AID simultaneously, or where the deployment serves external principals
+      not under the operator's direct control. Deployments that are explicitly
+      single-instance and serve only internal development or testing purposes
+      are not production deployments for the purposes of
+      <xref target="token-cache-requirements-stateless"/>.</dd>
 
     <dt>Principal:</dt>
     <dd><t>The human or organisational entity on whose authority an agent
@@ -28,8 +43,8 @@
     <dt>Principal Wallet:</dt>
     <dd>Software that holds the principal's DID private key and
       implements the AIP-GRANT consent and signing ceremony.
-      Throughout this document, "wallet" used alone refers to the Principal
-      Wallet unless the context explicitly states otherwise.</dd>
+      Throughout this document, Principal Wallet references use this capitalized
+      term unless the context explicitly describes a generic wallet ecosystem.</dd>
 
     <dt>Capability Manifest:</dt>
     <dd>A versioned, signed JSON document stored in the Registry that
@@ -41,21 +56,28 @@
       Party as proof of identity and authorisation for a specific
       interaction. Defined in Section 8.1.</dd>
 
-    <dt>Step Execution Token:</dt>
-    <dd>A short-lived Credential Token issued by the AIP Registry
-      attesting that a specific Approval Envelope step has been claimed
-      by its designated actor. Defined in Section 13.8.</dd>
+    <dt>Step Execution Token (SET):</dt>
+    <dd>A short-lived Registry-issued JWT, distinct from an agent-issued
+      Credential Token, attesting that a specific Approval Envelope step has
+      been claimed by its designated actor. Defined in Section 13.8 and
+      validated using the Step Execution Token profile in Section 9.</dd>
 
     <dt>Principal Token:</dt>
     <dd><t>A signed JWT payload encoding one delegation link in the AIP
       principal chain. Principal Tokens are embedded as compact-serialised
-      JWTs in the aip_chain array of a Credential Token.
+      JWTs in the aip_chain array of a Credential Token or Step Execution
+      Token.
       Defined in Section 5.5.</t></dd>
 
     <dt>Relying Party (RP):</dt>
     <dd>Any service, API, or agent that receives and verifies an AIP
-      Credential Token. Responsible for implementing the Validation
-      Algorithm (Section 9).</dd>
+      Credential Token or Step Execution Token. Responsible for implementing
+      the Validation Algorithm (Section 9).</dd>
+
+    <dt>Authorization Server (AS):</dt>
+    <dd>The OAuth 2.1 authorization server role. In G3 grant flows, the
+      Registry commonly acts as the AS for authorization-code and token
+      endpoints.</dd>
 
     <dt>Delegation:</dt>
     <dd>The act of granting a subset of capabilities from a principal or
@@ -69,25 +91,20 @@
       depth 1, and so on.</dd>
 
     <dt>Tier:</dt>
-    <dd>A threat-model declaration specifying which security properties
-      the deploying principal asserts hold at execution time. Tier
-      determines the applicable revocation-checking mode, maximum Credential
-      Token lifetime, and mandatory security mechanisms. Three Tiers are
-      defined in Section 3.1 below. Tier selection on performance or
-      availability grounds alone, without regard to the security properties
-      declared, is a misconfiguration and a violation of AIP's zero-trust
-      model.</dd>
+    <dd>An operation security classification derived from the highest-risk
+      requested scope in the synced AIP Scope Catalog. Tier determines the
+      applicable revocation-checking mode, maximum Credential Token lifetime,
+      and mandatory security mechanisms. Three Tiers are defined in
+      <xref target="architecture-tiers"/>. Tier selection on performance or
+      availability grounds alone, without using the synced catalog metadata,
+      is a misconfiguration and a violation of AIP's zero-trust model.</dd>
 
     <dt>Grant Tier:</dt>
     <dd>One of three standardised AIP-GRANT ceremony profiles: G1
       (Registry-Mediated), G2 (Direct Deployer), G3 (Full Ceremony).
-      Defined in Section 12.</dd>
-
-    <dt>Cryptographic Admissibility:</dt>
-    <dd>The property that an agent's Credential Token and delegation
-      chain are cryptographically valid at claim time: signatures verify,
-      claims are well-formed, the token is not expired, and the delegation
-      chain has not been broken.</dd>
+      Defined in Section 12. Grant Tier is a ceremony-assurance axis; it is
+      distinct from the security Tier derived from an operation's requested
+      scopes.</dd>
 
     <dt>Capability Overlay:</dt>
     <dd>A Registry-stored, issuer-signed document that restricts an
@@ -112,8 +129,8 @@
     <dt>Registry:</dt>
     <dd>The authoritative store and resolver for AIP agents, Capability
       Manifests, revocation state, and delegation chains. Implements the
-      Registry Interface (Section 17) and the Validation Algorithm
-      (Section 9). May be operated by a principal, a service, or a
+      Registry Interface (<xref target="registry"/>) and the Validation
+      Algorithm (<xref target="credential-token-validation"/>). May be operated by a principal, a service, or a
       consortium.</dd>
 
     <dt>AIP-GRANT:</dt>
@@ -127,14 +144,50 @@
       or <tt>delegation_revoke</tt>). Defined in Section 5.7.</dd>
 
     <dt>Certificate Revocation List (CRL):</dt>
-    <dd>A Registry-published list of revoked agents. Updated periodically
-      (Tier 1) or on-demand (Tier 2). Defined in Section 11.2.</dd>
+    <dd>An AIP signed JSON revocation artifact published by the Registry for
+      Tier 1 bounded-staleness validation. Tier 2 and Tier 3 validation use
+      live Registry revocation status lookups; they do not satisfy their
+      real-time revocation requirement by fetching an on-demand CRL. Defined
+      in <xref target="crl"/>.</dd>
 
     <dt>DPoP Proof:</dt>
     <dd>A Demonstration of Proof-of-Possession as defined in <xref
-      target="RFC9449"/>. Mandatory for Tier 2 sensitive scopes. Binds a
-      Credential Token to a specific HTTP request and the agent's key
-      material.</dd>
+      target="RFC9449"/>. Mandatory for Tier 2 and Tier 3 operations, and
+      also mandatory for any Tier 1 scope or endpoint that explicitly
+      requires DPoP. Binds a Credential Token to a specific HTTP request and
+      the agent's key material.</dd>
+
+    <dt>Authentication Assurance Level 2 (AAL2):</dt>
+    <dd>A NIST SP 800-63 assurance level for authentication strength. When
+      this specification refers to AAL2, it means AAL2 as defined by the
+      cited NIST SP 800-63 document.</dd>
+
+    <dt>JWK, JWS, and JWT:</dt>
+    <dd>JSON Web Key, JSON Web Signature, and JSON Web Token, respectively.
+      AIP uses JWK for public key representation, JWS compact serialization
+      for signed JWTs, and JWT payloads for Credential Tokens, Principal
+      Tokens, Step Execution Tokens, and RPNP push notifications.</dd>
+
+    <dt>Lowercase Hexadecimal Encoding (LCHEX):</dt>
+    <dd>The lowercase hexadecimal representation of a byte string, using
+      characters <tt>0-9</tt> and <tt>a-f</tt> only.</dd>
+
+    <dt>Registry Push Notification Protocol (RPNP):</dt>
+    <dd>The optional Registry push protocol for revocation notifications,
+      defined in <xref target="rpnp"/>.</dd>
+
+    <dt>Enterprise Identity Provider (Enterprise IdP):</dt>
+    <dd>An OAuth 2.0/2.1 or OIDC-compliant authorization server operated by
+      an enterprise organisation, such as Microsoft Entra ID, Okta, Ping
+      Identity, or an equivalent system, that manages human principal
+      identities, enforces enterprise access policies including Conditional
+      Access and ABAC, and issues access tokens scoped to enterprise
+      resources. In AIP, an Enterprise IdP is the authorization server that a
+      Relying Party trusts for resource access tokens, distinct from the AIP
+      Registry acting as an OAuth AS for AIP-scope token exchange. Registries
+      identify an Enterprise IdP by the presence of the
+      <tt>enterprise_idp_required</tt> flag on a registered resource record
+      (see <xref target="enterprise-idp-federation-profile"/>).</dd>
 
     <dt>Endorsement:</dt>
     <dd>A signed statement affirming a positive experience or outcome of
@@ -142,12 +195,42 @@
       score. Defined in Section 14.1.</dd>
   </dl>
 
+  <section anchor="abbreviations" numbered="true">
+    <name>Abbreviations</name>
+    <t>
+      The following common abbreviations are used with their ordinary industry
+      meanings or with the referenced external specifications:
+    </t>
+    <dl newline="false">
+      <dt>ABAC</dt><dd>Attribute-Based Access Control.</dd>
+      <dt>BOM</dt><dd>Byte Order Mark. AIP canonical JSON signing input uses
+        UTF-8 without a leading BOM.</dd>
+      <dt>CDN</dt><dd>Content Delivery Network.</dd>
+      <dt>DAG</dt><dd>Directed Acyclic Graph.</dd>
+      <dt>FIDO2/WebAuthn</dt><dd>FIDO2 and Web Authentication.</dd>
+      <dt>HSM</dt><dd>Hardware Security Module.</dd>
+      <dt>HMAC</dt><dd>Hash-based Message Authentication Code.</dd>
+      <dt>JCS</dt><dd>JSON Canonicalization Scheme, defined by <xref target="RFC8785"/>.</dd>
+      <dt>JWKS</dt><dd>JSON Web Key Set, the JWK container format used by
+        OAuth and OIDC providers to publish signing keys.</dd>
+      <dt>MITM</dt><dd>Man-in-the-Middle.</dd>
+      <dt>mTLS</dt><dd>Mutual TLS.</dd>
+      <dt>OCSP</dt><dd>Online Certificate Status Protocol, defined by <xref target="RFC6960"/>.</dd>
+      <dt>PII</dt><dd>Personally Identifiable Information.</dd>
+      <dt>PKCE</dt><dd>Proof Key for Code Exchange, defined by <xref target="RFC7636"/>.</dd>
+      <dt>SAGA</dt><dd>Distributed-workflow compensation pattern.</dd>
+      <dt>SLA</dt><dd>Service-Level Agreement.</dd>
+      <dt>TTL</dt><dd>Time To Live.</dd>
+    </dl>
+  </section>
+
   <section anchor="architecture-tiers" numbered="true">
     <name>Architecture Tiers</name>
     <t>
-      AIP defines three security Tiers that map threat-model declarations to
-      mandatory protocol behaviors. Tiers are NOT performance classes; they
-      are security property assertions.
+      AIP defines three security Tiers that map synced AIP Scope Catalog
+      metadata to mandatory protocol behaviors. Tiers are NOT performance
+      classes and are not locally chosen labels; they are derived from the
+      highest-risk requested scope.
     </t>
     <ul>
       <li><strong>Tier 1 (Bounded-staleness):</strong> Optimized for high availability
@@ -160,8 +243,9 @@
         Principals MUST use <tt>did:web</tt> to enable Registry trust anchoring.</li>
       <li><strong>Tier 3 (Regulated/Enterprise):</strong> The highest security level
         for regulated or high-value environments. Tier 3 supplements Tier 2 with
-        mandatory mutual TLS (mTLS) and OCSP stapling for transport-layer revocation
-        checks.</li>
+        mandatory mutual TLS (mTLS) and certificate revocation checking using
+        OCSP or an equivalent deployment-profile mechanism defined in
+        Section 21.6.</li>
     </ul>
     <t>
       The complete mapping of Tiers to normative protocol requirements is defined in

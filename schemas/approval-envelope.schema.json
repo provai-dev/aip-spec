@@ -1,13 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://provai.dev/schemas/aip/approval-envelope/latest",
-  "$comment": "Normatively defined in AIP spec §4.6.3 (envelope), §4.6.4 (step), §4.6.5 (compensation step). Submitted via POST /v1/approvals (§15.4). The creator_signature is an EdDSA signature over the JCS-canonical envelope with creator_signature set to empty string. The principal_signature covers the full JCS envelope with principal_signature set to empty string, per §15.4. See §4.6.6 for the lifecycle state machine and §4.6.10 for validation rules.",
+  "$id": "https://provai.dev/schemas/aip/approval-envelope/draft-02",
+  "$comment": "Normatively defined by the AIP Approval Envelope, Step, and Compensation Step rules. The root schema describes the common envelope representation. The approval_envelope_submission and stored_approval_envelope definitions below define the POST request profile and Registry-stored/read profile. The creator_signature is an EdDSA signature over the JCS-canonical submission with creator_signature set to empty string and creator_kid included. The principal_signature covers the immutable submitted content plus principal_kid and principal_signature set to empty string, excluding Registry-managed lifecycle fields.",
   "title": "AIP Approval Envelope",
-  "description": "A Chained Approval Envelope submitted to POST /v1/approvals. Allows a principal to pre-approve a complete multi-step workflow graph in a single signing ceremony. The Registry stores the envelope, enforces step ordering atomically, and issues short-lived Step Execution Tokens per step. Defined in AIP spec §4.6.",
+  "description": "A Chained Approval Envelope. ApprovalEnvelopeSubmission is submitted to POST /v1/approvals; StoredApprovalEnvelope is returned by Registry read and mutation endpoints with Registry-managed lifecycle fields. Allows a principal to pre-approve a complete multi-step workflow graph in a single signing ceremony.",
   "type": "object",
   "required": [
     "approval_id",
     "created_by",
+    "creator_kid",
     "principal_id",
     "description",
     "approval_window_expires_at",
@@ -27,10 +28,20 @@
       "pattern": "^did:aip:[a-z][a-z0-9]*(-[a-z0-9]+)*:[0-9a-f]{32}$",
       "description": "AID of the orchestrating agent that constructed and submitted this envelope. MUST be a registered AIP agent."
     },
+    "creator_kid": {
+      "type": "string",
+      "pattern": "^did:aip:[a-z][a-z0-9]*(-[a-z0-9]+)*:[0-9a-f]{32}#.+$",
+      "description": "DID URL identifying the Ed25519 verification method used to verify creator_signature. The DID portion MUST equal created_by."
+    },
     "principal_id": {
       "type": "string",
       "pattern": "^did:[a-z][a-z0-9]*:.+$",
       "description": "W3C DID of the human or organisational principal who must approve this envelope. MUST NOT use the did:aip method — principals are humans or organisations, never AIP agents."
+    },
+    "engagement_id": {
+      "type": "string",
+      "pattern": "^eng:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "description": "OPTIONAL. Engagement Object identifier this Approval Envelope is scoped to. When present, this field is part of the signed Approval Envelope body and MUST be included in creator_signature and principal_signature canonical signing inputs."
     },
     "description": {
       "type": "string",
@@ -41,12 +52,12 @@
     "approval_window_expires_at": {
       "type": "string",
       "format": "date-time",
-      "description": "ISO 8601 UTC datetime after which the envelope transitions to 'expired' if not approved. MUST be strictly after created_at. RECOMMENDED maximum: 72 hours. Once expired, no approval is possible and the envelope MUST NOT be re-submitted."
+      "description": "ISO 8601 UTC datetime after which the envelope transitions to 'expired' if not approved. MUST be strictly after created_at and MUST NOT be more than 72 hours after created_at. Registries reject overlong windows with approval_envelope_invalid. Once expired, no approval is possible and the envelope MUST NOT be re-submitted. This field is an approval deadline only; once approved before the deadline, later passage of this timestamp MUST NOT block step claims or execution."
     },
     "created_at": {
       "type": "string",
       "format": "date-time",
-      "description": "ISO 8601 UTC datetime when this envelope was constructed by the orchestrating agent."
+      "description": "ISO 8601 UTC datetime when this envelope was constructed by the orchestrating agent. MUST NOT be in the future beyond 30-second clock skew at Registry submission time."
     },
     "steps": {
       "type": "array",
@@ -62,12 +73,12 @@
       "items": {
         "$ref": "#/$defs/compensation_step"
       },
-      "description": "OPTIONAL. Array of Compensation Step objects for SAGA rollback. Referenced by steps[].compensation_index (0-based). When approved, both forward steps and compensation steps receive the principal's consent."
+      "description": "OPTIONAL. Array of Compensation Step objects for SAGA rollback. Referenced by steps[].compensation_index (1-based identifier, not a zero-based array offset). When approved, both forward steps and compensation steps receive the principal's consent. A compensation step is selected only through a forward step's compensation_index; the Registry MUST NOT infer relationships from action_type, actor, relying_party_uri, or array position."
     },
     "total_value": {
       "type": "number",
       "minimum": 0,
-      "description": "OPTIONAL. Total maximum financial exposure of this workflow. When present, MUST equal the sum of value fields across ALL steps (both required:true and required:false) that carry a value field. The Registry MUST enforce this constraint at submission time. MUST be present together with currency."
+      "description": "OPTIONAL. Total maximum financial exposure of this workflow. When present, MUST equal the sum of value fields across ALL steps (both required:true and required:false), treating omitted step value fields as 0. The Registry MUST enforce this constraint at submission time. MUST be present together with currency."
     },
     "currency": {
       "type": "string",
@@ -77,38 +88,121 @@
     "notification_uri": {
       "type": "string",
       "format": "uri",
+      "pattern": "^https://.+$",
       "description": "OPTIONAL. HTTPS URI for principal notifications. When present, the Registry MUST POST a signed notification payload to this URI after transitioning the envelope to pending_approval status. The notification payload MUST include approval_id, description, principal_id, and a review_uri linking to the principal's approval consent UI."
     },
     "creator_signature": {
       "type": "string",
-      "description": "Base64url-encoded EdDSA signature by the created_by agent's key over the JCS-canonical (RFC 8785) envelope with creator_signature set to empty string ''. The canonical field order for signing is: approval_id, created_by, principal_id, description, approval_window_expires_at, created_at, steps, compensation_steps, total_value, currency, creator_signature."
+      "description": "Base64url-encoded EdDSA signature by the created_by agent's key over the JCS-canonical (RFC 8785) ApprovalEnvelopeSubmission with creator_signature set to empty string ''. The signing input includes creator_kid, engagement_id, and notification_uri when present. The canonical field order for signing is: approval_id, created_by, creator_kid, principal_id, engagement_id, description, approval_window_expires_at, created_at, notification_uri, steps, compensation_steps, total_value, currency, creator_signature."
     },
     "status": {
       "type": "string",
-      "enum": ["pending_approval", "approved", "rejected", "expired", "executing", "completed", "compensating", "compensated", "failed"],
-      "description": "READ-ONLY. Set by the Registry. Valid transitions defined in AIP spec §4.6.6. Submitted envelopes start at pending_approval. Implementations MUST NOT set this field on submission."
+      "enum": ["pending_approval", "approved", "rejected", "expired", "executing", "completed", "compensating", "compensated", "failed", "cancelled"],
+      "description": "READ-ONLY. Set by the Registry. Valid transitions are defined by the Approval Envelope lifecycle. Submitted envelopes start at pending_approval. Implementations MUST NOT set this field on submission."
     },
     "principal_signature": {
       "type": "string",
-      "description": "CONDITIONAL. Base64url-encoded EdDSA signature by the principal_id's private key over the JCS-canonical full envelope with principal_signature set to empty string ''. Submitted by the Principal Wallet upon approval and stored by the Registry. REQUIRED once envelope status is 'approved'. Absent on initial submission."
+      "description": "CONDITIONAL. Base64url-encoded EdDSA signature by a verification method controlled by principal_id over the JCS-canonical immutable approval signing input with principal_signature set to empty string ''. The signing input is the accepted submission content plus creator_signature, principal_kid, and principal_signature, includes engagement_id and notification_uri when present, and excludes Registry-managed status, approved_at, and step status/timestamp fields. Submitted by a Principal Wallet upon approval and stored by the Registry through an atomic pending_approval -> approved transition. Absent on initial submission. Once stored, MUST NOT be replaced by later racing approval requests."
+    },
+    "principal_kid": {
+      "type": "string",
+      "pattern": "^did:[a-z][a-z0-9]*:.+#.+$",
+      "description": "CONDITIONAL. DID URL identifying the Ed25519 verification method used to verify principal_signature. The DID portion MUST equal principal_id. Required whenever principal_signature is present and absent on initial submission."
     },
     "approved_at": {
       "type": "string",
       "format": "date-time",
-      "description": "READ-ONLY. ISO 8601 UTC timestamp set by the Registry when the principal approves the envelope."
+      "description": "READ-ONLY. ISO 8601 UTC timestamp set by the Registry when the winning approval transition is committed. MUST NOT be replaced by later racing approval requests."
     }
   },
   "$defs": {
+    "approval_envelope_submission": {
+      "description": "Profile for POST /v1/approvals request bodies. Read-only Registry-managed fields are forbidden.",
+      "allOf": [
+        {
+          "$ref": "#"
+        },
+        {
+          "not": {
+            "anyOf": [
+              { "required": ["status"] },
+              { "required": ["principal_signature"] },
+              { "required": ["principal_kid"] },
+              { "required": ["approved_at"] }
+            ]
+          }
+        },
+        {
+          "properties": {
+            "steps": {
+              "items": {
+                "not": {
+                  "anyOf": [
+                    { "required": ["status"] },
+                    { "required": ["claimed_at"] },
+                    { "required": ["completed_at"] }
+                  ]
+                }
+              }
+            },
+            "compensation_steps": {
+              "items": {
+                "not": {
+                  "required": ["status"]
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "stored_approval_envelope": {
+      "description": "Profile for Registry-stored and Registry-returned Approval Envelopes. Registry-managed lifecycle fields are present in read responses.",
+      "allOf": [
+        {
+          "$ref": "#"
+        },
+        {
+          "required": ["status"],
+          "properties": {
+            "steps": {
+              "items": {
+                "required": ["status"]
+              }
+            },
+            "compensation_steps": {
+              "items": {
+                "required": ["status"]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": ["approved", "executing", "completed", "compensating", "compensated", "failed"]
+              }
+            },
+            "required": ["status"]
+          },
+          "then": {
+            "required": ["principal_signature", "principal_kid", "approved_at"]
+          }
+        }
+      ]
+    },
     "step": {
       "type": "object",
       "title": "Approval Step",
-      "description": "One atomic action at one Relying Party within the approval workflow. Defined in AIP spec §4.6.4.",
+      "description": "One atomic action at one Relying Party within the approval workflow.",
       "required": [
         "step_index",
         "actor",
         "relying_party_uri",
         "action_type",
         "action_hash",
+        "scopes",
         "description",
         "required",
         "triggered_by"
@@ -138,7 +232,17 @@
         "action_hash": {
           "type": "string",
           "pattern": "^sha256:[0-9a-f]{64}$",
-          "description": "SHA-256 hash of the canonical action descriptor, prefixed with 'sha256:'. Computation defined in AIP spec §4.6.7: SHA-256 of RFC 8785 JCS of {action_type, relying_party_uri, step_index, actor, <application-specific params>}. Binds the step to a specific operation — the Registry verifies this hash at claim time."
+          "description": "SHA-256 hash of the canonical action descriptor, prefixed with 'sha256:'. Computed as SHA-256 of RFC 8785 JCS of {action_type, relying_party_uri, step_index, actor, <application-specific params>}. Binds the step to a specific operation — the Registry verifies this hash at claim time."
+        },
+        "scopes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]*([.][a-z_][a-z0-9_]*)*$"
+          },
+          "description": "AIP scope strings required to claim and execute this step. The Credential Token used to claim the step MUST contain every scope in this set, and the Registry-issued Step Execution Token aip_scope MUST be exactly this set."
         },
         "description": {
           "type": "string",
@@ -167,7 +271,7 @@
         "value": {
           "type": "number",
           "minimum": 0,
-          "description": "OPTIONAL. Financial value of this step in the envelope's currency. Summed across all steps (required and optional) to compute and validate total_value."
+          "description": "OPTIONAL. Financial value of this step in the envelope's currency. Summed across all steps (required and optional) to compute and validate total_value; omitted value fields contribute 0 to that sum."
         },
         "currency": {
           "type": "string",
@@ -177,14 +281,14 @@
         "compensation_index": {
           "oneOf": [
             { "type": "null" },
-            { "type": "integer", "minimum": 0 }
+            { "type": "integer", "minimum": 1 }
           ],
-          "description": "OPTIONAL. 0-based index into the compensation_steps array identifying the compensation action for this step. Null or absent if no compensation is defined for this step."
+          "description": "OPTIONAL. 1-based identifier of the single compensation action for this forward step. Null or absent if no compensation is defined for this step. Non-null values MUST equal the compensation_index of exactly one entry in compensation_steps, and no two forward steps in the same envelope may reference the same compensation_index."
         },
         "status": {
           "type": "string",
-          "enum": ["pending", "claimed", "completed", "failed", "compensated", "skipped"],
-          "description": "READ-ONLY. Set by the Registry. pending: waiting for prerequisite or approval. claimed: Step Execution Token issued. completed: Relying Party confirmed success. failed: execution failed. compensated: compensation step executed. skipped: optional step bypassed."
+          "enum": ["pending", "claimed", "completed", "failed", "compensated", "skipped", "cancelled"],
+          "description": "READ-ONLY. Set by the Registry. pending: waiting for prerequisite or approval. claimed: Step Execution Token issued. completed: Relying Party confirmed success. failed: execution failed. compensated: compensation step executed. skipped: optional step bypassed. cancelled: terminal cancellation due to parent Engagement Object termination."
         },
         "claimed_at": {
           "type": "string",
@@ -201,21 +305,22 @@
     "compensation_step": {
       "type": "object",
       "title": "Compensation Step",
-      "description": "A SAGA rollback action pre-authorised by the principal. Executed without requiring new human approval if a forward step fails after earlier steps completed. Defined in AIP spec §4.6.5.",
+      "description": "A SAGA rollback action pre-authorised by the principal. Executed without requiring new human approval if a forward step fails after earlier steps completed.",
       "required": [
         "compensation_index",
         "actor",
         "relying_party_uri",
         "action_type",
         "action_hash",
+        "scopes",
         "description"
       ],
       "additionalProperties": false,
       "properties": {
         "compensation_index": {
           "type": "integer",
-          "minimum": 0,
-          "description": "0-based index identifying this compensation step within the compensation_steps array. Referenced by steps[].compensation_index."
+          "minimum": 1,
+          "description": "1-based identifier for this compensation step within compensation_steps. Values MUST be unique and sequential starting at 1. Referenced by steps[].compensation_index."
         },
         "actor": {
           "type": "string",
@@ -235,7 +340,17 @@
         "action_hash": {
           "type": "string",
           "pattern": "^sha256:[0-9a-f]{64}$",
-          "description": "SHA-256 hash of the canonical compensation action descriptor. Computation identical to forward step action_hash per AIP spec §4.6.7."
+          "description": "SHA-256 hash of the canonical compensation action descriptor. Computation is identical to forward step action_hash."
+        },
+        "scopes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]*([.][a-z_][a-z0-9_]*)*$"
+          },
+          "description": "AIP scope strings required to claim and execute this compensation step. The Credential Token used to claim the compensation step MUST contain every scope in this set, and the Registry-issued Step Execution Token aip_scope MUST be exactly this set."
         },
         "description": {
           "type": "string",

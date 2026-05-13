@@ -17,19 +17,25 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 EXAMPLE_SCHEMA_MAP = {
     "aip-registry.json": "aip-registry.schema.json",
+    "agent-registration.json": "agent-registration.schema.json",
+    "aip-gateway-configuration.json": "aip-gateway-configuration.schema.json",
     "approval-envelope.json": "approval-envelope.schema.json",
     "capability-manifest.json": "capability-manifest.schema.json",
     "capability-overlay.json": "capability-overlay.schema.json",
+    "crl.json": "crl.schema.json",
     "credential-token.json": "credential-token.schema.json",
     "endorsement.json": "endorsement.schema.json",
     "engagement-object.json": "engagement-object.schema.json",
     "grant-request.json": "grant-request.schema.json",
     "grant-response.json": "grant-response.schema.json",
     "personal-agent.json": "agent-identity.schema.json",
+    "public-key-response.json": "public-key-response.schema.json",
     "registration-envelope.json": "registration-envelope.schema.json",
     "registry-trust-record.json": "registry-trust-record.schema.json",
+    "resource-record.json": "resource-record.schema.json",
     "revocation.json": "revocation-object.schema.json",
-    "step-execution-token.json": "credential-token.schema.json",
+    "revocation-status.json": "revocation-status.schema.json",
+    "step-execution-token.json": "step-execution-token.schema.json",
 }
 
 SKIPPED_EXAMPLES = {

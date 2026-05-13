@@ -5,11 +5,54 @@
     <name>Endorsement Object</name>
     <t>Any Relying Party or agent MAY submit a signed Endorsement Object to the Registry after a completed interaction. The schema is in Section 5.8.</t>
     <t>The Registry MUST verify every submitted Endorsement Object signature. Only <tt>success</tt> and <tt>partial</tt> outcomes increment <tt>endorsement_count</tt>. <tt>failure</tt> increments <tt>incident_count</tt>.</t>
-    <t>Completed Approval Envelope steps SHOULD generate Endorsement Objects. When an Approval Envelope reaches <tt>completed</tt> status, the orchestrator SHOULD submit an Endorsement Object for each agent that executed a step successfully.</t>
+    <t>The optional Endorsement Object <tt>notes</tt> field is signed audit context only. It MUST NOT be used as an input to reputation scoring, endorsement weighting, validation, or counter updates.</t>
+    <t>Completed Approval Envelope steps SHOULD generate Endorsement Objects. When an Approval Envelope reaches <tt>completed</tt> status, the orchestrator SHOULD submit an Endorsement Object for each agent that executed a step successfully. This is a reputation-input recommendation, not a protocol validation gate. Registries and Relying Parties cannot prove that an orchestrator failed to submit an expected Endorsement Object, and absence of such an endorsement MUST NOT cause Approval Envelope validation, Credential Token validation, or step-completion processing to fail.</t>
+
+    <section anchor="endorsement-acceptance-requirements">
+      <name>Endorsement Acceptance Requirements</name>
+    <t>
+      A conformant Registry that accepts endorsements, by implementing
+      <tt>POST /v1/endorsements</tt>, MUST enforce the following minimum
+      acceptance rules regardless of its reputation scoring algorithm:
+    </t>
+    <ol type="%d">
+      <li>The endorsement signature MUST be verified using
+      <tt>signature_kid</tt>. The DID portion of <tt>signature_kid</tt> MUST
+      equal <tt>from_aid</tt>, and the key MUST be Ed25519 verification
+      material controlled by that AID. If key binding or signature
+      verification fails, the Registry MUST reject with
+      <tt>endorsement_invalid</tt>.</li>
+      <li>The <tt>from_aid</tt> MUST be a registered, non-revoked agent AID in
+      the Registry. If not, the Registry MUST reject with
+      <tt>unknown_aid</tt> or <tt>agent_revoked</tt>.</li>
+      <li>The <tt>to_aid</tt> MUST be a registered agent AID in the Registry.
+      If not, the Registry MUST reject with <tt>unknown_aid</tt>.</li>
+      <li>The <tt>score</tt> field MUST be in the range 1 through 5 inclusive,
+      as an integer or decimal value. Values outside this range MUST be
+      rejected with <tt>endorsement_invalid</tt>.</li>
+    </ol>
+    </section>
   </section>
   <section anchor="reputation-scoring">
     <name>Reputation Scoring</name>
-    <t>The Registry MUST expose reputation data for every registered AID at <tt>GET /v1/agents/{aid}/reputation</tt>. Required fields: <tt>registration_date</tt>, <tt>task_count</tt>, <tt>successful_task_count</tt>, <tt>endorsement_count</tt>, <tt>incident_count</tt>, <tt>revocation_history</tt>, <tt>last_active</tt>.</t>
+    <t>
+      Reputation scoring algorithms, aggregation functions, and score decay
+      policies are implementation-defined and are not subject to conformance
+      testing. A Registry that implements the Reputation Output optional
+      feature MUST expose a reputation score in the range 0.0 through 5.0 at
+      <tt>GET /v1/agents/{aid}/reputation</tt> in a response containing at
+      minimum:
+    </t>
+    <ul>
+      <li><tt>score</tt>: number, current reputation score in the range 0.0
+      through 5.0;</li>
+      <li><tt>endorsement_count</tt>: integer, total number of accepted
+      endorsements;</li>
+      <li><tt>computed_at</tt>: string, ISO 8601 UTC timestamp of last score
+      computation.</li>
+    </ul>
+    <t>A Registry that implements this optional feature MUST expose reputation data for every registered AID at <tt>GET /v1/agents/{aid}/reputation</tt>. Required fields: <tt>registration_date</tt>, <tt>task_count</tt>, <tt>successful_task_count</tt>, <tt>endorsement_count</tt>, <tt>incident_count</tt>, <tt>revocation_history</tt>, <tt>last_active</tt>.</t>
+    <t>The aggregate reputation counters are single-resource fields and are not paginated. The <tt>revocation_history</tt> member is a collection and MUST use the cursor pagination rules in <xref target="pagination-registry"/>. A response MUST include no more than the effective <tt>limit</tt> revocation history entries and MUST include a <tt>pagination</tt> object for continuing the history scan. Absence of older history on the current page MUST NOT be interpreted as absence of older revocations when <tt>pagination.has_more</tt> is true.</t>
     <t>The Registry MAY expose a reference advisory score labelled <tt>advisory_only: true</tt>. Relying Parties MUST NOT treat it as normative. AIP standardises reputation inputs, not the scoring formula.</t>
     <t>Reputation Non-Transferability: Reputation is bound to a specific AID. Implementations MUST NOT transfer reputation from revoked to new AIDs. Endorsements from AIDs with current <tt>full_revoke</tt> or <tt>principal_revoke</tt> status MUST NOT be weighted.</t>
   </section>

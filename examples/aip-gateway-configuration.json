@@ -1,0 +1,11 @@
+{
+  "_comment": "Example RFC 9728 OAuth Protected Resource Metadata document published at /.well-known/oauth-protected-resource by an AIP-protected MCP gateway.",
+  "resource": "https://gateway.example.com/",
+  "authorization_servers": ["https://registry.example.com"],
+  "scopes_supported": ["email.read", "calendar.read"],
+  "bearer_methods_supported": ["header"],
+  "dpop_signing_alg_values_supported": ["EdDSA"],
+  "dpop_bound_access_tokens_required": true,
+  "resource_name": "Example AIP MCP Gateway",
+  "resource_documentation": "https://gateway.example.com/docs"
+}

@@ -1,0 +1,15 @@
+{
+  "_comment": "Example AIP Public Key response for GET /v1/agents/{aid}/public-key. Historical key lookups use the same shape with status='retired' and a non-null valid_until.",
+  "aid": "did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3",
+  "key_id": "key-1",
+  "kid": "did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3#key-1",
+  "jwk": {
+    "kty": "OKP",
+    "crv": "Ed25519",
+    "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+    "kid": "did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3#key-1"
+  },
+  "valid_from": "2026-04-14T10:00:00Z",
+  "valid_until": null,
+  "status": "active"
+}

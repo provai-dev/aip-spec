@@ -1,16 +1,30 @@
 {
-  "_comment": "Example /.well-known/aip-registry discovery document. This is discovery metadata only; canonical trust state lives in the Registry Trust Record referenced by registry_trust_uri.",
+  "_comment": "Example /v1/registry-metadata document. This is discovery metadata only; canonical trust state lives in the Registry Trust Record referenced by registry_trust_uri.",
   "registry_id": "https://registry.provai.dev",
   "registry_name": "ProvAI Registry",
   "aip_version": "0.3",
   "registry_trust_uri": "https://registry.provai.dev/v1/registry-trust/current",
+  "aip_catalog_uri": "https://registry.provai.dev/catalogs/aip/draft-02/catalog.json",
+  "aip_catalog_version": "draft-02",
+  "aip_catalog_snapshot_id": "https://provai.dev/aip/catalog/draft-02",
+  "aip_catalog_sha256": "sha256:79fdce550cd44693b88e284c16c2c78839e2fc5026414b73feacb9b8f3ce0551",
+  "identity_proofing_required_for_tier2": false,
+  "enterprise_idp_federation_supported": false,
+  "step_claim_timeout_seconds": 600,
   "endpoints": {
     "agents": "/v1/agents",
-    "crl": "/v1/crl",
-    "revocations": "/v1/revocations"
+    "crl": "https://cdn.registry.provai.dev/v1/crl",
+    "revocations": "/v1/revocations",
+    "heartbeat": "/v1/agents/{aid}/heartbeat",
+    "scopes": "/v1/scopes",
+    "namespaces": "/v1/namespaces",
+    "resources": "/v1/resources"
   },
   "_notes": {
     "stable_identifier": "registry_id is stable across planned key rotation.",
-    "trust_model": "Verifiers fetch the Registry Trust Record from registry_trust_uri and pin trust state from that record, not from this discovery document."
+    "crl_distribution": "endpoints.crl may point at a CDN origin. Verifiers bind the CRL to the Registry by verifying the signed CRL against the accepted Registry Trust Record.",
+    "trust_model": "Verifiers fetch the Registry Trust Record from registry_trust_uri and pin trust state from that record, not from this metadata document.",
+    "catalog_sync": "The Registry syncs scope, scope-family, and namespace metadata from the pinned catalog identified by aip_catalog_snapshot_id and aip_catalog_sha256, then exposes the synced view through /v1/scopes and /v1/namespaces.",
+    "step_claim_timeout": "Claimed Approval Envelope steps that are not completed or failed within step_claim_timeout_seconds from claimed_at are automatically failed by the Registry."
   }
 }

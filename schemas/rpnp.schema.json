@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provai.dev/schemas/aip/rpnp/draft-02",
+  "$comment": "Normatively defined by the Registry Push Notification Protocol rules.",
+  "title": "AIP RPNP Objects",
+  "description": "Request, response, status, and push payload structures for the Registry Push Notification Protocol.",
+  "$defs": {
+    "subscription_id": {
+      "type": "string",
+      "pattern": "^sub:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "did": {
+      "type": "string",
+      "pattern": "^did:[a-z][a-z0-9]*:.+$"
+    },
+    "target": {
+      "type": "string",
+      "minLength": 1
+    },
+    "subscription_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "subscriber_did",
+        "event_types",
+        "scope_filter",
+        "webhook_uri",
+        "hmac_secret",
+        "subscription_expires_at"
+      ],
+      "properties": {
+        "subscriber_did": { "$ref": "#/$defs/did" },
+        "event_types": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["full_revoke", "scope_revoke", "delegation_revoke", "principal_revoke", "engagement_cancelled"]
+          }
+        },
+        "scope_filter": {
+          "type": "string",
+          "enum": ["aid", "principal", "all"]
+        },
+        "targets": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/target" }
+        },
+        "webhook_uri": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://.+$"
+        },
+        "hmac_secret": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{43,}$",
+          "description": "Base64url-encoded shared secret containing at least 32 bytes of entropy."
+        },
+        "subscription_expires_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "scope_filter": { "enum": ["aid", "principal"] } },
+            "required": ["scope_filter"]
+          },
+          "then": { "required": ["targets"] }
+        },
+        {
+          "if": {
+            "properties": { "scope_filter": { "const": "all" } },
+            "required": ["scope_filter"]
+          },
+          "then": {
+            "not": { "required": ["targets"] }
+          }
+        }
+      ]
+    },
+    "subscription_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "subscription_id",
+        "subscriber_did",
+        "status",
+        "event_types",
+        "scope_filter",
+        "webhook_uri",
+        "subscription_expires_at",
+        "created_at"
+      ],
+      "properties": {
+        "subscription_id": { "$ref": "#/$defs/subscription_id" },
+        "subscriber_did": { "$ref": "#/$defs/did" },
+        "status": { "type": "string", "enum": ["active", "degraded", "cancelled", "expired"] },
+        "event_types": { "$ref": "#/$defs/subscription_request/properties/event_types" },
+        "scope_filter": { "$ref": "#/$defs/subscription_request/properties/scope_filter" },
+        "targets": { "$ref": "#/$defs/subscription_request/properties/targets" },
+        "webhook_uri": { "$ref": "#/$defs/subscription_request/properties/webhook_uri" },
+        "subscription_expires_at": { "type": "string", "format": "date-time" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "last_success_at": { "type": ["string", "null"], "format": "date-time" },
+        "last_delivery_attempt_at": { "type": ["string", "null"], "format": "date-time" },
+        "next_retry_at": { "type": ["string", "null"], "format": "date-time" },
+        "consecutive_failures": { "type": "integer", "minimum": 0 },
+        "last_delivery_status": { "type": ["string", "null"], "maxLength": 128 }
+      }
+    },
+    "push_header": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["typ", "alg", "kid", "aip_trv"],
+      "properties": {
+        "typ": { "const": "AIP-RPNP+JWT" },
+        "alg": { "const": "EdDSA" },
+        "kid": {
+          "type": "string",
+          "format": "uri",
+          "description": "Registry notification key ID. MUST be listed in active_verification_keys.notifications of the pinned Registry Trust Record selected by aip_trv."
+        },
+        "aip_trv": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Registry Trust Record version whose active_verification_keys.notifications contains kid."
+        }
+      }
+    },
+    "push_payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["iss", "sub", "iat", "exp", "jti", "subscription_id", "event_type", "event_data"],
+      "properties": {
+        "iss": { "type": "string", "format": "uri", "pattern": "^https://.+$" },
+        "sub": { "type": "string", "minLength": 1 },
+        "iat": { "type": "integer" },
+        "exp": { "type": "integer" },
+        "jti": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "subscription_id": { "$ref": "#/$defs/subscription_id" },
+        "event_type": { "type": "string", "minLength": 1 },
+        "event_data": { "type": "object" }
+      }
+    }
+  }
+}

@@ -19,6 +19,17 @@
   <reference anchor="RFC6585">
     <front><title>Additional HTTP Status Codes</title><author><organization>Nottingham &amp; Fielding</organization></author><date month="April" year="2012"/></front>
   </reference>
+  <reference anchor="RFC6750">
+    <front><title>The OAuth 2.0 Authorization Framework: Bearer Token Usage</title><author><organization>Jones, M. and D. Hardt</organization></author><date month="October" year="2012"/></front>
+    <seriesInfo name="RFC" value="6750"/>
+    <seriesInfo name="DOI" value="10.17487/RFC6750"/>
+  </reference>
+  <reference anchor="RFC6838">
+    <front><title>Media Type Specifications and Registration Procedures</title><author><organization>Freed, N., Klensin, J., and T. Hansen</organization></author><date month="January" year="2013"/></front>
+    <seriesInfo name="BCP" value="13"/>
+    <seriesInfo name="RFC" value="6838"/>
+    <seriesInfo name="DOI" value="10.17487/RFC6838"/>
+  </reference>
   <reference anchor="RFC7515">
     <front><title>JSON Web Signature (JWS)</title><author><organization>Jones, M., Bradley, J., and N. Sakimura</organization></author><date month="May" year="2015"/></front>
     <seriesInfo name="RFC" value="7515"/>
@@ -35,8 +46,9 @@
     <seriesInfo name="RFC" value="7519"/>
     <seriesInfo name="DOI" value="10.17487/RFC7519"/>
   </reference>
-  <reference anchor="RFC7748">
-    <front><title>Elliptic Curves for Security</title><author><organization>Langley et al.</organization></author><date month="January" year="2016"/></front>
+  <reference anchor="RFC7523">
+    <front><title>JSON Web Token (JWT) Profile for OAuth 2.0 Client Authentication and Authorization Grants</title><author><organization>Jones, M., Campbell, B., and C. Mortimore</organization></author><date month="April" year="2015"/></front>
+    <seriesInfo name="RFC" value="7523"/>
   </reference>
   <reference anchor="RFC8032">
     <front><title>Edwards-Curve Digital Signature Algorithm (EdDSA)</title><author><organization>Josefsson, S. and I. Liusvaara</organization></author><date month="January" year="2017"/></front>
@@ -89,6 +101,10 @@
     <front><title>Authentication Method Reference Values</title><author><organization>Jones, M., Hunt, P., and A. Nadalin</organization></author><date month="June" year="2017"/></front>
     <seriesInfo name="RFC" value="8176"/>
   </reference>
+  <reference anchor="I-D.ietf-oauth-v2-1">
+    <front><title>The OAuth 2.1 Authorization Framework</title><author><organization>Hardt, D., Parecki, A., and T. Lodderstedt</organization></author><date month="March" year="2026"/></front>
+    <seriesInfo name="Internet-Draft" value="draft-ietf-oauth-v2-1-15"/>
+  </reference>
   <reference anchor="RFC8414">
     <front><title>OAuth 2.0 Authorization Server Metadata</title><author><organization>Jones, M., Sakimura, N., and J. Bradley</organization></author><date month="June" year="2018"/></front>
     <seriesInfo name="RFC" value="8414"/>
@@ -104,6 +120,11 @@
   <reference anchor="RFC9068">
     <front><title>JSON Web Token (JWT) Profile for OAuth 2.0 Access Tokens</title><author><organization>Bertocci, V.</organization></author><date month="October" year="2021"/></front>
     <seriesInfo name="RFC" value="9068"/>
+  </reference>
+  <reference anchor="RFC9728">
+    <front><title>OAuth 2.0 Protected Resource Metadata</title><author><organization>Jones, M. B., Hunt, P., and A. Parecki</organization></author><date month="April" year="2025"/></front>
+    <seriesInfo name="RFC" value="9728"/>
+    <seriesInfo name="DOI" value="10.17487/RFC9728"/>
   </reference>
   <reference anchor="FIPS-180-4">
     <front><title>Secure Hash Standard (SHS)</title><author><organization>National Institute of Standards and Technology</organization></author><date month="August" year="2015"/></front>

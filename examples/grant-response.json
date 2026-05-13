@@ -1,5 +1,5 @@
 {
-  "_comment": "Example AIP Grant Response — AIP spec §4.5.4. Constructed and signed by the Principal Wallet after Alice approves the grant ceremony. Delivered via POST to the callback_uri in the GrantRequest. The principal_token is a compact JWT whose payload conforms to principal-token.schema.json. Signature placeholder.",
+  "_comment": "Example AIP Grant Response. Constructed and signed by the Principal Wallet after Alice approves the grant ceremony. Delivered via POST to the callback_uri in the GrantRequest. The principal_token is a compact JWT whose payload conforms to principal-token.schema.json. Signature placeholder.",
   "grant_request_id": "gr:1a2b3c4d-5e6f-4789-8abc-def012345678",
   "nonce": "7Xk9mN3pQ2rS8tU1vW4yZ6bC",
   "state": "sess_abc123_csrf_xyz789",
@@ -52,7 +52,8 @@
   "approved_max_delegation_depth": 0,
   "signed_at": "2026-04-14T10:30:00Z",
   "_notes": {
-    "deployer_validation": "On receipt the deployer MUST: (1) verify grant_request_id matches original, (2) verify nonce matches — mismatch = forgery, (3) status is 'approved' so proceed, (4) verify signed_at is plausible (not future, not >24h past), (5) decode and verify principal_token JWT signature against did:key:z6Mkha...do7 public key, (6) verify principal_token.sub = agent's AID, (7) use approved_capabilities to construct Capability Manifest.",
+    "deployer_validation": "On receipt the deployer MUST: (1) verify grant_request_id matches original, (2) verify nonce matches — mismatch = forgery, (3) status is 'approved' so proceed, (4) verify approved_delegation_valid_for_seconds is within bounds and does not exceed the original request, (5) decode and verify principal_token JWT signature against did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2do7 public key, (6) verify principal_token.sub = original GrantRequest agent_aid, (7) verify principal_token.issued_at equals signed_at and is not more than 30 seconds in the future, (8) verify principal_token.expires_at = issued_at + approved_delegation_valid_for_seconds, (9) use approved_capabilities to construct Capability Manifest.",
+    "expiry_derivation": "approved_delegation_valid_for_seconds is 7776000. principal_token.payload.issued_at and signed_at are both 2026-04-14T10:30:00Z, so principal_token.payload.expires_at is 2026-07-13T10:30:00Z.",
     "full_approval": "status='approved' means principal approved all requested capabilities. approved_capabilities matches requested_capabilities from the GrantRequest.",
     "partial_example": "If Alice had declined email.delete capability, status would be 'partial' and approved_capabilities would omit email.delete. The deployer MUST handle 'partial' without assuming full approval.",
     "next_step": "The deployer constructs the Registration Envelope using identity (pre-generated), capability_manifest (from approved_capabilities, signed by principal), principal_token (from this response), and grant_tier: 'G2', then submits to POST /v1/agents.",

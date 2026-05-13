@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://provai.dev/schemas/aip/registry-trust-record/latest",
-  "$comment": "Normatively defined in AIP spec §7.3.4.1 and §7.3.6. This schema describes the canonical Registry Trust Record.",
+  "$id": "https://provai.dev/schemas/aip/registry-trust-record/draft-02",
+  "$comment": "Normatively defined by the AIP Registry Trust Record and trust-continuity rules. This schema describes the canonical Registry Trust Record.",
   "title": "AIP Registry Trust Record",
   "description": "Versioned trust metadata for an AIP Registry. Verifiers use this object for trust bootstrapping, planned trust updates, rollback detection, and historical verification.",
   "type": "object",
@@ -53,7 +53,8 @@
           "required": [
             "agents",
             "crl",
-            "revocations"
+            "revocations",
+            "heartbeat"
           ],
           "additionalProperties": {
             "type": "string",
@@ -66,9 +67,14 @@
             },
             "crl": {
               "type": "string",
-              "minLength": 1
+              "minLength": 1,
+              "description": "Authoritative CRL retrieval URI for this Registry Trust Record version. May be the relative origin path /v1/crl or an absolute HTTPS CDN/distribution URI."
             },
             "revocations": {
+              "type": "string",
+              "minLength": 1
+            },
+            "heartbeat": {
               "type": "string",
               "minLength": 1
             }
@@ -99,24 +105,21 @@
               "type": "array",
               "minItems": 1,
               "items": {
-                "type": "string",
-                "format": "uri-reference"
+                "$ref": "#/$defs/jwk_with_keyid"
               }
             },
             "crl": {
               "type": "array",
               "minItems": 1,
               "items": {
-                "type": "string",
-                "format": "uri-reference"
+                "$ref": "#/$defs/jwk_with_keyid"
               }
             },
             "notifications": {
               "type": "array",
               "minItems": 1,
               "items": {
-                "type": "string",
-                "format": "uri-reference"
+                "$ref": "#/$defs/jwk_with_keyid"
               }
             }
           }

@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://provai.dev/schemas/aip/capability-manifest/latest",
-  "$comment": "Normatively defined in AIP spec §4.2.2. Canonical signing field order: manifest_id, aid, granted_by, version, issued_at, expires_at, capabilities, signature (set to '' during signing). Scope-to-manifest mapping for validation is in AIP spec §7.3 Step 9d.",
+  "$id": "https://provai.dev/schemas/aip/capability-manifest/draft-02",
+  "$comment": "Normatively defined by the AIP Capability Manifest rules. Canonical signing field order: manifest_id, aid, granted_by, version, issued_at, expires_at, capabilities, signature_kid, signature (set to '' during signing). Scope-to-manifest mapping is validated in Steps 9 and 9a.",
   "title": "AIP Capability Manifest",
-  "description": "A versioned, signed document stored in the AIP Registry declaring exactly what an agent is permitted to do. Defined in AIP spec §4.2.2. Signing canonical field order: (manifest_id, aid, granted_by, version, issued_at, expires_at, capabilities, signature) with signature set to empty string during signing.",
+  "description": "A versioned, signed document stored in the AIP Registry declaring exactly what an agent is permitted to do. Signing canonical field order: (manifest_id, aid, granted_by, version, issued_at, expires_at, capabilities, signature_kid, signature) with signature set to empty string during signing.",
   "type": "object",
   "required": [
     "manifest_id",
@@ -13,6 +13,7 @@
     "issued_at",
     "expires_at",
     "capabilities",
+    "signature_kid",
     "signature"
   ],
   "additionalProperties": false,
@@ -133,7 +134,7 @@
             "execute": {
               "type": "boolean",
               "default": false,
-              "description": "Grants filesystem.execute scope — execute scripts or commands. TIER 2 SENSITIVE: requires DPoP and enforces 300-second token TTL cap. This is the highest-risk filesystem capability."
+              "description": "Grants filesystem.execute scope — execute scripts or commands. Security tier, DPoP, and TTL behavior are defined by the synced AIP Scope Catalog."
             },
             "delete": {
               "type": "boolean",
@@ -174,7 +175,7 @@
           "type": "object",
           "additionalProperties": false,
           "required": ["enabled"],
-          "description": "Financial transaction capabilities. TIER 2 SENSITIVE when enabled: requires DPoP and enforces 300-second token TTL cap.",
+          "description": "Financial transaction capabilities. Security tier, DPoP, TTL, and destructive classification are defined by the synced AIP Scope Catalog.",
           "properties": {
             "enabled": {
               "type": "boolean",
@@ -216,7 +217,7 @@
           "type": "object",
           "additionalProperties": false,
           "required": ["enabled"],
-          "description": "Outbound communication capabilities. TIER 2 SENSITIVE when enabled: requires DPoP and enforces 300-second token TTL cap. The enabled field acts as a master on/off switch.",
+          "description": "Outbound communication capabilities. Security tier, DPoP, and TTL behavior are defined by the synced AIP Scope Catalog. The enabled field acts as a master on/off switch.",
           "properties": {
             "enabled": {
               "type": "boolean",
@@ -278,9 +279,9 @@
               "type": "array",
               "items": {
                 "type": "string",
-                "enum": ["personal", "enterprise", "service", "ephemeral", "orchestrator"]
+                "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
               },
-              "description": "Agent namespace types this agent is permitted to spawn. If absent when enabled is true, all registered namespace types are permitted."
+              "description": "Agent namespace types this agent is permitted to spawn. Values MUST be active, non-reserved entries in the synced AIP Namespace Catalog unless local policy permits private namespaces. If absent when enabled is true, all active spawnable catalog namespace types are permitted."
             }
           },
           "if": {
@@ -289,13 +290,42 @@
           "then": {
             "required": ["max_concurrent"]
           }
+        },
+        "registry": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Registry control-plane capabilities. These scopes authorize interactions with AIP Registry control endpoints, not external user data.",
+          "properties": {
+            "heartbeat": {
+              "type": "boolean",
+              "default": false,
+              "description": "Grants registry.heartbeat scope — submit authenticated liveness heartbeats to POST /v1/agents/{aid}/heartbeat. This is a Tier 1 control-plane scope, but the heartbeat endpoint still requires DPoP."
+            }
+          }
+        },
+        "approvals": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Approval Envelope control-plane capabilities. These scopes authorize interactions with AIP Registry approval endpoints, not external user data.",
+          "properties": {
+            "create": {
+              "type": "boolean",
+              "default": false,
+              "description": "Grants approvals.create scope — submit Approval Envelopes to POST /v1/approvals."
+            }
+          }
         }
       }
+    },
+    "signature_kid": {
+      "type": "string",
+      "pattern": "^did:[a-z][a-z0-9]*:.+#.+$",
+      "description": "DID URL identifying the Ed25519 verification method used to verify signature. The DID portion MUST equal granted_by."
     },
     "signature": {
       "type": "string",
       "pattern": "^[A-Za-z0-9_-]+$",
-      "description": "Base64url-encoded EdDSA signature of this manifest. Computed by: serialise the manifest to JSON in canonical field order (manifest_id, aid, granted_by, version, issued_at, expires_at, capabilities, signature) with signature set to empty string '', then sign with the granted_by party's current Ed25519 private key. Verifiers retrieve the granted_by DID's public key and verify against this value. Validation Algorithm Step 9a returns manifest_invalid on failure."
+      "description": "Base64url-encoded EdDSA signature of this manifest. Computed by: serialise the manifest to JSON in canonical field order (manifest_id, aid, granted_by, version, issued_at, expires_at, capabilities, signature_kid, signature) with signature set to empty string '', then sign with the private key identified by signature_kid. Verifiers retrieve the public key named by signature_kid and verify that its DID portion equals granted_by. Validation Algorithm Step 9a returns manifest_invalid on failure."
     }
   }
 }

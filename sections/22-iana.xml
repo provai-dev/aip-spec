@@ -1,15 +1,23 @@
 <section anchor="iana" numbered="true">
   <name>IANA Considerations</name>
   <t>
-    This section describes the IANA considerations for
-    the AIP specification.
+    This document requests IANA registration only of the media types in
+    <xref target="iana-media-types"/>. AIP uses existing registered mechanisms
+    for HTTP authorization and discovery: the Bearer and DPoP authentication
+    schemes, OAuth Authorization Server Metadata, and OAuth Protected Resource
+    Metadata. The <tt>did:aip</tt> DID method, AIP scope identifiers, AID
+    namespaces, grant tier values, and AIP error code values are not IANA
+    registries in this version of the specification; their change control is
+    described in the subsections below.
   </t>
 
   <section anchor="iana-did-method" numbered="true">
-  <name>DID Method Registration</name>
+  <name>Non-IANA DID Method Registry</name>
     <t>
-      The did:aip DID method is requested for registration
-      in the W3C DID Method Registry per W3C DID Specification.
+      The W3C DID Method Registry is not an IANA registry. This document
+      requests no IANA action for the <tt>did:aip</tt> DID method. If the
+      <tt>did:aip</tt> method is submitted to the W3C DID Method Registry,
+      the following registration information applies.
     </t>
 
                 <table>
@@ -20,41 +28,126 @@
               <th align="left">Value</th>
             </tr>
           </thead>
-          <tbody>
-            <tr>
-              <td>Method Name</td>
-              <td>did:aip</td>
-            </tr>
-            <tr>
-              <td>Status</td>
-              <td>Draft</td>
-            </tr>
-            <tr>
-              <td>Canonical ID</td>
-              <td>did:aip:namespace:32-hex-characters</td>
-            </tr>
-          </tbody>
-        </table>
+        <tbody>
+          <tr>
+            <td>Method Name</td>
+            <td>did:aip</td>
+          </tr>
+          <tr>
+            <td>Status</td>
+            <td>Draft</td>
+          </tr>
+          <tr>
+            <td>Controller</td>
+            <td>The principal or deployer that controls the registered Agent
+            Identity Object and the current private key corresponding to the
+            AID public key.</td>
+          </tr>
+          <tr>
+            <td>DID Syntax</td>
+            <td><tt>did:aip:&lt;namespace&gt;:&lt;32-lowercase-hex-agent-id&gt;</tt>;
+            the complete ABNF is defined in <xref target="aid-syntax"/>.</td>
+          </tr>
+          <tr>
+            <td>Create</td>
+            <td>Create is performed through <tt>POST /v1/agents</tt> using a
+            Registration Envelope validated by <xref target="registration-protocol"/>.</td>
+          </tr>
+          <tr>
+            <td>Read</td>
+            <td>Read is performed through DID resolution against the
+            authoritative Registry and the <tt>GET /v1/agents/{aid}</tt> and
+            public-key endpoints defined in <xref target="registry"/>.</td>
+          </tr>
+          <tr>
+            <td>Update</td>
+            <td>The DID identifier is immutable. The only protocol-defined
+            update operation is key rotation through <tt>PUT /v1/agents/{aid}</tt>
+            with previous-key authorization as defined in
+            <xref target="agent-key-rotation-registry"/>.</td>
+          </tr>
+          <tr>
+            <td>Deactivate</td>
+            <td>Deactivate is represented by accepted Revocation Objects and
+            DID Document deactivation metadata as defined in
+            <xref target="revocation"/> and <xref target="agent-resolution"/>.</td>
+          </tr>
+          <tr>
+            <td>Security Considerations</td>
+            <td>AIDs are derived from Ed25519 public key material, key rotation
+            is versioned and previous-key signed, historical keys are retained
+            for validation, and revocation is checked according to the Tier
+            rules in this specification.</td>
+          </tr>
+          <tr>
+            <td>Privacy Considerations</td>
+            <td>AID resolution exposes agent metadata necessary for validation.
+            Registries MUST follow the token payload non-retention and
+            privacy-preserving audit requirements in
+            <xref target="security"/> and <xref target="conformance"/>.</td>
+          </tr>
+        </tbody>
+      </table>
+  </section>
+
+  <section anchor="iana-existing-mechanisms" numbered="true">
+  <name>Existing HTTP and Discovery Registrations</name>
+    <t>
+      AIP Credential Tokens and Step Execution Tokens are presented using the
+      registered Bearer HTTP authentication scheme <xref target="RFC6750"/> for
+      requests that do not require proof-of-possession, and using the
+      registered DPoP HTTP authentication scheme <xref target="RFC9449"/> for
+      DPoP-bound requests.
+      AIP Registries that act as OAuth Authorization Servers publish
+      authorization-server metadata using the registered
+      <tt>oauth-authorization-server</tt> well-known URI suffix defined by
+      <xref target="RFC8414"/>. AIP-protected gateways publish protected
+      resource metadata using the registered
+      <tt>oauth-protected-resource</tt> well-known URI suffix defined by
+      <xref target="RFC9728"/>.
+    </t>
+    <t>
+      This document does not define a new HTTP authentication scheme and does
+      not define a new Well-Known URI. Registry Metadata is published at the
+      ordinary Registry API endpoint <tt>/v1/registry-metadata</tt> relative to
+      the Registry's <tt>registry_id</tt> origin.
+    </t>
   </section>
 
   <section anchor="iana-scope-namespace" numbered="true">
-  <name>Scope URI Namespace</name>
+  <name>AIP Scope Identifiers</name>
     <t>
-      AIP defines a URN namespace for scope identifiers:
-      urn:aip:scope:*. This namespace is used in
-      OAuth 2.0 token exchange to identify capability scopes.
+      AIP scope identifiers are OAuth scope-token compatible dot-notation
+      strings defined by the applicable AIP Catalog Snapshot. This document
+      does not define a URN namespace for AIP scope values.
     </t>
 
-    <artwork type="example"><![CDATA[
-urn:aip:scope:email.read
-urn:aip:scope:email.write
-urn:aip:scope:transactions
-urn:aip:scope:spawn_agents.create
-]]></artwork>
+    <t>
+      Concrete AIP scope registrations are maintained in the external
+      AIP Catalog for the applicable draft snapshot. This document does not
+      request IANA maintenance of individual AIP scope values.
+    </t>
+  </section>
+
+  <section anchor="iana-namespace-catalog" numbered="true">
+  <name>AID Namespace Catalog</name>
+    <t>
+      Concrete <tt>did:aip</tt> namespace registrations are maintained in the
+      external AIP Catalog for the applicable draft snapshot. IANA is not
+      requested to maintain individual AIP namespace values in this document.
+    </t>
   </section>
 
   <section anchor="iana-grant-tiers" numbered="true">
-  <name>Grant Tier Registry</name>
+  <name>AIP Grant Tier Values</name>
+    <t>
+      Grant tier values are protocol values defined by this specification,
+      not an IANA registry. This document requests no IANA action for grant
+      tier values. Future changes to these values require a specification
+      update that defines the new value, its registration and authorization
+      behavior, and its conformance impact.
+    </t>
+
                 <table>
           <name>Grant Tier Values</name>
           <thead>
@@ -81,55 +174,176 @@ urn:aip:scope:spawn_agents.create
   </section>
 
   <section anchor="iana-error-codes" numbered="true">
-  <name>Error Code Registry</name>
+  <name>AIP Error Codes</name>
     <t>
-      AIP defines a registry of error codes.
+      AIP error codes are protocol values defined by this specification, not
+      an IANA registry. This document requests no IANA action for AIP error
+      code values. Future changes to these values require a specification
+      update that defines the code, the default HTTP status, the applicable
+      endpoint or validation step, and the corresponding error response
+      requirements.
     </t>
 
-                <table>
-          <name>AIP Error Codes</name>
-          <thead>
-            <tr>
-              <th align="left">Code</th>
-              <th align="center">HTTP</th>
-              <th align="left">Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>invalid_token</td><td>401</td><td>Token malformed, invalid signature, or invalid claims.</td></tr>
-            <tr><td>token_expired</td><td>401</td><td>Token <tt>exp</tt> is in the past.</td></tr>
-            <tr><td>token_replayed</td><td>401</td><td>Token <tt>jti</tt> seen before within validity window.</td></tr>
-            <tr><td>dpop_proof_required</td><td>401</td><td>DPoP proof absent or invalid.</td></tr>
-            <tr><td>delegation_chain_refresh_required</td><td>401</td><td>Principal Token in chain has expired.</td></tr>
-            <tr><td>agent_revoked</td><td>403</td><td>The AID has been revoked.</td></tr>
-            <tr><td>insufficient_scope</td><td>403</td><td>Operation not within granted scopes.</td></tr>
-            <tr><td>invalid_delegation_depth</td><td>403</td><td><tt>delegation_depth</tt> mismatch or exceeds limit.</td></tr>
-            <tr><td>chain_token_expired</td><td>403</td><td>Principal Token in <tt>aip_chain</tt> expired.</td></tr>
-            <tr><td>delegation_chain_invalid</td><td>403</td><td>Structural error in delegation chain.</td></tr>
-            <tr><td>manifest_invalid</td><td>403</td><td>Capability Manifest signature failed or unavailable.</td></tr>
-            <tr><td>manifest_expired</td><td>403</td><td>Capability Manifest <tt>expires_at</tt> passed.</td></tr>
-            <tr><td>approval_envelope_invalid</td><td>400</td><td>Approval Envelope malformed or hash mismatch.</td></tr>
-            <tr><td>approval_envelope_expired</td><td>403</td><td><tt>approval_window_expires_at</tt> has passed.</td></tr>
-            <tr><td>approval_not_found</td><td>404</td><td>Approval Envelope ID not found.</td></tr>
-            <tr><td>approval_step_prerequisites_unmet</td><td>403</td><td><tt>triggered_by</tt> step not yet completed.</td></tr>
-            <tr><td>approval_step_already_claimed</td><td>409</td><td>Step already claimed by another actor.</td></tr>
-            <tr><td>approval_step_action_mismatch</td><td>403</td><td>Action hash mismatch.</td></tr>
-            <tr><td>grant_request_expired</td><td>400</td><td>AIP-GRANT <tt>request_expires_at</tt> passed.</td></tr>
-            <tr><td>grant_rejected_by_principal</td><td>403</td><td>Principal declined the grant.</td></tr>
-            <tr><td>unknown_aid</td><td>404</td><td>AID not registered in any accessible Registry.</td></tr>
-            <tr><td>registry_unavailable</td><td>503</td><td>Registry could not be reached.</td></tr>
-            <tr><td>rate_limit_exceeded</td><td>429</td><td>Rate limit for this operation exceeded.</td></tr>
-            <tr><td>revocation_stale</td><td>403</td><td>Tier 2 operation with cached revocation status.</td></tr>
-            <tr><td>principal_did_method_forbidden</td><td>403</td><td>Principal uses <tt>did:key</tt> for Tier 2 scope.</td></tr>
-            <tr><td>registry_untrusted</td><td>403</td><td>Registry does not match principal DID-Document.</td></tr>
-            <tr><td>overlay_exceeds_manifest</td><td>400</td><td>Overlay violates CO-1 attenuation rule.</td></tr>
-            <tr><td>engagement_terminated</td><td>403</td><td>Engagement has been terminated or completed.</td></tr>
-          </tbody>
-        </table>
+        <dl newline="true" spacing="normal">
+          <dt><tt>invalid_token</tt> (HTTP 401)</dt>
+          <dd>Token malformed, invalid signature, or invalid claims.</dd>
+          <dt><tt>token_expired</tt> (HTTP 401)</dt>
+          <dd>Token <tt>exp</tt> is in the past.</dd>
+          <dt><tt>token_replayed</tt> (HTTP 401)</dt>
+          <dd>Token <tt>jti</tt> seen before within validity window.</dd>
+          <dt><tt>invalid_request</tt> (HTTP 400)</dt>
+          <dd>Request syntax, query parameter, pagination cursor, or endpoint-specific request parameter is invalid.</dd>
+          <dt><tt>unsupported_version</tt> (HTTP 400)</dt>
+          <dd><tt>X-AIP-Version</tt> or token <tt>aip_version</tt> is missing, unsupported, or mutually inconsistent.</dd>
+          <dt><tt>dpop_proof_required</tt> (HTTP 401)</dt>
+          <dd>DPoP proof is required for the request but the <tt>DPoP</tt> header is absent. Malformed or invalid DPoP proofs return <tt>invalid_token</tt>.</dd>
+          <dt><tt>agent_revoked</tt> (HTTP 403)</dt>
+          <dd>The AID has been revoked.</dd>
+          <dt><tt>insufficient_scope</tt> (HTTP 403)</dt>
+          <dd>Operation not within granted scopes.</dd>
+          <dt><tt>invalid_delegation_depth</tt> (HTTP 403)</dt>
+          <dd><tt>delegation_depth</tt> mismatch or exceeds <tt>max_delegation_depth</tt>.</dd>
+          <dt><tt>chain_token_expired</tt> (HTTP 403)</dt>
+          <dd>Principal Token in <tt>aip_chain</tt> expired.</dd>
+          <dt><tt>delegation_chain_invalid</tt> (HTTP 403)</dt>
+          <dd>Structural error in delegation chain.</dd>
+          <dt><tt>manifest_invalid</tt> (HTTP 403)</dt>
+          <dd>Capability Manifest unavailable, signature failed, or AIP Scope Catalog constraint validation failed.</dd>
+          <dt><tt>manifest_expired</tt> (HTTP 403)</dt>
+          <dd>Capability Manifest <tt>expires_at</tt> passed.</dd>
+          <dt><tt>approval_envelope_invalid</tt> (HTTP 400)</dt>
+          <dd>Approval Envelope malformed, signature failed, dependency invalid, or value/hash mismatch.</dd>
+          <dt><tt>approval_envelope_expired</tt> (HTTP 403)</dt>
+          <dd>The Approval Envelope was not approved before <tt>approval_window_expires_at</tt>.</dd>
+          <dt><tt>approval_not_found</tt> (HTTP 404)</dt>
+          <dd>Approval Envelope ID not found.</dd>
+          <dt><tt>approval_state_conflict</tt> (HTTP 409)</dt>
+          <dd>Approval Envelope state changed before the requested approval or rejection transition could be committed.</dd>
+          <dt><tt>approval_step_prerequisites_unmet</tt> (HTTP 403)</dt>
+          <dd><tt>triggered_by</tt> step not yet completed.</dd>
+          <dt><tt>approval_step_already_claimed</tt> (HTTP 409)</dt>
+          <dd>Step already claimed by another actor.</dd>
+          <dt><tt>approval_step_not_claimed</tt> (HTTP 409)</dt>
+          <dd>Step Execution Token presented before the Registry has accepted a claim for that step.</dd>
+          <dt><tt>approval_step_action_mismatch</tt> (HTTP 403)</dt>
+          <dd>Presented <tt>action_parameters</tt> hash does not match stored <tt>action_hash</tt>.</dd>
+          <dt><tt>approval_step_invalid</tt> (HTTP 403)</dt>
+          <dd>Step Execution Token verification against Registry failed.</dd>
+          <dt><tt>compensation_failed</tt> (HTTP 409)</dt>
+          <dd>An Approval Envelope compensation step failed and the envelope is in terminal failed state requiring out-of-band remediation.</dd>
+          <dt><tt>engagement_cancelled</tt> (HTTP 409)</dt>
+          <dd>The referenced Approval Envelope or step was cancelled because its parent Engagement Object was terminated. The operation cannot proceed.</dd>
+          <dt><tt>grant_request_expired</tt> (HTTP 400)</dt>
+          <dd>AIP-GRANT <tt>request_expires_at</tt> passed.</dd>
+          <dt><tt>grant_request_replayed</tt> (HTTP 400)</dt>
+          <dd>AIP-GRANT <tt>grant_request_id</tt> seen before.</dd>
+          <dt><tt>grant_request_invalid</tt> (HTTP 400)</dt>
+          <dd>GrantRequest malformed, expired, missing from a G3 authorization request, signature failed, inconsistent with OAuth request binding, or cannot be resolved to trusted catalog scope display metadata for consent.</dd>
+          <dt><tt>grant_rejected_by_principal</tt> (HTTP 403)</dt>
+          <dd>Principal declined the grant.</dd>
+          <dt><tt>grant_nonce_mismatch</tt> (HTTP 400)</dt>
+          <dd>GrantResponse nonce does not match.</dd>
+          <dt><tt>grant_tier_insufficient</tt> (HTTP 403)</dt>
+          <dd>Registered <tt>grant_tier</tt> is absent, unrecognised, or below the Grant Tier required for the operation's security Tier.</dd>
+          <dt><tt>registration_invalid</tt> (HTTP 400)</dt>
+          <dd>Registration Envelope malformed or failed validation, including missing or invalid <tt>grant_tier</tt>.</dd>
+          <dt><tt>aid_already_registered</tt> (HTTP 409)</dt>
+          <dd>The submitted AID or public key is already associated with a registered, non-revoked AID.</dd>
+          <dt><tt>unknown_aid</tt> (HTTP 404)</dt>
+          <dd>AID not registered in any accessible Registry.</dd>
+          <dt><tt>identity_version_conflict</tt> (HTTP 409)</dt>
+          <dd>Agent Identity key rotation version is stale, skips a version, or conflicts with a committed rotation.</dd>
+          <dt><tt>revocation_invalid</tt> (HTTP 400)</dt>
+          <dd>Revocation Object is malformed, uses a reserved externally submitted reason, has an invalid timestamp, or has an invalid or unverifiable signature.</dd>
+          <dt><tt>revocation_unauthorized</tt> (HTTP 403)</dt>
+          <dd>Revocation issuer is not authorized for the target or revocation type.</dd>
+          <dt><tt>revocation_conflict</tt> (HTTP 409)</dt>
+          <dd>Revocation identifier was previously accepted with different object content.</dd>
+          <dt><tt>registry_unavailable</tt> (HTTP 503)</dt>
+          <dd>Registry or a required DID resolver could not be reached or timed out.</dd>
+          <dt><tt>rate_limit_exceeded</tt> (HTTP 429)</dt>
+          <dd>Rate limit for this operation exceeded; see Section 19.</dd>
+          <dt><tt>mtls_required</tt> (HTTP 403)</dt>
+          <dd>Tier 3 operation without mTLS.</dd>
+          <dt><tt>invalid_scope</tt> (HTTP 400)</dt>
+          <dd>Requested scope is unknown, reserved, removed, retired (including bare <tt>spawn_agents</tt>), conflicting with the synced AIP Scope Catalog, or outside an explicitly documented local/private extension policy.</dd>
+          <dt><tt>principal_did_method_forbidden</tt> (HTTP 403)</dt>
+          <dd>Principal DID method is not permitted for the operation Tier; Tier 2 and Tier 3 require <tt>did:web</tt>.</dd>
+          <dt><tt>identity_proofing_insufficient</tt> (HTTP 403)</dt>
+          <dd>G3 identity proofing is absent or does not satisfy requested <tt>acr_values</tt>.</dd>
+          <dt><tt>enterprise_policy_denied</tt> (HTTP 403)</dt>
+          <dd>The enterprise IdP denied the token exchange request due to Conditional Access, ABAC, or equivalent enterprise policy.</dd>
+          <dt><tt>idp_client_misconfigured</tt> (HTTP 500)</dt>
+          <dd>The AIP Registry's enterprise IdP client credentials are invalid or expired.</dd>
+          <dt><tt>invalid_grant</tt> (HTTP 400)</dt>
+          <dd>The enterprise IdP rejected the secondary token exchange grant.</dd>
+          <dt><tt>a2a_originator_invalid</tt> (HTTP 400)</dt>
+          <dd><tt>aip_originator_aid</tt> is absent in an A2A delegated context, malformed, self-referential, or not bound to the validated delegation chain.</dd>
+          <dt><tt>endorsement_invalid</tt> (HTTP 400)</dt>
+          <dd>Endorsement Object validation failed, including invalid signature or out-of-range score.</dd>
+          <dt><tt>gateway_config_invalid</tt> (HTTP 400)</dt>
+          <dd>A gateway OAuth Protected Resource Metadata document is internally inconsistent or violates AIP gateway metadata constraints.</dd>
+          <dt><tt>enterprise_assertion_missing</tt> (HTTP 403)</dt>
+          <dd>Tier 3 Credential Token does not contain the required <tt>aip_principal_assertion</tt> claim.</dd>
+          <dt><tt>enterprise_assertion_invalid</tt> (HTTP 403)</dt>
+          <dd><tt>aip_principal_assertion</tt> is malformed, has an untrusted issuer, or fails enterprise IdP signature verification.</dd>
+          <dt><tt>enterprise_assertion_principal_mismatch</tt> (HTTP 403)</dt>
+          <dd><tt>aip_principal_assertion.sub</tt> does not match the root Principal Token principal identifier in <tt>aip_chain[0]</tt>.</dd>
+          <dt><tt>grant_not_found</tt> (HTTP 404)</dt>
+          <dd>G1 <tt>grant_id</tt> not found or expired.</dd>
+          <dt><tt>grant_deployer_mismatch</tt> (HTTP 403)</dt>
+          <dd>G1 <tt>grant_id</tt> does not match deployer.</dd>
+          <dt><tt>pkce_required</tt> (HTTP 400)</dt>
+          <dd>G3 authorization request missing PKCE or not using <tt>code_challenge_method</tt> <tt>S256</tt>.</dd>
+          <dt><tt>registry_untrusted</tt> (HTTP 403)</dt>
+          <dd>Registry does not match principal DID-Document-declared Registry.</dd>
+          <dt><tt>overlay_exceeds_manifest</tt> (HTTP 400)</dt>
+          <dd>Overlay violates CO-1 attenuation rule or AIP Scope Catalog constraint validation.</dd>
+          <dt><tt>overlay_issuer_invalid</tt> (HTTP 400)</dt>
+          <dd>Overlay issuer uses <tt>did:key</tt>.</dd>
+          <dt><tt>overlay_version_conflict</tt> (HTTP 409)</dt>
+          <dd>Overlay version not strictly increasing.</dd>
+          <dt><tt>overlay_signature_invalid</tt> (HTTP 400)</dt>
+          <dd>Overlay signature verification failure.</dd>
+          <dt><tt>engagement_terminated</tt> (HTTP 403)</dt>
+          <dd>Engagement has been terminated or completed.</dd>
+          <dt><tt>engagement_suspended</tt> (HTTP 403)</dt>
+          <dd>Engagement is currently suspended.</dd>
+          <dt><tt>engagement_participant_removed</tt> (HTTP 403)</dt>
+          <dd>Agent removed from engagement.</dd>
+          <dt><tt>engagement_gate_pending</tt> (HTTP 403)</dt>
+          <dd>Required approval gate not yet approved.</dd>
+          <dt><tt>engagement_not_found</tt> (HTTP 404)</dt>
+          <dd>Engagement ID not found.</dd>
+          <dt><tt>engagement_countersign_required</tt> (HTTP 400)</dt>
+          <dd>Missing required Engagement Object countersignature.</dd>
+          <dt><tt>engagement_signature_invalid</tt> (HTTP 400)</dt>
+          <dd>Engagement Object signature missing, malformed, bound to the wrong DID, or failed verification.</dd>
+          <dt><tt>change_log_immutable</tt> (HTTP 400)</dt>
+          <dd>Attempt to modify change log entry.</dd>
+          <dt><tt>change_log_sequence_invalid</tt> (HTTP 400)</dt>
+          <dd>Out-of-sequence change log append.</dd>
+          <dt><tt>subscription_auth_required</tt> (HTTP 401)</dt>
+          <dd>RPNP subscription request missing DPoP, using an invalid DPoP proof, or failing to bind <tt>subscriber_did</tt> to the DPoP key or Authorization credential.</dd>
+          <dt><tt>subscription_scope_forbidden</tt> (HTTP 403)</dt>
+          <dd><tt>scope_filter: "all"</tt> rejected by Registry policy.</dd>
+          <dt><tt>invalid_webhook_uri</tt> (HTTP 400)</dt>
+          <dd>Webhook URI not HTTPS.</dd>
+          <dt><tt>subscription_limit_exceeded</tt> (HTTP 429)</dt>
+          <dd>RPNP subscription limit reached.</dd>
+          <dt><tt>invalid_target</tt> (HTTP 400)</dt>
+          <dd>Token exchange resource not registered.</dd>
+        </dl>
   </section>
 
   <section anchor="iana-media-types" numbered="true">
   <name>Media Types</name>
+    <t>
+      IANA is requested to register the following media types in the
+      "Media Types" registry using the registration procedure defined by
+      <xref target="RFC6838"/>.
+    </t>
+
                 <table>
           <name>AIP Media Types</name>
           <thead>
@@ -143,13 +357,158 @@ urn:aip:scope:spawn_agents.create
               <td>application/aip+jwt</td>
               <td>AIP Credential Token (JWT format)</td>
             </tr>
+            <tr>
+              <td>application/aip-set+jwt</td>
+              <td>AIP Step Execution Token (JWT format)</td>
+            </tr>
+            <tr>
+              <td>application/aip-crl+json</td>
+              <td>AIP Certificate Revocation List (signed JSON format)</td>
+            </tr>
           </tbody>
         </table>
 
     <t>
       The typ header value for AIP Credential Tokens
-      is AIP+JWT per RFC 7515.
+      is <tt>AIP+JWT</tt> per RFC 7515. The typ header value for AIP Step
+      Execution Tokens is <tt>AIP-SET+JWT</tt>.
     </t>
+
+    <section anchor="iana-media-type-aip-jwt" numbered="true">
+    <name>application/aip+jwt</name>
+      <dl newline="true">
+        <dt>Type name:</dt>
+        <dd>application</dd>
+        <dt>Subtype name:</dt>
+        <dd>aip+jwt</dd>
+        <dt>Required parameters:</dt>
+        <dd>N/A</dd>
+        <dt>Optional parameters:</dt>
+        <dd>N/A</dd>
+        <dt>Encoding considerations:</dt>
+        <dd>7bit; values use compact JWT/JWS serialization.</dd>
+        <dt>Security considerations:</dt>
+        <dd>See <xref target="security"/> and the security considerations of
+          <xref target="RFC7515"/> and <xref target="RFC7519"/>. AIP
+          Credential Tokens are authorization credentials and can be bearer
+          credentials unless bound to proof-of-possession material.</dd>
+        <dt>Interoperability considerations:</dt>
+        <dd>Implementations need the AIP Credential Token profile and
+          validation rules in <xref target="credential-tokens"/> and
+          <xref target="credential-token-validation"/>.</dd>
+        <dt>Published specification:</dt>
+        <dd>This document.</dd>
+        <dt>Applications that use this media type:</dt>
+        <dd>AIP agents, Registries, relying parties, and OAuth authorization
+          servers that exchange or validate AIP Credential Tokens.</dd>
+        <dt>Fragment identifier considerations:</dt>
+        <dd>The syntax and semantics of fragment identifiers are not defined
+          for this media type.</dd>
+        <dt>Additional information:</dt>
+        <dd>Magic number(s): N/A; file extension(s): N/A; Macintosh file type
+          code(s): N/A.</dd>
+        <dt>Person and email address to contact for further information:</dt>
+        <dd>Paras Singla &lt;paras.singla@inviscel.com&gt;</dd>
+        <dt>Intended usage:</dt>
+        <dd>COMMON</dd>
+        <dt>Restrictions on usage:</dt>
+        <dd>None</dd>
+        <dt>Author:</dt>
+        <dd>Paras Singla &lt;paras.singla@inviscel.com&gt;</dd>
+        <dt>Change controller:</dt>
+        <dd>IETF</dd>
+      </dl>
+    </section>
+
+    <section anchor="iana-media-type-aip-set-jwt" numbered="true">
+    <name>application/aip-set+jwt</name>
+      <dl newline="true">
+        <dt>Type name:</dt>
+        <dd>application</dd>
+        <dt>Subtype name:</dt>
+        <dd>aip-set+jwt</dd>
+        <dt>Required parameters:</dt>
+        <dd>N/A</dd>
+        <dt>Optional parameters:</dt>
+        <dd>N/A</dd>
+        <dt>Encoding considerations:</dt>
+        <dd>7bit; values use compact JWT/JWS serialization.</dd>
+        <dt>Security considerations:</dt>
+        <dd>See <xref target="security"/> and the security considerations of
+          <xref target="RFC7515"/> and <xref target="RFC7519"/>. AIP Step
+          Execution Tokens authorize individual approval-envelope steps and
+          require audience, actor, step, status, expiry, and proof-of-possession
+          validation before use.</dd>
+        <dt>Interoperability considerations:</dt>
+        <dd>Implementations need the Step Execution Token validation profile
+          in <xref target="set-validation-profile"/>.</dd>
+        <dt>Published specification:</dt>
+        <dd>This document.</dd>
+        <dt>Applications that use this media type:</dt>
+        <dd>AIP Registries, agents, and relying parties that claim or execute
+          approval-envelope steps.</dd>
+        <dt>Fragment identifier considerations:</dt>
+        <dd>The syntax and semantics of fragment identifiers are not defined
+          for this media type.</dd>
+        <dt>Additional information:</dt>
+        <dd>Magic number(s): N/A; file extension(s): N/A; Macintosh file type
+          code(s): N/A.</dd>
+        <dt>Person and email address to contact for further information:</dt>
+        <dd>Paras Singla &lt;paras.singla@inviscel.com&gt;</dd>
+        <dt>Intended usage:</dt>
+        <dd>COMMON</dd>
+        <dt>Restrictions on usage:</dt>
+        <dd>None</dd>
+        <dt>Author:</dt>
+        <dd>Paras Singla &lt;paras.singla@inviscel.com&gt;</dd>
+        <dt>Change controller:</dt>
+        <dd>IETF</dd>
+      </dl>
+    </section>
+
+    <section anchor="iana-media-type-aip-crl-json" numbered="true">
+    <name>application/aip-crl+json</name>
+      <dl newline="true">
+        <dt>Type name:</dt>
+        <dd>application</dd>
+        <dt>Subtype name:</dt>
+        <dd>aip-crl+json</dd>
+        <dt>Required parameters:</dt>
+        <dd>N/A</dd>
+        <dt>Optional parameters:</dt>
+        <dd>N/A</dd>
+        <dt>Encoding considerations:</dt>
+        <dd>8bit; values are JSON encoded using UTF-8.</dd>
+        <dt>Security considerations:</dt>
+        <dd>See <xref target="security"/> and <xref target="revocation"/>.
+          AIP CRL documents carry revocation status and require signature,
+          freshness, issuer, and pagination validation before relying parties
+          use them for authorization decisions.</dd>
+        <dt>Interoperability considerations:</dt>
+        <dd>Implementations need the CRL structure and revocation-status
+          validation rules in <xref target="revocation"/>.</dd>
+        <dt>Published specification:</dt>
+        <dd>This document.</dd>
+        <dt>Applications that use this media type:</dt>
+        <dd>AIP Registries and relying parties that publish, fetch, cache, or
+          verify revocation lists.</dd>
+        <dt>Fragment identifier considerations:</dt>
+        <dd>The syntax and semantics of fragment identifiers are not defined
+          for this media type.</dd>
+        <dt>Additional information:</dt>
+        <dd>Magic number(s): N/A; file extension(s): N/A; Macintosh file type
+          code(s): N/A.</dd>
+        <dt>Person and email address to contact for further information:</dt>
+        <dd>Paras Singla &lt;paras.singla@inviscel.com&gt;</dd>
+        <dt>Intended usage:</dt>
+        <dd>COMMON</dd>
+        <dt>Restrictions on usage:</dt>
+        <dd>None</dd>
+        <dt>Author:</dt>
+        <dd>Paras Singla &lt;paras.singla@inviscel.com&gt;</dd>
+        <dt>Change controller:</dt>
+        <dd>IETF</dd>
+      </dl>
+    </section>
   </section>
 </section>
-

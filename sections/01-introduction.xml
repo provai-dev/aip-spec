@@ -43,11 +43,15 @@
   <section anchor="design-philosophy" numbered="true">
     <name>Design Philosophy</name>
     <t>
-      AIP is built on five design principles:
+      AIP is built on the following design principles and relationships:
     </t>
     <t>
-      Neutral and open. The spec is released under CC0 and the
-      <tt>did:aip</tt> DID method is registered with the W3C.
+      Neutral and open. This document is submitted under BCP 78, BCP 79,
+      and the IETF Trust Legal Provisions. Code Components extracted from
+      this document are licensed under the Revised BSD License as described
+      in those Legal Provisions. This document defines the <tt>did:aip</tt>
+      DID method and requests its registration with the W3C DID Method
+      Registry.
     </t>
     <t>
       Build on existing standards. AIP builds on W3C DID, JWT
@@ -69,36 +73,36 @@
       steps on the same token will reach the same result.
     </t>
     <t>
-      Zero Trust Architecture. AIP implements the zero trust principles
-      defined in <xref target="SP-800-207"/> and satisfies NIST SP 800-63-4
-      <xref target="SP-800-63-4"/> AAL2 for agent-to-service interactions.
-      No agent is implicitly trusted by virtue of its origin, network
-      location, or prior successful interaction. Every Credential Token
-      must be validated against the Registry on every interaction.
-      Short-lived Credential Tokens bound by a mandatory TTL
+      Zero Trust Architecture. AIP is designed to support the zero trust
+      principles defined in <xref target="SP-800-207"/> and to provide
+      protocol controls that can be used by deployments seeking alignment
+      with NIST SP 800-63-4 <xref target="SP-800-63-4"/> AAL2 for
+      agent-to-service interactions. This specification does not by itself
+      assert SP 800-63-4 conformance, certification, or audit sufficiency.
+      Any implementation claiming SP 800-63-4 or AAL2 conformance MUST
+      maintain a separate conformance mapping covering its concrete
+      authenticators, identity proofing process, verifier behavior, key
+      management, logging, and operational controls. No agent is implicitly
+      trusted by virtue of its origin, network location, or prior successful
+      interaction. Every interaction MUST execute the validation algorithm in
+      <xref target="credential-token-validation"/>; Registry-dependent checks
+      are performed according to the token's Tier, revocation-checking mode,
+      and cache rules. Short-lived Credential Tokens bound by a mandatory TTL
       limit the blast radius of any credential compromise. Revocation is
-      checked in real time for Tier 2 sensitive operations (Section 11.3).
-      DPoP proof-of-possession (Section 21.3) ensures that possession of a
-      valid Credential Token is insufficient for impersonation without the
-      corresponding private key material, satisfying the anti-replay
-      requirement of <xref target="SP-800-207"/> Section 3.
-    </t>
-    <t>
-      Integration with Model Context Protocol (MCP). AIP provides the
-      agent identity, authorization, and delegation layer that MCP server
-      implementations require but do not define. An AIP-authenticated
-      agent can obtain scoped access tokens for MCP servers via the token
-      exchange mechanism defined in Section 8.4. AIP does not replace MCP;
-      it provides the identity substrate on which MCP authorization
-      decisions are made. See Section 8.4 (Token Exchange) and Section 17.5
-      (OAuth Authorization Server) for the concrete integration path.
+      checked in real time for Tier 2 sensitive operations as specified in
+      <xref target="revocation-checking"/>. DPoP proof-of-possession
+      (Section 21.3) ensures that
+      possession of a valid Credential Token is insufficient for impersonation
+      without the corresponding private key material, supporting the
+      anti-replay objectives of <xref target="SP-800-207"/> Section 3.
     </t>
     <t>
       Least Privilege. Agents are granted only the specific capabilities
       required for their declared purpose, expressed as signed Capability
       Manifests (Section 5.3). Capability grants are always additive from
-      principal to agent and never exceed the granting principal's own
-      capability set. A child agent must not be granted capabilities that
+      principal to agent and never exceed the principal-approved capability
+      set or, for delegated agents, the delegating parent's effective
+      Capability Manifest. A child agent must not be granted capabilities that
       the delegating parent does not itself hold (Rule D-1, Section 5.10).
       The max_delegation_depth field (Section 10) bounds the depth of
       sub-agent hierarchies, limiting transitive capability propagation.
@@ -127,7 +131,11 @@
       Token), and that it holds specific capabilities (Capability
       Manifest). AIP does not replace MCP's tool-access OAuth flow - it
       provides the agent identity that OAuth's "sub" claim cannot supply
-      when the subject is an autonomous agent rather than a human user.
+      when the subject is an autonomous agent rather than a human user. An
+      AIP-authenticated agent can obtain scoped access tokens for MCP servers
+      via the token exchange mechanism defined in
+      <xref target="token-exchange-mcp"/> and the OAuth 2.1 Authorization
+      Server profile in <xref target="oauth-registry"/>.
     </t>
     <t>
       Out of scope - Prompt injection prevention. AIP is an identity and
@@ -135,9 +143,11 @@
       contains adversarial instructions is an application-layer and
       model-layer concern outside this specification's scope. AIP
       mitigates the persistence window of a successful prompt injection
-      attack: a compromised agent may be immediately revoked via
-      <tt>full_revoke</tt> (Section 11.1), and revocation propagates to all
-      child agents within the TTL window defined in Section 8.2. AIP does
+      attack: a compromised agent may be revoked via <tt>full_revoke</tt>
+      (Section 11.1). Tier 2 and Tier 3 revocation checks fail closed against
+      live Registry state; Tier 1 rejection is bounded by the CRL freshness
+      SLA, while child materialisation and replica convergence are bounded by
+      the revocation propagation requirements in Section 11. AIP does
       not prevent the initial injection - it limits the attacker's
       persistence.
     </t>

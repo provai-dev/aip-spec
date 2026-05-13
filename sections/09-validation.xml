@@ -1,19 +1,72 @@
 <section anchor="credential-token-validation" numbered="true">
-  <name>Credential Token Validation</name>
+  <name>Credential and Step Execution Token Validation</name>
   <t>
-    The Credential Token Validation Algorithm is the normative heart of
-    AIP. A Relying Party MUST execute the following steps in the order
-    presented. Validation is deterministic: two independent implementations
-    executing the same steps on the same token with the same Registry state
-    MUST reach the same outcome.
+    The Credential Token Validation Algorithm is the normative heart of AIP
+    for agent-issued Credential Tokens. A Relying Party MUST execute the
+    following steps in the order presented unless it is validating a
+    Registry-issued Step Execution Token under the SET validation profile
+    below.
+    Validation is deterministic: two independent implementations executing the
+    same steps on the same token with the same Registry state MUST reach the
+    same outcome.
   </t>
 
   <t>
     The Relying Party MUST reject the token at the first step that fails.
-    Steps marked 6a, 6b, 9e, and 10a are conditional sub-steps introduced
-    in v0.3; they are part of the numbered step at which they appear and do
-    not change the base step numbering.
+    Additional lettered steps marked 2a, 6a, 6b, 9a, 9b, 9c, 9d, and 10a are part
+    of the numbered step at which they appear and do not change the base step
+    numbering.
   </t>
+  <t>
+    The labels in the following table are normative validation step identifiers
+    for implementation traceability and conformance tests. Lettered labels,
+    including Steps 5a through 5g, 8a through 8l, and 11a through 11c, are
+    discrete sub-steps whether they appear as separate XML section headings or
+    as labelled items within a validation step.
+  </t>
+  <table>
+    <name>Credential Token Validation Step Index</name>
+    <thead>
+      <tr>
+        <th align="left">Label</th>
+        <th align="left">Location</th>
+        <th align="left">Validation subject</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td><xref target="validation-step-1"/></td><td>JWT parse</td></tr>
+      <tr><td>2</td><td><xref target="validation-step-2"/></td><td>JWT header validation</td></tr>
+      <tr><td>2a</td><td><xref target="validation-step-2a"/></td><td>Expiration preflight before Registry lookup</td></tr>
+      <tr><td>3</td><td><xref target="validation-step-3"/></td><td>Agent identification and public-key retrieval</td></tr>
+      <tr><td>4</td><td><xref target="validation-step-4"/></td><td>Credential Token signature verification</td></tr>
+      <tr><td>5a</td><td><xref target="validation-step-5a"/></td><td><tt>iat</tt> issued-at validation</td></tr>
+      <tr><td>5b</td><td><xref target="validation-step-5b"/></td><td><tt>exp</tt> ordering validation</td></tr>
+      <tr><td>5c</td><td><xref target="validation-step-5c"/></td><td>Credential Token expiration validation</td></tr>
+      <tr><td>5d</td><td><xref target="validation-step-5d"/></td><td><tt>aud</tt> validation</td></tr>
+      <tr><td>5e</td><td><xref target="validation-step-5e"/></td><td><tt>jti</tt> replay validation</td></tr>
+      <tr><td>5f</td><td><xref target="validation-step-5f"/></td><td><tt>aip_version</tt> validation</td></tr>
+      <tr><td>5g</td><td><xref target="validation-step-5g"/></td><td>Issuer and subject binding</td></tr>
+      <tr><td>6</td><td><xref target="validation-step-6"/></td><td>Credential Token TTL validation</td></tr>
+      <tr><td>6a</td><td><xref target="validation-step-6a"/></td><td>Registry trust anchoring</td></tr>
+      <tr><td>6b</td><td><xref target="validation-step-6b"/></td><td>Engagement validation</td></tr>
+      <tr><td>7</td><td><xref target="validation-step-7"/></td><td>Revocation validation</td></tr>
+      <tr><td>8a-8l</td><td><xref target="validation-step-8"/></td><td>Delegation chain sub-step validation</td></tr>
+      <tr><td>8 Post-Check A</td><td><xref target="validation-step-8"/></td><td>Credential Token issuer equals chain leaf</td></tr>
+      <tr><td>8 Post-Check B</td><td><xref target="validation-step-8"/></td><td>Credential Token subject equals issuer</td></tr>
+      <tr><td>8 Post-Check C</td><td><xref target="validation-step-8"/></td><td>Identity proofing claims</td></tr>
+      <tr><td>9</td><td><xref target="validation-step-9"/></td><td>Capability Manifest validation</td></tr>
+      <tr><td>9a</td><td><xref target="validation-step-9a"/></td><td>Scope-to-manifest mapping</td></tr>
+      <tr><td>9b</td><td><xref target="validation-step-9b"/></td><td>Capability Overlay application</td></tr>
+      <tr><td>9c</td><td><xref target="validation-step-9c"/></td><td>Delegation inheritance</td></tr>
+      <tr><td>9d</td><td><xref target="validation-step-9d"/></td><td>Grant Tier conformance</td></tr>
+      <tr><td>10</td><td><xref target="validation-step-10"/></td><td>DPoP validation</td></tr>
+      <tr><td>10a</td><td><xref target="validation-step-10a"/></td><td>Approval step verification</td></tr>
+      <tr><td>11a</td><td><xref target="validation-step-11"/></td><td><tt>aip_principal_assertion</tt> presence</td></tr>
+      <tr><td>11b</td><td><xref target="validation-step-11"/></td><td><tt>aip_principal_assertion</tt> signature verification</td></tr>
+      <tr><td>11c</td><td><xref target="validation-step-11"/></td><td><tt>aip_principal_assertion</tt> principal binding</td></tr>
+      <tr><td>12</td><td><xref target="validation-step-12"/></td><td>Accept</td></tr>
+    </tbody>
+  </table>
 
   <section anchor="validation-step-1" numbered="true">
   <name>Step 1: Parse</name>
@@ -31,13 +84,39 @@
     </t>
     <ul>
       <li><tt>typ</tt>: MUST be <tt>"AIP+JWT"</tt></li>
-      <li><tt>alg</tt>: MUST be one of the approved algorithms per Section
-        21.2 (EdDSA REQUIRED; ES256 and RS256 optional per Section
-        20.1)</li>
+      <li><tt>alg</tt>: MUST be <tt>"EdDSA"</tt></li>
       <li><tt>kid</tt>: MUST be present and MUST be a DID URL in the form
         <tt>did:aip:&lt;namespace&gt;:&lt;32-hex&gt;#key-&lt;n&gt;</tt></li>
     </ul>
     <t>      If any check fails, reject with <tt>invalid_token</tt>.
+    </t>
+  </section>
+
+  <section anchor="validation-step-2a" numbered="true">
+  <name>Step 2a: Expiration Preflight</name>
+    <t>
+      Before performing any Registry key lookup, the Relying Party MUST decode
+      the JWT payload without using it for any acceptance decision. This
+      preflight is only an error-ordering and lookup-amplification control.
+      Signature verification in Step 4 and full claim validation in Step 5
+      remain mandatory before a token can be accepted.
+    </t>
+    <t>
+      The Relying Party MUST inspect only <tt>iat</tt>, <tt>exp</tt>, and
+      <tt>aip_scope</tt> during this preflight. If <tt>iat</tt> or
+      <tt>exp</tt> is absent, not an integer, or <tt>exp &lt;= iat</tt>,
+      reject with <tt>invalid_token</tt>. If <tt>exp</tt> is in the past,
+      reject with <tt>token_expired</tt>. This rejection applies even if the
+      token's <tt>kid</tt> references a historical key version that is no
+      longer retained by the Registry.
+    </t>
+    <t>
+      If the unsigned payload's <tt>exp - iat</tt> exceeds the largest
+      <tt>ttl_max_seconds</tt> value among active entries in the synced AIP
+      Scope Catalog, the Relying Party MAY reject with
+      <tt>invalid_token</tt> before key lookup. This check is conservative:
+      it can reject tokens that no valid catalog entry could authorize, but it
+      MUST NOT be used to accept a token.
     </t>
   </section>
 
@@ -46,13 +125,24 @@
     <t>
       Extract the <tt>kid</tt> header parameter. This is a full DID URL
       identifying the agent's public key. Contact the Registry to retrieve
-      the historical public key matching this <tt>kid</tt>. The Registry
-      MUST return the public key material along with its validity period
-      (<tt>valid_from</tt> and <tt>valid_until</tt> timestamps).
+      the historical public key matching this <tt>kid</tt> using
+      <tt>GET /v1/agents/{aid}/public-key/{key-id}</tt>, where
+      <tt>{aid}</tt> is the DID URL without the fragment and
+      <tt>{key-id}</tt> is the fragment without the leading <tt>#</tt>.
+      The Registry response MUST conform to
+      <tt>public-key-response.schema.json</tt> and return the public key
+      material along with its validity period (<tt>valid_from</tt> timestamp
+      and <tt>valid_until</tt> timestamp or <tt>null</tt>).
     </t>
     <t>
-      If the <tt>kid</tt> is not found or the key is not valid at the time
-      of the JWT's <tt>iat</tt> claim, reject with <tt>unknown_aid</tt>.
+      If the Registry cannot be reached or the public key lookup cannot be
+      completed because the Registry is unavailable, reject with
+      <tt>registry_unavailable</tt>. If the Registry lookup succeeds but the
+      <tt>kid</tt> is not found or the key is not valid at the time of the
+      JWT's <tt>iat</tt> claim, reject with <tt>unknown_aid</tt>. Because
+      Step 2a runs before this lookup, an already-expired token MUST surface
+      as <tt>token_expired</tt>, not <tt>unknown_aid</tt>, even when its
+      historical signing key has aged out of Registry retention.
     </t>
   </section>
 
@@ -67,93 +157,140 @@
     <t>
       Validate the following claims from the decoded JWT payload:
     </t>
-    <dl newline="false">
-      <dt>5a. iat (Issued-At Time):</dt>
-      <dd>
+    <section anchor="validation-step-5a" numbered="true">
+      <name>Step 5a: iat (Issued-At Time)</name>
+      <t>
         <tt>iat</tt> MUST NOT be in the future. Allow a 30-second clock
         skew tolerance. If <tt>iat</tt> is in the future (beyond skew), reject
         with <tt>invalid_token</tt>.
-      </dd>
+      </t>
+    </section>
 
-      <dt>5b. exp (Expiration Time):</dt>
-      <dd>
+    <section anchor="validation-step-5b" numbered="true">
+      <name>Step 5b: exp (Expiration Time)</name>
+      <t>
         <tt>exp</tt> MUST be strictly greater than <tt>iat</tt> (zero-duration
         tokens are not permitted). If <tt>exp &lt;= iat</tt>, reject with
         <tt>invalid_token</tt>.
-      </dd>
+      </t>
+    </section>
 
-      <dt>5c. Token Not Expired:</dt>
-      <dd>
+    <section anchor="validation-step-5c" numbered="true">
+      <name>Step 5c: Token Not Expired</name>
+      <t>
         <tt>exp</tt> MUST be in the future (current time must be &lt;
         <tt>exp</tt>). If <tt>exp</tt> is in the past, reject with
         <tt>token_expired</tt>.
-      </dd>
+      </t>
+    </section>
 
-      <dt>5d. aud (Audience):</dt>
-      <dd>
+    <section anchor="validation-step-5d" numbered="true">
+      <name>Step 5d: aud (Audience)</name>
+      <t>
         The <tt>aud</tt> claim MUST match the Relying Party's identifier.
         If <tt>aud</tt> is a string, it MUST match exactly. If <tt>aud</tt>
         is an array, the Relying Party's identifier MUST be present in the
         array. If no match, reject with <tt>invalid_token</tt>.
-      </dd>
+      </t>
+    </section>
 
-      <dt>5e. jti (JWT ID) Replay Check:</dt>
-      <dd>
+    <section anchor="validation-step-5e" numbered="true">
+      <name>Step 5e: jti (JWT ID) Replay Check</name>
+      <t>
         <tt>jti</tt> MUST be a UUID v4 in canonical form (lowercase,
         hyphenated). The Relying Party MUST maintain a replay cache keyed by
-        <tt>(iss, jti)</tt> for each token's validity window. If <tt>(iss,
-        jti)</tt> has been seen before, reject with <tt>token_replayed</tt>.
-        After the token expires, the replay cache entry MAY be discarded.
-      </dd>
+        <tt>(iss, jti)</tt> for each token's validity window. If
+        <tt>(iss, jti)</tt> has been seen before, reject with
+        <tt>token_replayed</tt>. This replay rule applies to authorisation
+        decisions. Registry state-transition endpoints that define explicit
+        idempotency behavior MAY return a previously stored response for an
+        exact retry, but MUST NOT re-execute side effects and MUST NOT treat
+        replay-cache acceptance as proof of fresh authority.
+        The replay cache key MUST NOT include <tt>aip_chain</tt>, principal
+        DID, registration grant, scope set, or audience. Credential Token
+        issuers therefore MUST treat <tt>jti</tt> values as globally unique
+        within the issuer AID across all delegation chains. After the token
+        expires, the replay cache entry MAY be discarded.
+      </t>
+    </section>
 
-      <dt>5f. aip_version:</dt>
-      <dd>
+    <section anchor="validation-step-5f" numbered="true">
+      <name>Step 5f: aip_version</name>
+      <t>
         <tt>aip_version</tt> MUST be present and MUST be <tt>"0.3"</tt> for
-        tokens conforming to this specification. If <tt>aip_version</tt> is
-        absent or unrecognised, reject with <tt>invalid_token</tt> and
-        include the received <tt>aip_version</tt> in the error description
-        to aid debugging.
-      </dd>
-    </dl>
+        tokens conforming to this specification. This value is the AIP
+        protocol compatibility version defined in Section 20, not the
+        Internet-Draft revision suffix. If <tt>aip_version</tt> is absent,
+        reject with <tt>invalid_token</tt>. If <tt>aip_version</tt> is
+        present but unsupported, or if it does not match the
+        <tt>X-AIP-Version</tt> request header, reject with
+        <tt>unsupported_version</tt> and include the received
+        <tt>aip_version</tt> and <tt>X-AIP-Version</tt> values in the error
+        description to aid debugging.
+      </t>
+    </section>
+
+    <section anchor="validation-step-5g" numbered="true">
+      <name>Step 5g: Issuer and Subject Binding</name>
+      <t>
+        The <tt>iss</tt> and <tt>sub</tt> claims MUST each match the
+        <tt>did:aip</tt> ABNF. Let <tt>kid_aid</tt> be the DID URL in the
+        JWT header <tt>kid</tt> with the fragment removed. The payload
+        <tt>iss</tt> MUST equal <tt>kid_aid</tt>. The payload <tt>sub</tt>
+        MUST equal <tt>iss</tt>. This specification does not define
+        agent-issued Credential Tokens where a delegated token subject differs
+        from the signing leaf agent. If any comparison fails, reject with
+        <tt>invalid_token</tt>.
+      </t>
+    </section>
   </section>
 
   <section anchor="validation-step-6" numbered="true">
   <name>Step 6: TTL Validation</name>
     <t>       Verify that the token's lifetime does not exceed the maximum permitted      by its scopes. Compute <tt>lifetime = exp - iat</tt> (in seconds).
-      Compare against the TTL limits defined in Section 8.2:
+      Compare against the <tt>ttl_max_seconds</tt> values in the synced AIP
+      Scope Catalog and the Tier ceilings in <xref target="token-issuance"/>:
     </t>
     <artwork><![CDATA[
-Standard scopes (email.*, calendar.*, web.*):     max 3600 seconds
-Sensitive scopes (transactions.*, communicate.*,
-                  filesystem.execute,
-                  spawn_agents.create/manage):    max 300 seconds
+effective_ttl_limit =
+  min(
+    scope.ttl_max_seconds,
+    tier_ttl_ceiling(scope.tier)
+    for scope in aip_scope
+  )
 
-When a token contains scopes from multiple
-categories, the most restrictive limit applies.
+When a token contains multiple scopes, the most
+restrictive catalog TTL applies.
     ]]></artwork>
     <t>
       If <tt>lifetime</tt> exceeds the limit, reject with <tt>invalid_token</tt>.
     </t>
     <t>
-      REMINDER: A token's Tier is determined by its highest-risk scope
-      (Section 3.1). A token containing one Tier 2 scope and nine Tier 1
-      scopes is a Tier 2 token in its entirety. Do not derive Tier from the
-      majority or first scope.
+      For validation, a token's security Tier is determined by its
+      highest-risk scope (<xref target="architecture-tiers"/>). A token containing one Tier 2 scope
+      and nine Tier 1 scopes is a Tier 2 token in its entirety. A Relying
+      Party MUST NOT derive Tier from the majority of scopes or from the
+      first scope in the array.
     </t>
   </section>
 
   <section anchor="validation-step-6a" numbered="true">
   <name>Step 6a: Registry Trust Anchoring (Conditional)</name>
     <t>
-      This step is REQUIRED for Tier 2 operations and RECOMMENDED for Tier
-      1. It verifies that the Registry from which the Relying Party has been
-      fetching data matches the Registry declared by the principal's DID
-      Document.
+      This step is REQUIRED for Tier 2 and Tier 3 operations and for any
+      Credential Token that contains <tt>aip_registry</tt>. It is RECOMMENDED
+      for Tier 1 operations when <tt>aip_registry</tt> is absent. It verifies
+      that the Registry from which the Relying Party has been fetching data
+      matches the Registry declared by the principal's DID Document.
     </t>
     <ol>
       <li>Extract <tt>principal_id</tt> from <tt>aip_chain[0].iss</tt> (the
         root principal's DID). This is the authorising human or
         organisational principal.</li>
+      <li>If the operation's security Tier is 2 or 3, <tt>principal_id</tt>
+        MUST use the <tt>did:web</tt> method. If it uses <tt>did:key</tt>,
+        <tt>did:aip</tt>, or any other DID method, reject with
+        <tt>principal_did_method_forbidden</tt>.</li>
       <li>Resolve <tt>principal_id</tt> using the DID method's own resolution
         mechanism (e.g., did:web resolution per <xref target="W3C-DID"/>,
         did:key per <xref target="W3C-DID"/>). The resolution MUST be
@@ -172,17 +309,33 @@ categories, the most restrictive limit applies.
         verify it matches the DID-Document-declared Registry endpoint. If
         mismatch, reject with <tt>registry_untrusted</tt>.</li>
       <li>If the DID Document does not contain an <tt>AIPRegistry</tt>
-        service entry and the token contains Tier 2 scopes, reject with
+        service entry and the operation's security Tier is 2 or 3 or the token
+        contains <tt>aip_registry</tt>, reject with
         <tt>registry_untrusted</tt>.</li>
     </ol>
     <t>
-      For Tier 1 operations: this step is RECOMMENDED. Registry trust
-      anchoring prevents MitM Registry substitution but adds latency
-      (additional DID resolution). Tier 1 operators MAY skip this step if
-      they accept the risk that the Registry might be MitM'd with a loss of
-      up to 15-minute revocation staleness.
+      For Tier 1 operations where <tt>aip_registry</tt> is absent, this step
+      is RECOMMENDED. Registry trust anchoring prevents MitM Registry
+      substitution but adds latency (additional DID resolution). Tier 1
+      operators MAY skip this step if they accept the risk that the Registry
+      might be MitM'd with a loss of up to 15-minute revocation staleness.
     </t>
-    <t>       If DID resolution fails and the token contains Tier 2 scopes, reject      with <tt>registry_unavailable</tt>.
+    <t>
+      If DID resolution fails and the operation's security Tier is 2 or 3 or the
+      token contains <tt>aip_registry</tt>, reject with
+      <tt>registry_unavailable</tt>.
+    </t>
+    <t>
+      DID resolution for this step MUST use the timeout requirements in
+      Section 7.1. For Tier 2 or Tier 3 operations and tokens containing
+      <tt>aip_registry</tt>, a DID resolution timeout is a validation failure
+      and MUST be reported as <tt>registry_unavailable</tt>; implementations
+      MUST NOT wait indefinitely for the principal DID resolver.
+    </t>
+    <t>
+      A Relying Party MUST NOT use <tt>aip_registry</tt> as an authoritative
+      Registry locator unless this step has verified it against the
+      DID-Document-declared Registry endpoint.
     </t>
   </section>
 
@@ -201,9 +354,17 @@ categories, the most restrictive limit applies.
         If <tt>sub</tt> is not in the participants array or has been marked
         as removed, reject with <tt>engagement_participant_removed</tt>.</li>
       <li>If the Engagement defines <tt>approval_gates</tt> with pending
-        gates that guard the current operation, verify the token's operation
-        is not gated (or that the gate has been approved). If a required
-        gate is still pending, reject with <tt>engagement_gate_pending</tt>.</li>
+        gates that guard the current operation, evaluate each gate
+        <tt>trigger</tt> using the trigger grammar in
+        <xref target="engagement-objects"/>. A
+        <tt>scope:&lt;scope-string&gt;</tt> trigger guards any operation whose
+        requested <tt>aip_scope</tt> set contains that scope. An
+        <tt>action_type:&lt;action-type&gt;</tt> trigger guards Approval
+        Envelope steps whose <tt>action_type</tt> exactly equals that value.
+        If a matching required gate is still pending, reject with
+        <tt>engagement_gate_pending</tt>. If a matching required gate has
+        status <tt>"rejected"</tt>, reject with
+        <tt>engagement_terminated</tt>.</li>
     </ol>
   </section>
 
@@ -212,26 +373,50 @@ categories, the most restrictive limit applies.
     <t>
       Query the Registry for revocation status of the agent identified by
       <tt>iss</tt> (extracted from the <tt>kid</tt>). The revocation check
-      method depends on the token's Tier:
+      method depends on the token's Tier. Chain-wide and principal-wide
+      revocation effects are completed in Step 8 after <tt>aip_chain</tt>
+      has been validated.
     </t>
     <ul>
-      <li><strong>Tier 1:</strong> Retrieve the CRL from the Registry cache.
-        If the agent appears on the CRL with revocation type
-        <tt>full_revoke</tt> or <tt>principal_revoke</tt>, reject with
-        <tt>agent_revoked</tt>. If the agent appears with <tt>scope_revoke</tt>,
-        the Relying Party MUST verify that none of the scopes in the token's
-        <tt>aip_scope</tt> are present in the <tt>scopes_revoked</tt> list.
-        If any match, reject with <tt>agent_revoked</tt>.</li>
+      <li><strong>Tier 1:</strong> Retrieve a verifiable CRL from the Registry
+        cache. The CRL's <tt>next_update</tt> MUST be later than the Relying
+        Party's current UTC validation time. If no fresh verifiable CRL is
+        available, reject with <tt>registry_unavailable</tt>. If the agent
+        appears on the CRL with revocation type <tt>full_revoke</tt> or
+        <tt>principal_revoke</tt>, reject with <tt>agent_revoked</tt>. If the
+        agent appears with <tt>scope_revoke</tt>, the Relying Party MUST verify
+        that none of the scopes in the token's <tt>aip_scope</tt> are present
+        in the <tt>scopes_revoked</tt> list. If any match, reject with
+        <tt>agent_revoked</tt>. The same CRL MUST also be used in Step 8 to
+        evaluate <tt>principal_revoke</tt> entries whose <tt>target_id</tt> is
+        the root Principal DID or any AID in the validated
+        <tt>aip_chain</tt>.</li>
       <li><strong>Tier 2:</strong> Perform a live Registry lookup. Query
-        <tt>GET /v1/agents/{iss}/revocation</tt> and verify no active revocation
-        applies to the token's AID or its currently requested scopes.
-        If revoked, reject with <tt>agent_revoked</tt>. If the Registry is
-        unreachable, reject with <tt>registry_unavailable</tt>.</li>
+        <tt>GET /v1/agents/{iss}/revocation</tt>. A successful response MUST
+        be HTTP 200 with a body conforming to
+        <tt>revocation-status.schema.json</tt>
+        (<xref target="agent-revocation-status-registry"/>). If
+        <tt>revoked</tt> is <tt>true</tt>, reject with
+        <tt>agent_revoked</tt>. If any currently requested scope appears in
+        <tt>scopes_revoked</tt>, reject with <tt>agent_revoked</tt>. If the
+        token relies on delegation authority rooted at an AID whose response
+        has <tt>delegation_revoked</tt> equal to <tt>true</tt>, reject with
+        <tt>agent_revoked</tt>. If the Registry returns
+        <tt>unknown_aid</tt>, reject with <tt>unknown_aid</tt>. If the
+        Registry is unreachable, reject with
+        <tt>registry_unavailable</tt>. A previously cached accepted token
+        validation result MUST NOT be used to skip this lookup.</li>
     </ul>
     <t>
       The Relying Party MUST verify the Registry trust state used for this
-      revocation check using the Registry Trust Record procedure in Section
-      7.3.6 before treating Registry responses as authoritative.
+      revocation check using the Registry trust bootstrapping and Registry
+      Trust Record procedures in
+      <xref target="registry-genesis-well-known-publication"/> and
+      <xref target="registry-genesis-trust-record"/>, and the sequential
+      trust-update procedure in
+      <xref target="registry-genesis-registry-key-rotation-planned"/> when
+      updating pinned trust state, before treating Registry responses as
+      authoritative.
     </t>
   </section>
 
@@ -249,16 +434,20 @@ categories, the most restrictive limit applies.
       <dt>8a. Valid JWT:</dt>
       <dd>
         The token at index <tt>i</tt> MUST be a valid, well-formed JWT
-        conforming to the Principal Token schema. If
-        parsing or schema validation fails, reject with
-        <tt>delegation_chain_invalid</tt>.
+        conforming to the Principal Token schema. Its JOSE header MUST
+        contain <tt>typ</tt> equal to <tt>"JWT"</tt>, <tt>alg</tt> equal
+        to <tt>"EdDSA"</tt>, and a non-empty <tt>kid</tt> DID URL. If
+        parsing, schema validation, or header validation fails, reject
+        with <tt>delegation_chain_invalid</tt>.
       </dd>
 
       <dt>8b. delegation_depth Matches Index:</dt>
       <dd>
         The <tt>delegation_depth</tt> claim in token <tt>i</tt> MUST equal
-        exactly <tt>i</tt>. (The array is 0-indexed; <tt>aip_chain[0]</tt>
-        has <tt>delegation_depth: 0</tt>, etc.) If mismatch, reject with
+        exactly <tt>i</tt>. The array is 0-indexed:
+        <tt>aip_chain[0]</tt> has <tt>delegation_depth: 0</tt>, and
+        <tt>aip_chain[1]</tt>, when present, has
+        <tt>delegation_depth: 1</tt>. If mismatch, reject with
         <tt>invalid_delegation_depth</tt>.
       </dd>
 
@@ -271,40 +460,100 @@ categories, the most restrictive limit applies.
         <tt>invalid_delegation_depth</tt>.
       </dd>
 
-      <dt>8d. Signature Verification:</dt>
-      <dd>For token at index <tt>i</tt>, extract the <tt>iss</tt> claim:
-        For <tt>i = 0</tt>, <tt>iss</tt> MUST equal <tt>principal.id</tt>. Verify signature.
-        For <tt>i &gt; 0</tt>, <tt>iss</tt> MUST equal <tt>delegated_by</tt>. Verify signature.
-        If verification fails, reject with <tt>delegation_chain_invalid</tt>.</dd>
+      <dt>8d. Issuer and kid Binding:</dt>
+      <dd>
+        For token at index <tt>i</tt>, extract the <tt>iss</tt> claim. For
+        <tt>i = 0</tt>, <tt>iss</tt> MUST equal
+        <tt>principal.id</tt>. For <tt>i &gt; 0</tt>, <tt>iss</tt> MUST equal
+        <tt>delegated_by</tt>. The <tt>kid</tt> header MUST identify an
+        Ed25519 verification method controlled by <tt>iss</tt>, and the DID
+        portion of <tt>kid</tt> MUST equal <tt>iss</tt>. If any of these
+        bindings fail, reject with <tt>delegation_chain_invalid</tt>.
+      </dd>
+
+      <dt>8d-1. Root Principal Signature Verification:</dt>
+      <dd>
+        For <tt>i = 0</tt>, resolve <tt>kid</tt> using the DID method of the
+        root principal DID in <tt>principal.id</tt>. The AIP Registry MUST NOT
+        be used as the authority for root-principal keys. If DID resolution
+        fails, the key is not Ed25519 verification material, the verification
+        method is not controlled by <tt>principal.id</tt>, or signature
+        verification fails, reject with
+        <tt>delegation_chain_invalid</tt>.
+      </dd>
+
+      <dt>8d-2. Delegated Agent Key Lookup:</dt>
+      <dd>
+        For <tt>i &gt; 0</tt>, <tt>iss</tt> is the parent agent AID that
+        signed this delegated Principal Token. The Relying Party MUST resolve
+        the signing key through the authoritative AIP Registry using the
+        percent-encoded issuer AID and the <tt>kid</tt> fragment:
+        <tt>GET /v1/agents/{iss}/public-key/{key-id}</tt>. The
+        <tt>key-id</tt> path component is the fragment portion of
+        <tt>kid</tt> without the leading number-sign character. The Registry response
+        MUST identify the same AID as <tt>iss</tt> and return Ed25519 public
+        key material whose validity interval covers the Principal Token's
+        <tt>issued_at</tt> instant. If the Registry cannot be reached or the
+        key lookup cannot be completed because the Registry is unavailable,
+        reject with <tt>registry_unavailable</tt>. If the Registry lookup
+        succeeds but <tt>iss</tt> is not a registered AID, <tt>kid</tt> is
+        not found, or the key is not valid at <tt>issued_at</tt>, reject with
+        <tt>unknown_aid</tt>.
+      </dd>
+
+      <dt>8d-3. Delegated Principal Token Signature Verification:</dt>
+      <dd>
+        For <tt>i &gt; 0</tt>, verify the Principal Token signature using the
+        key resolved in Step 8d-2. If the resolved key is not Ed25519
+        verification material, identifies a key not controlled by
+        <tt>iss</tt>, or signature verification fails, reject with
+        <tt>delegation_chain_invalid</tt>.
+      </dd>
 
       <dt>8e. Delegation Chain Linkage:</dt>
       <dd>
         For token at index <tt>i &gt; 0</tt>, verify that
         <tt>delegated_by[i]</tt> equals <tt>sub[i-1]</tt> (the <tt>sub</tt>
         of the previous token). This ensures the chain is continuous: each
-        agent is delegated by the previous agent in the chain. If mismatch,
-        reject with <tt>delegation_chain_invalid</tt>.
+        agent is delegated by the previous agent in the chain. A delegated
+        Principal Token MUST NOT be self-delegated: <tt>delegated_by[i]</tt>
+        MUST NOT equal <tt>sub[i]</tt>. If linkage fails or the token is
+        self-delegated, reject with <tt>delegation_chain_invalid</tt>.
       </dd>
 
       <dt>8f. Agent Revocation:</dt>
       <dd>
         For each <tt>sub</tt> AID in the chain (at all indices), verify it
         is not revoked using the same Tier-specific revocation check as Step
-        7. If any agent in the chain is revoked, reject with
-        <tt>agent_revoked</tt>.
+        7. If the Registry returns <tt>unknown_aid</tt> for any chain
+        <tt>sub</tt> AID, reject with <tt>unknown_aid</tt>. If any agent in
+        the chain is revoked, reject with <tt>agent_revoked</tt>. A
+        <tt>principal_revoke</tt> whose <tt>target_id</tt> equals any chain
+        <tt>sub</tt> AID MUST be treated as revoked even when no descendant
+        Revocation Object has been materialised for that AID.
       </dd>
 
       <dt>8g. No Duplicate AIDs:</dt>
       <dd>
         No AID may appear more than once in the chain (no cycles or
-        duplicates). If an AID appears at indices <tt>i</tt> and <tt>j</tt>
-        with <tt>i != j</tt>, reject with <tt>delegation_chain_invalid</tt>.
+        duplicates). This rule includes direct self-delegation, where a
+        Principal Token attempts to delegate from an AID back to the same
+        AID. If an AID appears at indices <tt>i</tt> and <tt>j</tt> with
+        <tt>i != j</tt>, reject with <tt>delegation_chain_invalid</tt>.
       </dd>
 
       <dt>8h. Token Validity:</dt>
-      <dd>For token at index <tt>i</tt>, verify <tt>expires_at</tt> > <tt>issued_at</tt>
-        and <tt>expires_at</tt> is in the future. If either check fails, reject with
-        <tt>chain_token_expired</tt>.</dd>
+      <dd>
+        For token at index <tt>i</tt>, parse <tt>issued_at</tt> and
+        <tt>expires_at</tt> as ISO 8601 UTC instants. Verify
+        <tt>issued_at</tt> is not more than 30 seconds in the future
+        relative to the Relying Party's current UTC clock. If it is, reject
+        with <tt>delegation_chain_invalid</tt>. Verify
+        <tt>expires_at</tt> &gt; <tt>issued_at</tt>; if not, reject with
+        <tt>delegation_chain_invalid</tt>. Verify <tt>expires_at</tt> is in
+        the future; if expired, reject with
+        <tt>chain_token_expired</tt>.
+      </dd>
 
       <dt>8i. Consistent Principal:</dt>
       <dd>
@@ -321,6 +570,28 @@ categories, the most restrictive limit applies.
         with <tt>did:aip:</tt>. Principals are humans or organisations, never
         agents. If <tt>principal.id</tt> uses the <tt>did:aip</tt> method,
         reject with <tt>delegation_chain_invalid</tt>.
+      </dd>
+
+      <dt>8k. Namespace Task Binding:</dt>
+      <dd>
+        For every Principal Token whose <tt>sub</tt> namespace has
+        <tt>requires_task_id: true</tt> in the synced AIP Namespace Catalog,
+        the token payload MUST include a non-null, non-empty
+        <tt>task_id</tt>. If such a chain element omits <tt>task_id</tt>, sets
+        it to <tt>null</tt>, or sets it to an empty string, reject with
+        <tt>delegation_chain_invalid</tt>.
+      </dd>
+
+      <dt>8l. Root Principal Revocation:</dt>
+      <dd>
+        Let <tt>root_principal_id</tt> be the <tt>principal.id</tt> value
+        that Step 8i verified across the chain. Using the revocation source
+        required for the token's Tier, verify that no active
+        <tt>principal_revoke</tt> has <tt>target_id</tt> equal to
+        <tt>root_principal_id</tt>. A match invalidates every Credential
+        Token and Step Execution Token rooted at that Principal DID; reject
+        with <tt>agent_revoked</tt>. This rejection is required regardless of
+        the <tt>propagate_to_children</tt> value on the Revocation Object.
       </dd>
     </dl>
 
@@ -339,10 +610,61 @@ categories, the most restrictive limit applies.
     <section  numbered="true">
   <name>Step 8 Post-Check B</name>
       <t>
-        For single-element chains (n = 1), verify that <tt>iss</tt> MUST
-        equal <tt>sub</tt>. This confirms a non-delegated token issued
-        directly by the principal's agent. If mismatch, reject with
+        Verify that the Credential Token payload <tt>sub</tt> MUST equal
+        <tt>iss</tt>. Together with Post-Check A, this confirms that the token
+        subject, token issuer, signing key AID, and leaf Principal Token
+        subject all identify the same acting agent. This check applies to
+        both direct and delegated Credential Tokens. If mismatch, reject with
         <tt>delegation_chain_invalid</tt>.
+      </t>
+    </section>
+
+    <section numbered="true">
+  <name>Step 8 Post-Check C: Identity Proofing</name>
+      <t>
+        This check applies when any scope in <tt>aip_scope</tt> has synced
+        AIP Scope Catalog tier <tt>3</tt>, when the Registry's
+        <tt>identity_proofing_required_for_tier2</tt> metadata field is
+        <tt>true</tt> and the operation security Tier is <tt>2</tt>, when
+        Registry registration metadata for
+        the agent identifies <tt>grant_tier: "G3"</tt>, or when the Relying
+        Party or operation policy declares one or more required
+        <tt>acr_values</tt>.
+      </t>
+      <t>
+        When this check applies, the root Principal Token at
+        <tt>aip_chain[0]</tt> MUST include a non-empty <tt>acr</tt> string and
+        a non-empty <tt>amr</tt> array. If either claim is absent or empty, the
+        Relying Party MUST reject the request with
+        <tt>identity_proofing_insufficient</tt>.
+      </t>
+      <t>
+        The Relying Party MUST evaluate only the <tt>acr</tt> and
+        <tt>amr</tt> values contained in the signed root Principal Token. It
+        MUST NOT accept unsigned or out-of-band <tt>acr</tt> or <tt>amr</tt>
+        values for this check.
+      </t>
+      <t>
+        If one or more <tt>acr_values</tt> are required, the <tt>acr</tt>
+        value in <tt>aip_chain[0]</tt> MUST exactly match one of those required
+        values unless the Registry's <tt>/v1/registry-metadata</tt>
+        document contains an <tt>acr_equivalence_map</tt> object
+        (<xref target="well-known-metadata-registry"/>) that explicitly maps
+        the received <tt>acr</tt> value to one of the required values.
+        Equivalence MUST only map a received value to a declared required
+        value where the received value represents equal or higher assurance
+        than the required value under the Registry's published ACR equivalence
+        policy. The <tt>acr_equivalence_map</tt> MUST NOT map a
+        lower-assurance <tt>acr</tt> to a higher-assurance <tt>acr</tt>. The
+        policy MUST identify the assurance framework or frameworks used for
+        each mapping and MUST give a stable ordering or rationale sufficient
+        for an auditor to reproduce the decision. Implementations MUST NOT
+        accept equivalence mappings from any source other than the Registry's
+        signed <tt>/v1/registry-metadata</tt> document and its referenced
+        policy. This specification does not define a global ordering over
+        <tt>acr</tt> values. If the <tt>acr</tt> claim does not satisfy the
+        declared requirement, the Relying Party MUST reject the request with
+        <tt>identity_proofing_insufficient</tt>.
       </t>
     </section>
   </section>
@@ -351,42 +673,160 @@ categories, the most restrictive limit applies.
   <name>Step 9: Capability Validation</name>
     <t>Verify that the agent's requested scopes are permitted by its Capability Manifest.</t>
     <ol>
-      <li>Fetch the Capability Manifest for the agent identified by <tt>iss</tt> from the Registry.
-        If unavailable, reject with <tt>manifest_invalid</tt>.</li>
-      <li>Verify the manifest signature. If verification fails, reject with <tt>manifest_invalid</tt>.</li>
+      <li>Fetch the Capability Manifest for the agent identified by
+      <tt>iss</tt> from <tt>GET /v1/agents/{iss}/capabilities</tt>. The
+      response MUST conform to <tt>capability-manifest.schema.json</tt>, and
+      <tt>manifest.aid</tt> MUST equal <tt>iss</tt>. If unavailable,
+      malformed, or not bound to <tt>iss</tt>, reject with
+      <tt>manifest_invalid</tt>.</li>
+      <li>Verify the manifest signature using <tt>manifest.signature_kid</tt>.
+      The DID portion of <tt>signature_kid</tt> MUST equal
+      <tt>manifest.granted_by</tt>. If key resolution, key binding, or
+      signature verification fails, reject with
+      <tt>manifest_invalid</tt>.</li>
       <li>Verify <tt>expires_at</tt> is in the future. If expired, reject with <tt>manifest_expired</tt>.</li>
-<li>For delegated agents: verify scope inheritance. For each scope, verify chain has permission.</li>
+      <li>For each requested scope whose synced AIP Scope Catalog entry has a non-null
+        <tt>constraint_schema</tt>, validate the corresponding Capability
+        Manifest value against that schema. If validation fails, reject with
+        <tt>manifest_invalid</tt>.</li>
     </ol>
   </section>
 
   <section anchor="validation-step-9a" numbered="true">
     <name>Step 9a: Scope Verification</name>
-    <t>For all agents: verify each scope in <tt>aip_scope</tt> is present in the Capability Manifest.</t>
+    <t>
+      For all agents: verify each scope in <tt>aip_scope</tt> is present with
+      <tt>status: "active"</tt> or, when local policy allows experimental
+      behavior, <tt>status: "experimental"</tt> in the synced AIP Scope
+      Catalog. If any requested scope is unknown, reserved, removed, or not
+      permitted by local extension policy, reject with <tt>invalid_scope</tt>.
+      Then verify each requested scope is present in the Capability Manifest.
+      If any requested scope is absent from the Capability Manifest, reject
+      with <tt>insufficient_scope</tt>.
+    </t>
   </section>
 
   <section anchor="validation-step-9b" numbered="true">
     <name>Step 9b: Capability Overlay (Conditional)</name>
-    <t>If a Capability Overlay exists, verify scope constraints permit the requested operation.</t>
+    <t>
+      If a Capability Overlay exists, verify scope constraints permit the
+      requested operation. For each overlay constraint whose synced AIP Scope Catalog entry has
+      a non-null <tt>constraint_schema</tt>, validate the overlay constraint
+      against that schema before applying attenuation. If schema validation
+      fails, reject with <tt>overlay_exceeds_manifest</tt>.
+    </t>
+  </section>
+
+  <section anchor="validation-step-9c" numbered="true">
+    <name>Step 9c: Delegation Scope Inheritance</name>
+    <t>
+      For delegated Credential Tokens, the Relying Party MUST verify that the
+      requested scopes and the leaf agent's Capability Manifest are valid
+      attenuations of every delegation in <tt>aip_chain</tt>.
+    </t>
+    <t>
+      Let <tt>chain[i]</tt> be the decoded Principal Token payload at
+      <tt>aip_chain[i]</tt>, and let <tt>manifest(chain[i].sub)</tt> be the
+      current Capability Manifest for the agent identified by
+      <tt>chain[i].sub</tt>. Let <tt>n</tt> be the length of
+      <tt>aip_chain</tt>. The Relying Party MUST execute the inheritance
+      validation in increasing index order, from the root delegated agent
+      (<tt>i = 0</tt>) to the leaf acting agent (<tt>i = n-1</tt>).
+    </t>
+    <ol>
+      <li>For every <tt>i</tt> from <tt>0</tt> to <tt>n-1</tt>, obtain the
+        current Capability Manifest <tt>M[i]</tt> for <tt>chain[i].sub</tt>.
+        The leaf manifest <tt>M[n-1]</tt> MAY reuse the manifest already
+        fetched in Step 9. All ancestor manifests MUST be fetched according to
+        the caching rules in Section 10. If any required manifest is
+        unavailable, reject with <tt>manifest_invalid</tt>.</li>
+      <li>For every obtained manifest <tt>M[i]</tt>, verify
+        <tt>M[i].aid == chain[i].sub</tt>, verify the manifest signature using
+        <tt>M[i].signature_kid</tt>, verify the DID portion of
+        <tt>M[i].signature_kid</tt> equals <tt>M[i].granted_by</tt>, and
+        verify that <tt>M[i].expires_at</tt> is in the future. If the AID
+        binding, key binding, or signature check fails, reject with
+        <tt>manifest_invalid</tt>. If the manifest is expired, reject with
+        <tt>manifest_expired</tt>.</li>
+      <li>For every requested scope in <tt>aip_scope</tt>, verify that the
+        scope is present in the <tt>scope</tt> array of every Principal Token
+        in <tt>aip_chain</tt> and is granted by the leaf manifest
+        <tt>M[n-1]</tt>. If any requested scope is absent from any chain token
+        or from the leaf manifest, reject with
+        <tt>insufficient_scope</tt>.</li>
+      <li>For every adjacent pair <tt>(M[i-1], M[i])</tt> where
+        <tt>i</tt> ranges from <tt>1</tt> to <tt>n-1</tt>, verify that the
+        child manifest <tt>M[i]</tt> is a valid attenuation of the parent
+        manifest <tt>M[i-1]</tt>. Every scope granted by <tt>M[i]</tt> MUST be
+        present in <tt>M[i-1]</tt>, and every child constraint for that scope
+        MUST be equal to or more restrictive than the corresponding parent
+        constraint. If a child scope is absent from the parent manifest, or if
+        a child constraint is more permissive than the parent constraint,
+        reject with <tt>insufficient_scope</tt>.</li>
+    </ol>
+    <t>
+      Constraint comparison MUST use the recursive attenuation semantics from
+      Rule CO-1, treating the parent manifest constraint as the base value and
+      the child manifest constraint as the overlay value. When the synced AIP
+      Scope Catalog provides a non-null <tt>constraint_schema</tt>, both parent
+      and child constraints MUST first validate against that schema. If schema
+      validation fails, reject with <tt>manifest_invalid</tt>. Any violation at
+      any adjacent pair is fatal to the chain. For example, a chain where
+      <tt>M[0].transactions.max_single_transaction = 250</tt>,
+      <tt>M[1].transactions.max_single_transaction = 300</tt>, and
+      <tt>M[2].transactions.max_single_transaction = 200</tt> is invalid at
+      pair <tt>(M[0], M[1])</tt>, even though <tt>M[2]</tt> is more restrictive
+      than <tt>M[1]</tt>.
+    </t>
+  </section>
+
+  <section anchor="validation-step-9d" numbered="true">
+    <name>Step 9d: Grant Tier Conformance</name>
+    <t>
+      Determine the operation's security Tier as the highest
+      <tt>tier</tt> value among all requested <tt>aip_scope</tt> entries in
+      the synced AIP Scope Catalog. For every Principal Token payload in
+      <tt>aip_chain</tt>, retrieve the registered <tt>grant_tier</tt> from
+      the Registry registration metadata for the AID identified by that
+      payload's <tt>sub</tt>. The Relying Party MUST reject the request with
+      <tt>grant_tier_insufficient</tt> if any participating AID's registered
+      <tt>grant_tier</tt> is absent, unrecognised, or not permitted for the
+      operation's security Tier.
+    </t>
+    <t>
+      The permitted runtime mappings are: Tier 1 permits <tt>G1</tt>,
+      <tt>G2</tt>, or <tt>G3</tt>; Tier 2 permits <tt>G2</tt> or
+      <tt>G3</tt>; Tier 3 permits only <tt>G3</tt>. For Tier 2 and Tier 3, the
+      root principal DID MUST use the <tt>did:web</tt> method. A
+      higher-assurance Grant Tier MAY satisfy a lower security Tier, but a
+      lower-assurance Grant Tier MUST NOT satisfy a higher security Tier.
+    </t>
+    <t>
+      If the operation's security Tier is <tt>2</tt> and the Registry's
+      <tt>identity_proofing_required_for_tier2</tt> metadata field is
+      <tt>true</tt>, Tier 2 permits only <tt>G3</tt> for this Registry.
+      In that case, a participating AID registered with <tt>G2</tt> MUST be
+      rejected with <tt>grant_tier_insufficient</tt>.
+    </t>
   </section>
 
   <section anchor="validation-step-10" numbered="true">
   <name>Step 10: DPoP Validation (Conditional)</name>
     <t>
-      REMINDER: A token's Tier is determined by its highest-risk scope
-      (Section 3.1). A token containing one Tier 2 scope is a Tier 2 token.
+      For this step, the operation's security Tier is the highest Tier among
+      all requested scopes. A token containing one Tier 2 scope is a Tier 2
+      token for DPoP validation.
     </t>
-    <t>      If <tt>aip_scope</tt> contains any of the following scopes, DPoP
-      (Demonstration of Proof-of-Possession) MUST be verified:
-    </t>
-    <ul>
-      <li><tt>transactions</tt> or any scope with prefix <tt>transactions.</tt></li>
-      <li><tt>communicate.whatsapp</tt>, <tt>communicate.telegram</tt>,
-        <tt>communicate.sms</tt>, <tt>communicate.voice</tt></li>
-      <li><tt>filesystem.execute</tt></li>
-      <li><tt>spawn_agents.create</tt>, <tt>spawn_agents.manage</tt></li>
-    </ul>
     <t>
-      If any of these scopes is present, the HTTP request MUST include a
+      DPoP (Demonstration of Proof-of-Possession) MUST be verified when the
+      operation's security Tier is <tt>2</tt> or <tt>3</tt>, when any
+      requested scope has <tt>requires_dpop: true</tt> in the synced AIP
+      Scope Catalog, or when the requested Registry endpoint requires DPoP
+      independently of scope metadata. A Tier 2 or Tier 3 operation requires
+      DPoP even if every requested scope has <tt>requires_dpop: false</tt>.
+    </t>
+    <t>
+      If DPoP is required, the HTTP request MUST include a
       <tt>DPoP</tt> header containing a Demonstration of Proof-of-Possession
       proof JWT per <xref target="RFC9449"/>. Verify:
     </t>
@@ -394,12 +834,43 @@ categories, the most restrictive limit applies.
       <li>The DPoP proof is a valid JWT.</li>
       <li>The <tt>htm</tt> (HTTP method) claim matches the HTTP method of
         the request.</li>
-      <li>The <tt>htu</tt> (HTTP URI) claim matches the request URI.</li>
+      <li>The <tt>htu</tt> (HTTP URI) claim matches the absolute target URI
+        of the current request after removing query and fragment components,
+        with URI normalization performed as specified for DPoP in
+        <xref target="RFC9449"/>. Because <tt>htu</tt> includes the target
+        origin and path, a DPoP proof captured at one Relying Party or
+        Registry MUST NOT validate at another Relying Party or Registry
+        unless the normalized target URI is identical.</li>
+      <li>The <tt>ath</tt> claim is present and equals
+        <tt>BASE64URL(SHA-256(token))</tt>, where <tt>token</tt> is the exact
+        compact Credential Token or Step Execution Token value from the
+        <tt>Authorization</tt> header after removing the authorization scheme
+        and surrounding whitespace. When DPoP is required, the authorization
+        scheme MUST be <tt>DPoP</tt>. The hash input MUST NOT include the
+        authorization scheme, whitespace, or the DPoP proof itself.</li>
+      <li>The <tt>iat</tt> claim is within the verifier's accepted DPoP proof
+        window. Unless the verifier requires a server-provided DPoP nonce per
+        <xref target="RFC9449"/>, the verifier MUST reject proofs whose
+        <tt>iat</tt> is more than 300 seconds before receipt time or more
+        than 30 seconds after receipt time. When a server-provided nonce is
+        required, the verifier MUST validate the <tt>nonce</tt> claim and the
+        server-managed nonce lifetime instead of extending acceptance based on
+        a client-chosen future <tt>iat</tt>.</li>
       <li>The <tt>jti</tt> has not been seen before (DPoP-specific replay
         cache, separate from Credential Token <tt>jti</tt> cache, keyed by
-        <tt>(kid, jti)</tt>).</li>
-      <li>The public key in the <tt>jwk</tt> claim matches the agent's key
-        material (used to issue the Credential Token).</li>
+        <tt>(kid, jti)</tt>). The replay cache is local to the verifier and
+        MUST retain entries for at least the accepted DPoP proof window, or
+        for the server-provided nonce lifetime when nonce validation is used,
+        whichever is longer. AIP does not require cross-Relying Party or
+        cross-Registry synchronization of DPoP replay caches; cross-target
+        replay prevention relies on the mandatory <tt>htm</tt>,
+        <tt>htu</tt>, and <tt>ath</tt> checks above.</li>
+      <li>The public key in the <tt>jwk</tt> claim matches the effective
+        actor's key material. For an agent-issued Credential Token, this is
+        the agent key that signed the Credential Token. For a Step Execution
+        Token, this is public key material controlled by the actor AID in
+        <tt>sub</tt>; it is not the Registry step-execution key that signed
+        the SET.</li>
     </ol>
     <t>
       If DPoP validation fails at any step, reject with
@@ -411,44 +882,66 @@ categories, the most restrictive limit applies.
   <section anchor="validation-step-10a" numbered="true">
   <name>Step 10a: Approval Envelope Step Verification (Conditional)</name>
     <t>
-      This step applies only if both <tt>aip_approval_id</tt> and
-      <tt>aip_approval_step</tt> are present in the Credential Token (the
-      Step Execution Token case, Section 13.8).
+      This step applies only to Step Execution Tokens that have already passed
+      the SET validation profile defined in this section. Agent-issued
+      Credential Tokens MUST NOT be accepted for Approval Envelope step
+      execution merely because they contain approval-related claims.
     </t>
     <t>
-      The Relying Party MUST call the Registry endpoint <tt>GET
-      /v1/approvals/{aip_approval_id}/steps/{n}</tt> where <tt>{n}</tt> is
-      the value of <tt>aip_approval_step</tt> verbatim (an integer &gt;= 1, per
-      Section 13.4; MUST NOT be decremented or adjusted).
-      NOTE: <tt>aip_approval_step</tt> uses 1-based indexing (e.g., the
-      first step in an envelope is step 1). This is a change from
-      deprecated 0-indexed drafts; implementations MUST NOT subtract 1 from
-      the value.
+      The Relying Party MUST call the SET issuer Registry endpoint identified
+      by <tt>aip_step_kind</tt>. For <tt>aip_step_kind: "forward"</tt>, call
+      <tt>GET /v1/approvals/{aip_approval_id}/steps/{n}</tt> where
+      <tt>{n}</tt> is the value of <tt>aip_approval_step</tt> verbatim. For
+      <tt>aip_step_kind: "compensation"</tt>, call
+      <tt>GET /v1/approvals/{aip_approval_id}/compensation-steps/{n}</tt>
+      where <tt>{n}</tt> is the value of
+      <tt>aip_compensation_step</tt> verbatim. In either case the index is an
+      integer &gt;= 1 and MUST NOT be decremented or adjusted.
+      Both <tt>aip_approval_step</tt> and
+      <tt>aip_compensation_step</tt> use 1-based indexing; the first forward
+      step in an envelope is step 1. This is a change from deprecated
+      0-indexed drafts.
       Verify:
     </t>
     <ol>
+      <li><strong>Cancellation Status:</strong> If the Registry response
+        indicates the Approval Envelope or referenced step has status
+        <tt>"cancelled"</tt>, reject with
+        <tt>engagement_cancelled</tt>.</li>
       <li><strong>Step Status:</strong> The step's <tt>status</tt> field MUST
-        be <tt>"claimed"</tt> (not <tt>"pending"</tt>, <tt>"completed"</tt>,
-        etc.). If status is <tt>"pending"</tt>, the step has not been claimed
-        and cannot execute. Reject with <tt>approval_step_invalid</tt>.</li>
-      <li><strong>Actor Match:</strong> The step's <tt>actor</tt> field MUST
-        equal the Credential Token's <tt>sub</tt> (the agent AID). Reject if
-        mismatch with <tt>approval_step_invalid</tt>.</li>
-      <li><strong>Relying Party Match:</strong> The step's
+        be <tt>"claimed"</tt>. If status is <tt>"pending"</tt>, the step has not been claimed
+        and cannot execute; reject with <tt>approval_step_not_claimed</tt>.
+        If status is <tt>"completed"</tt>, <tt>"failed"</tt>,
+        <tt>"compensated"</tt>, <tt>"skipped"</tt>, or
+        <tt>"cancelled"</tt>, reject with
+        <tt>approval_step_invalid</tt>.
+        Prerequisite failures are reported at claim time by the Registry using
+        <tt>approval_step_prerequisites_unmet</tt>; a Relying Party that sees
+        an unclaimed step during Step Execution Token verification treats it as
+        a state conflict rather than an authorization denial.</li>
+      <li><strong>Actor Match:</strong> The returned forward or compensation step's <tt>actor</tt> field MUST
+        equal the Step Execution Token's <tt>sub</tt> (the actor AID). Reject
+        if mismatch with <tt>approval_step_invalid</tt>.</li>
+      <li><strong>Relying Party Match:</strong> The returned step's
         <tt>relying_party_uri</tt> MUST match the host of the current HTTP
         request (origin comparison per <xref target="RFC6454"/>: scheme +
         host + port). Reject if mismatch with <tt>approval_step_invalid</tt>.</li>
       <li><strong>Action Hash:</strong> Compute the expected action hash for
-        this step per Section 13.7. Compare against the step's
+        this step per Section 13.7. Compare against the returned step's
         <tt>action_hash</tt> field. If mismatch, reject with
-        <tt>approval_step_invalid</tt>. This ensures the approving principal
-        authorised the exact action being executed.</li>
+        <tt>approval_step_action_mismatch</tt>. This ensures the approving
+        principal authorised the exact action being executed.</li>
+      <li><strong>Scope Match:</strong> The Step Execution Token
+        <tt>aip_scope</tt> set MUST be identical to the returned step's
+        <tt>scopes</tt> set. Order is not significant for this comparison,
+        but duplicate scope strings are invalid under the SET schema. If the
+        sets differ, reject with <tt>approval_step_invalid</tt>.</li>
     </ol>
   </section>
 
   <section anchor="validation-step-11" numbered="true">
   <name>Step 11: Tier 3 Enterprise Checks (Conditional)</name>
-    <t>       This step applies only to Tier 3 enterprise deployments, which are      declared and documented in the Registry's <tt>/.well-known/aip-registry</tt>
+    <t>       This step applies only to Tier 3 enterprise deployments, which are      declared and documented in the Registry's <tt>/v1/registry-metadata</tt>
       endpoint.
     </t>
     <t>
@@ -456,17 +949,50 @@ categories, the most restrictive limit applies.
     </t>
     <ol>
       <li><strong>mTLS Client Certificate:</strong> The HTTP connection MUST
-        use mutual TLS. Verify that the client certificate's subject DN maps
-        to the agent's AID (<tt>iss</tt>). If mismatch or certificate is
-        absent, reject with <tt>invalid_token</tt>.</li>
+        use mutual TLS. Validate the client certificate using the Tier 3 mTLS
+        Certificate Profile in <xref target="mtls-certificate-profile"/>. The
+        effective actor AID is the Credential Token <tt>iss</tt> for
+        agent-issued Credential Tokens, or the Step Execution Token
+        <tt>sub</tt> for SETs. If the client certificate is absent, reject
+        with <tt>mtls_required</tt>. If certificate path validation, key usage,
+        EKU, SAN uniqueness, or SAN-to-actor matching fails, reject with
+        <tt>invalid_token</tt>.</li>
       <li><strong>OCSP Revocation Check:</strong> Perform an OCSP check per
         <xref target="RFC6960"/> on the client certificate to verify it has
-        not been revoked at the transport layer. If the certificate is
-        revoked, reject with <tt>agent_revoked</tt>.</li>
+        not been revoked at the transport layer, or perform the equivalent
+        deployment-profile revocation check allowed by
+        <xref target="mtls-certificate-profile"/>. If the certificate is
+        revoked, reject with <tt>agent_revoked</tt>. If revocation status is
+        unavailable, stale, or indeterminate, reject with
+        <tt>invalid_token</tt>.</li>
     </ol>
+    <dl newline="false">
+      <dt>Step 11a. Principal Assertion Presence Check:</dt>
+      <dd>For
+        Tier 3 agent-issued Credential Tokens, the Credential Token MUST
+        contain an <tt>aip_principal_assertion</tt> claim. Absence MUST result
+        in rejection with <tt>enterprise_assertion_missing</tt>.</dd>
+      <dt>Step 11b. Principal Assertion Signature Verification:</dt>
+      <dd>The Relying Party MUST resolve the <tt>iss</tt> claim of the
+        <tt>aip_principal_assertion</tt> JWT to an OIDC provider configuration
+        document and retrieve the provider's JWKS. The assertion signature
+        MUST be verified against the matching <tt>kid</tt> in the JWKS.
+        Failure MUST result in rejection with
+        <tt>enterprise_assertion_invalid</tt>.</dd>
+      <dt>Step 11c. Principal Binding Check:</dt>
+      <dd>The <tt>sub</tt> claim of the verified <tt>aip_principal_assertion</tt>
+        MUST match the root Principal Token's <tt>principal.id</tt> value in
+        <tt>aip_chain[0]</tt>. A mismatch indicates that the agent is
+        presenting human context that does not match its registered delegation
+        chain and MUST result in rejection with
+        <tt>enterprise_assertion_principal_mismatch</tt>.</dd>
+    </dl>
     <t>
-      If either check fails, reject with the appropriate error code
-      (<tt>invalid_token</tt> or <tt>agent_revoked</tt>).
+      If any Tier 3 check fails, reject with the appropriate error code
+      (<tt>mtls_required</tt>, <tt>invalid_token</tt>,
+      <tt>agent_revoked</tt>, <tt>enterprise_assertion_missing</tt>,
+      <tt>enterprise_assertion_invalid</tt>, or
+      <tt>enterprise_assertion_principal_mismatch</tt>).
     </t>
   </section>
 
@@ -475,6 +1001,106 @@ categories, the most restrictive limit applies.
     <t>
       If all preceding steps pass without rejection, the Relying Party MUST
       accept the token and grant the requested access.
+    </t>
+  </section>
+
+  <section anchor="set-validation-profile" numbered="true">
+    <name>Step Execution Token Validation Profile</name>
+    <t>
+      A Step Execution Token (SET) is a Registry-issued JWT. It MUST NOT be
+      validated by applying Credential Token Step 2 and Step 3 literally,
+      because its <tt>iss</tt> is the Registry ID and its <tt>kid</tt> is a
+      Registry step-execution key URI, not a <tt>did:aip</tt> agent key. A
+      Relying Party that receives a token for Approval Envelope step execution
+      MUST use this profile before applying Step 10a.
+    </t>
+    <ol>
+      <li>Parse the token as a JWT per Step 1.</li>
+      <li>Decode the JOSE header and payload without using either for
+        acceptance. The payload MUST conform to
+        <tt>step-execution-token.schema.json</tt>. The <tt>iss</tt> claim
+        MUST be an HTTPS Registry ID URI, <tt>sub</tt> MUST be the actor AID,
+        and <tt>aip_approval_id</tt> and <tt>aip_step_kind</tt> MUST both
+        be present. When <tt>aip_step_kind</tt> is <tt>"forward"</tt>,
+        <tt>aip_approval_step</tt> MUST be present and
+        <tt>aip_compensation_step</tt> MUST be absent. When
+        <tt>aip_step_kind</tt> is <tt>"compensation"</tt>,
+        <tt>aip_compensation_step</tt> MUST be present and
+        <tt>aip_approval_step</tt> MUST be absent. If <tt>aip_registry</tt> is present, it MUST equal
+        <tt>iss</tt>. If any of these checks fail, reject with
+        <tt>invalid_token</tt>.</li>
+      <li>Validate the SET header. <tt>typ</tt> MUST be
+        <tt>"AIP-SET+JWT"</tt>, <tt>alg</tt> MUST be <tt>"EdDSA"</tt>, and
+        <tt>kid</tt> MUST be an HTTPS URI whose origin matches the
+        <tt>iss</tt> Registry ID origin. The protected header MUST also
+        contain integer <tt>aip_trv</tt>. If any check fails,
+        reject with <tt>invalid_token</tt>.</li>
+      <li>Apply the expiration preflight from Step 2a.</li>
+      <li>Resolve the issuing Registry trust state from local pinned trust
+        records only. The Relying Party MUST have previously completed
+        first-contact bootstrap or sequential trust update for the
+        <tt>iss</tt> Registry ID under
+        <xref target="registry-genesis-well-known-publication"/> and
+        <xref target="registry-genesis-registry-key-rotation-planned"/>. It
+        MUST select the locally retained Registry Trust Record whose
+        <tt>signed.registry_id</tt> equals <tt>iss</tt> and whose
+        <tt>signed.version</tt> equals the SET protected header
+        <tt>aip_trv</tt>. The Relying Party MUST NOT fetch
+        <tt>/v1/registry-metadata</tt> or a Registry Trust Record during
+        SET validation to establish trust for the SET being validated. If no
+        matching pinned trust record exists, or if the pinned trust record is
+        expired and has not already been refreshed by a completed trust-update
+        procedure, reject with <tt>registry_untrusted</tt>.</li>
+      <li>The SET header <tt>kid</tt> MUST exactly match the
+        <tt>keyid</tt> of a JWK listed in
+        <tt>active_verification_keys.step_execution</tt> of the accepted
+        Registry Trust Record version. If no such key is listed, reject with
+        <tt>invalid_token</tt>.</li>
+      <li>Verify the SET signature using the matched step-execution JWK. If
+        signature verification fails, reject with <tt>invalid_token</tt>.</li>
+      <li>Apply Steps 5a through 5f and Step 6 to the SET common claims.
+        Step 5g is replaced for SETs by the following SET-specific binding:
+        the payload <tt>iss</tt> MUST be the HTTPS Registry ID whose pinned
+        Registry Trust Record was selected by protected header
+        <tt>aip_trv</tt>; the payload <tt>sub</tt> MUST match the
+        <tt>did:aip</tt> ABNF and identify the actor AID; and the protected
+        header <tt>kid</tt> MUST identify a Registry step-execution key listed
+        in that selected Trust Record. The SET replay cache is keyed by
+        <tt>(iss, jti)</tt>, where <tt>iss</tt> is the Registry ID. A Registry
+        MUST generate SET <tt>jti</tt> values that are unique within that
+        Registry ID across all issued Step Execution Tokens. Registry
+        complete/fail endpoints MAY return a stored idempotent response for an
+        exact retry of a previously completed transition, but MUST NOT
+        re-execute the transition or accept a replayed SET as fresh
+        authority.</li>
+      <li>Apply Step 6a when required, treating the SET issuer Registry
+        <tt>iss</tt> as the Registry whose trust anchor is being verified.
+        For Tier 2 or Tier 3 operations, or whenever <tt>aip_registry</tt> is
+        present, the root principal DID Document's <tt>AIPRegistry</tt> service
+        endpoint MUST match the SET issuer Registry by origin comparison.</li>
+      <li>Apply Step 6b to any <tt>aip_engagement_id</tt>, using
+        <tt>sub</tt> as the actor AID whose engagement participation is being
+        checked.</li>
+      <li>Apply Step 7 to the actor AID in <tt>sub</tt>, not to the Registry
+        ID in <tt>iss</tt>. Apply Step 8 to <tt>aip_chain</tt>, except that
+        Step 8 Post-Check A and B are replaced by the rule that
+        <tt>aip_chain[n-1].sub</tt> MUST equal the SET <tt>sub</tt>.</li>
+      <li>Apply Steps 9 through 9d using the actor AID in <tt>sub</tt> as the
+        effective agent AID for manifest lookup, scope verification,
+        delegation inheritance, and Grant Tier Conformance.</li>
+      <li>Apply Step 10 when DPoP is required. For SETs, the DPoP proof key
+        MUST match public key material controlled by the actor AID in
+        <tt>sub</tt>, not the Registry step-execution key that signed the
+        SET.</li>
+      <li>Apply Step 10a, Step 11 using <tt>sub</tt> as the effective actor
+        AID, and Step 12.</li>
+    </ol>
+    <t>
+      A token with <tt>typ: "AIP+JWT"</tt> MUST NOT be accepted as a Step
+      Execution Token. A token with <tt>typ: "AIP-SET+JWT"</tt> MUST NOT be
+      accepted as an agent-issued Credential Token. This type separation
+      prevents substitution between agent-issued and Registry-issued
+      authorisation artifacts.
     </t>
   </section>
 </section>

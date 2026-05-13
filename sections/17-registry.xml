@@ -1,14 +1,20 @@
 <section anchor="registry" numbered="true">
   <name>Registry Interface</name>
   <t>
-    A conformant AIP Registry MUST implement the HTTP endpoints
-    defined in this section.
+    A conformant AIP Registry MUST implement the unconditional HTTP
+    endpoints in this section and MUST implement each feature-conditional
+    endpoint set for any feature, grant tier, or publication mode it
+    advertises or enables.
   </t>
 
   <section anchor="registry-endpoints" numbered="true">
-    <name>Required Endpoints</name>
-    <t>A conformant AIP Registry MUST implement the following HTTP endpoints:</t>
+    <name>Endpoint Inventory</name>
+    <t>
+      A conformant AIP Registry MUST implement the following unconditional
+      HTTP endpoints:
+    </t>
     <table>
+      <name>Unconditional Registry Endpoints</name>
       <thead>
         <tr>
           <th>Method</th>
@@ -18,40 +24,100 @@
       </thead>
       <tbody>
         <tr><td>POST</td><td>/v1/agents</td><td>Register a new AID (Registration Envelope)</td></tr>
-        <tr><td>GET</td><td>/v1/agents/{aid}</td><td>Retrieve Agent Identity or DID Document</td></tr>
+        <tr><td>GET</td><td>/v1/agents/{aid}</td><td>Retrieve Agent Registration Metadata or DID Document</td></tr>
         <tr><td>PUT</td><td>/v1/agents/{aid}</td><td>Key rotation only</td></tr>
         <tr><td>GET</td><td>/v1/agents/{aid}/public-key</td><td>Current public key (JWK)</td></tr>
         <tr><td>GET</td><td>/v1/agents/{aid}/public-key/{key-id}</td><td>Historical key version</td></tr>
         <tr><td>GET</td><td>/v1/agents/{aid}/capabilities</td><td>Current Capability Manifest</td></tr>
         <tr><td>PUT</td><td>/v1/agents/{aid}/capabilities</td><td>Replace Capability Manifest</td></tr>
+        <tr><td>POST</td><td>/v1/agents/{aid}/heartbeat</td><td>Submit signed agent heartbeat</td></tr>
         <tr><td>GET</td><td>/v1/agents/{aid}/revocation</td><td>Revocation status</td></tr>
         <tr><td>POST</td><td>/v1/revocations</td><td>Submit RevocationObject</td></tr>
-        <tr><td>GET</td><td>/v1/crl</td><td>Certificate Revocation List</td></tr>
-        <tr><td>GET</td><td>/v1/agents/{aid}/reputation</td><td>Reputation data</td></tr>
-        <tr><td>POST</td><td>/v1/endorsements</td><td>Submit Endorsement Object</td></tr>
-        <tr><td>POST</td><td>/v1/grants</td><td>Submit G1 grant</td></tr>
-        <tr><td>GET</td><td>/v1/grants/{grant_id}</td><td>Retrieve grant status</td></tr>
+        <tr><td>GET</td><td>/v1/crl</td><td>Origin AIP CRL document; preferred CRL retrieval URI is published as <tt>endpoints.crl</tt></td></tr>
         <tr><td>PUT</td><td>/v1/agents/{aid}/overlays</td><td>Submit Capability Overlay</td></tr>
         <tr><td>GET</td><td>/v1/agents/{aid}/overlays</td><td>Retrieve current overlay</td></tr>
-        <tr><td>POST</td><td>/v1/engagements</td><td>Create Engagement Object</td></tr>
-        <tr><td>GET</td><td>/v1/engagements/{id}</td><td>Retrieve Engagement Object</td></tr>
-        <tr><td>PUT</td><td>/v1/engagements/{id}</td><td>Update Engagement (append change log)</td></tr>
-        <tr><td>POST</td><td>/v1/subscriptions</td><td>Create RPNP subscription (Section 11.4)</td></tr>
-        <tr><td>DELETE</td><td>/v1/subscriptions/{id}</td><td>Cancel RPNP subscription</td></tr>
-        <tr><td>GET</td><td>/v1/scopes</td><td>Scope Map registry</td></tr>
-        <tr><td>POST</td><td>/v1/oauth/authorize</td><td>G3 authorization endpoint</td></tr>
-        <tr><td>POST</td><td>/v1/oauth/token</td><td>G3 token endpoint / token exchange</td></tr>
-        <tr><td>GET</td><td>/.well-known/oauth-authorization-server</td><td>AS Metadata <xref target="RFC8414"/></td></tr>
-        <tr><td>GET</td><td>/.well-known/aip-registry</td><td>Retrieve Registry discovery metadata</td></tr>
+        <tr><td>GET</td><td>/v1/scopes</td><td>Synced AIP Scope Catalog metadata</td></tr>
+        <tr><td>GET</td><td>/v1/namespaces</td><td>Synced AIP Namespace Catalog metadata</td></tr>
+        <tr><td>GET</td><td>/v1/registry-metadata</td><td>Retrieve Registry Metadata</td></tr>
         <tr><td>GET</td><td>/v1/registry-trust/current</td><td>Retrieve current Registry Trust Record</td></tr>
         <tr><td>GET</td><td>/v1/registry-trust/{version}</td><td>Retrieve immutable Registry Trust Record by version</td></tr>
+        <tr><td>POST</td><td>/v1/approvals</td><td>Submit Approval Envelope for approval</td></tr>
+        <tr><td>GET</td><td>/v1/approvals/{id}</td><td>Retrieve Approval Envelope with step statuses</td></tr>
+        <tr><td>POST</td><td>/v1/approvals/{id}/approve</td><td>Principal approves Approval Envelope</td></tr>
+        <tr><td>POST</td><td>/v1/approvals/{id}/reject</td><td>Principal rejects Approval Envelope</td></tr>
+        <tr><td>POST</td><td>/v1/approvals/{id}/steps/{n}/claim</td><td>Claim step for execution</td></tr>
+        <tr><td>POST</td><td>/v1/approvals/{id}/steps/{n}/complete</td><td>Mark step completed</td></tr>
+        <tr><td>POST</td><td>/v1/approvals/{id}/steps/{n}/fail</td><td>Mark step failed</td></tr>
+        <tr><td>GET</td><td>/v1/approvals/{id}/steps/{n}</td><td>Retrieve step status for SET verification</td></tr>
+        <tr><td>POST</td><td>/v1/approvals/{id}/compensation-steps/{n}/claim</td><td>Claim compensation step</td></tr>
+        <tr><td>POST</td><td>/v1/approvals/{id}/compensation-steps/{n}/complete</td><td>Mark compensation step completed</td></tr>
+        <tr><td>POST</td><td>/v1/approvals/{id}/compensation-steps/{n}/fail</td><td>Mark compensation step failed</td></tr>
+        <tr><td>GET</td><td>/v1/approvals/{id}/compensation-steps/{n}</td><td>Retrieve compensation step status for SET verification</td></tr>
       </tbody>
     </table>
+
+    <t>
+      The following endpoint sets are feature-conditional. A Registry MUST
+      implement every endpoint in the applicable set when it advertises or
+      enables the corresponding feature. A Registry MUST NOT advertise a
+      feature in <tt>/v1/registry-metadata</tt>, the Registry Trust
+      Record, or other discovery metadata unless it implements the complete
+      endpoint set for that feature.
+    </t>
+    <dl newline="false">
+      <dt>Segmented CRL publication</dt>
+      <dd><tt>GET /v1/crl/segments/{segment_id}</tt> retrieves a signed CRL
+      segment.</dd>
+
+      <dt><tt>grant_tiers_supported</tt> includes <tt>G1</tt></dt>
+      <dd><tt>POST /v1/grants</tt> submits a G1 grant, and
+      <tt>GET /v1/grants/{grant_id}</tt> retrieves G1 grant status.</dd>
+
+      <dt><tt>grant_tiers_supported</tt> includes <tt>G3</tt></dt>
+      <dd><tt>POST /v1/oauth/authorize</tt> is the G3 authorization
+      endpoint.</dd>
+
+      <dt>G3 or token exchange supported</dt>
+      <dd><tt>POST /v1/oauth/token</tt> is the G3 token endpoint and token
+      exchange endpoint, and
+      <tt>GET /.well-known/oauth-authorization-server</tt> returns AS
+      metadata per <xref target="RFC8414"/>. Registries that support token
+      exchange MUST also implement <tt>POST /v1/resources</tt>,
+      <tt>GET /v1/resources/{resource_id}</tt>,
+      <tt>PUT /v1/resources/{resource_id}</tt>, and
+      <tt>DELETE /v1/resources/{resource_id}</tt> as defined in
+      <xref target="resource-registration-registry"/>.</dd>
+
+      <dt>Engagement Objects supported</dt>
+      <dd><tt>POST /v1/engagements</tt> creates an Engagement Object,
+      <tt>GET /v1/engagements/{id}</tt> retrieves it,
+      <tt>POST /v1/engagements/{id}/countersign</tt> countersigns a proposed
+      Engagement Object, and <tt>PUT /v1/engagements/{id}</tt> appends an
+      Engagement change-log update.</dd>
+
+      <dt>RPNP supported</dt>
+      <dd><tt>POST /v1/subscriptions</tt> creates an RPNP subscription,
+      <tt>GET /v1/subscriptions/{id}</tt> retrieves subscription status, and
+      <tt>DELETE /v1/subscriptions/{id}</tt> cancels the subscription.</dd>
+
+      <dt>Reputation Output supported</dt>
+      <dd><tt>GET /v1/agents/{aid}/reputation</tt> returns advisory reputation
+      data with the response invariants in <xref target="reputation-scoring"/>.
+      A Registry that does not implement this feature MUST return HTTP 501 Not
+      Implemented for this endpoint.</dd>
+
+      <dt>Endorsement Acceptance supported</dt>
+      <dd><tt>POST /v1/endorsements</tt> submits an Endorsement Object and
+      applies the acceptance rules in
+      <xref target="endorsement-acceptance-requirements"/>. A Registry that
+      does not implement this feature MUST return HTTP 501 Not Implemented for
+      this endpoint.</dd>
+    </dl>
   </section>
 
   <section anchor="aid-encoding" numbered="true">
     <name>AID URL Encoding</name>
-    <t>In all path parameters, the `did:aip:` prefix and colons MUST be percent-encoded per <xref target="RFC3986"/>:</t>
+    <t>In all path parameters, the <tt>did:aip:</tt> prefix and colons MUST be percent-encoded per <xref target="RFC3986"/>:</t>
 
     <artwork anchor="aid-encoding-example" type="example"><![CDATA[
 did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3
@@ -61,8 +127,408 @@ did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3
 
   <section anchor="response-format-registry" numbered="true">
     <name>Response Format</name>
-    <t>All Registry responses MUST use `Content-Type: application/json`.</t>
+    <t>All Registry responses MUST use <tt>Content-Type: application/json</tt>,
+    except DID Document responses negotiated by
+    <tt>Accept: application/did+json</tt> or
+    <tt>Accept: application/did+ld+json</tt> from
+    <tt>GET /v1/agents/{aid}</tt>, and CRL responses from
+    <tt>GET /v1/crl</tt> or the signed <tt>endpoints.crl</tt> URI, which MUST
+    use <tt>Content-Type: application/aip-crl+json</tt>.</t>
+    <t>All Registry responses from AIP protocol endpoints MUST include
+    <tt>X-AIP-Version</tt> as defined in Section 8.1. If a request version is
+    unsupported, the Registry MUST reject the request with
+    <tt>unsupported_version</tt> and include <tt>X-AIP-Version</tt> in the
+    error response.</t>
+    <t>
+      Unless an endpoint profile explicitly requires OAuth-native error
+      syntax, every Registry error response from an AIP protocol endpoint MUST
+      conform to <tt>error-response.schema.json</tt> and the error response
+      rules in <xref target="error-response-format"/>.
+    </t>
     <t>All timestamps MUST be in ISO 8601 UTC format.</t>
+  </section>
+
+  <section anchor="agent-registration-metadata-registry" numbered="true">
+    <name>Agent Registration Metadata</name>
+    <t>
+      Unless the client sends <tt>Accept: application/did+json</tt> or
+      <tt>Accept: application/did+ld+json</tt>, <tt>GET /v1/agents/{aid}</tt>
+      MUST return <tt>Content-Type: application/json</tt> with an Agent
+      Registration Metadata response conforming to
+      <tt>agent-registration.schema.json</tt>. If the AID is not registered,
+      the Registry MUST return <tt>unknown_aid</tt>.
+    </t>
+    <t>
+      The response MUST include the requested <tt>aid</tt>, the current Agent
+      Identity Object as <tt>identity</tt>, the <tt>grant_tier</tt> accepted
+      during Registration Envelope validation, <tt>registered_at</tt>,
+      <tt>updated_at</tt>, and links for the current public key, current
+      Capability Manifest, live revocation status, and the
+      <tt>registration_warnings</tt> array. The <tt>identity</tt> field MUST be
+      the current stored Agent Identity Object at the time of the most recent
+      successful registration or key rotation, and <tt>identity.aid</tt> MUST
+      equal the top-level <tt>aid</tt>.
+      The <tt>registration_warnings</tt> array MAY be empty. If Registration
+      Check 15 accepted a Tier 2 registration without
+      <tt>identity.model.attestation_hash</tt>, the array MUST include the
+      persisted <tt>model_attestation_missing_tier2</tt> warning until the
+      registered Agent Identity Object includes a valid attestation hash.
+    </t>
+    <t>
+      A successful <tt>POST /v1/agents</tt> response MUST use HTTP 201 and MUST
+      return the same Agent Registration Metadata representation that a
+      subsequent <tt>GET /v1/agents/{aid}</tt> request would return. Any
+      registration warning created during validation MUST therefore be visible
+      in the registration response and in later metadata reads.
+    </t>
+    <t>
+      Relying Parties use the registered <tt>grant_tier</tt> value for each
+      participating <tt>aip_chain</tt> AID during Step 9d Grant Tier
+      Conformance validation.
+    </t>
+  </section>
+
+  <section anchor="agent-key-rotation-registry" numbered="true">
+    <name>Agent Key Rotation Endpoint</name>
+    <t>
+      <tt>PUT /v1/agents/{aid}</tt> is used only for key rotation of an
+      existing AID. The request body MUST be a complete Agent Identity Object,
+      not a Registration Envelope. The request MUST use
+      <tt>Content-Type: application/json</tt> and MUST include a DPoP proof
+      for the exact <tt>PUT</tt> request URI. For an ordinary rotation, the
+      DPoP proof MUST verify against the current active public key for the
+      AID before the rotation is committed. If the path <tt>{aid}</tt> is not
+      already registered, the Registry MUST reject with
+      <tt>unknown_aid</tt>.
+    </t>
+    <t>
+      The DPoP proof for key rotation MUST include <tt>htu</tt>,
+      <tt>htm</tt>, <tt>iat</tt>, and <tt>jti</tt>. The Registry MUST reject a
+      missing proof with <tt>dpop_proof_required</tt> and MUST reject an
+      invalid, stale, or replayed proof with <tt>invalid_token</tt>. The
+      Registry MUST store enough recent DPoP <tt>jti</tt> values for each AID
+      to reject replay within the accepted DPoP clock-skew window.
+    </t>
+    <t>
+      The Registry MUST reject the request with <tt>invalid_request</tt> unless
+      all of the following conditions hold:
+    </t>
+    <ol>
+      <li>The percent-decoded path <tt>{aid}</tt> equals
+      <tt>identity.aid</tt>.</li>
+      <li>The submitted <tt>identity.version</tt> equals the currently stored
+      identity version plus exactly 1.</li>
+      <li>The submitted <tt>identity.public_key</tt> is an Ed25519 JWK
+      conforming to the Agent Identity schema, and its <tt>kid</tt> equals
+      <tt>identity.aid + "#key-" + identity.version</tt>.</li>
+      <li>The submitted object changes only <tt>version</tt>,
+      <tt>public_key</tt>, and <tt>previous_key_signature</tt>; all other Agent
+      Identity fields MUST be byte-for-byte identical to the currently stored
+      Agent Identity Object.</li>
+      <li><tt>previous_key_signature</tt> is present, is a non-empty base64url
+      string, and verifies using the immediately previous stored public key over
+      the complete submitted Agent Identity Object serialized per Section 2.1
+      with <tt>previous_key_signature</tt> temporarily set to
+      <tt>""</tt>.</li>
+    </ol>
+    <t>
+      The version check and the identity update MUST be performed in one
+      atomic compare-and-commit operation against the currently stored identity
+      version. If another rotation commits first, or if the submitted
+      <tt>identity.version</tt> is not exactly the currently stored version
+      plus 1, the Registry MUST reject with
+      <tt>identity_version_conflict</tt> (HTTP 409). A Registry MUST NOT
+      accept a rotation that skips a version number or overwrites a newer
+      stored identity.
+    </t>
+    <t>
+      Exact retries are idempotent. If the submitted Agent Identity Object is
+      byte-for-byte identical to the current stored Agent Identity Object, the
+      Registry MUST return HTTP 200 with the current Agent Registration
+      Metadata and MUST NOT update timestamps, key states, or historical-key
+      records. For this exact-retry case, the DPoP proof MAY verify against
+      the current active key named by the submitted identity. A different
+      request body for the same version is not an idempotent retry and MUST be
+      rejected with <tt>identity_version_conflict</tt>.
+    </t>
+    <t>
+      On first successful commit, the Registry MUST atomically store the
+      submitted Agent Identity Object as the current identity, mark the
+      previous key as retired, retain the previous public verification key for
+      historical validation according to Section 19.7, and update the
+      registration metadata <tt>updated_at</tt> timestamp. The successful
+      response MUST be HTTP 200 with <tt>Content-Type: application/json</tt>
+      and a body equal to the Agent Registration Metadata representation that a
+      subsequent <tt>GET /v1/agents/{aid}</tt> would return. The Registry MUST
+      NOT process key rotation through <tt>POST /v1/agents</tt>.
+    </t>
+  </section>
+
+  <section anchor="agent-public-key-registry" numbered="true">
+    <name>Agent Public-Key Endpoints</name>
+    <t>
+      A conformant AIP Registry MUST implement
+      <tt>GET /v1/agents/{aid}/public-key</tt> and
+      <tt>GET /v1/agents/{aid}/public-key/{key-id}</tt>. These endpoints
+      provide the key material and validity interval required by Section 9
+      Step 3 and Section 9 Step 8d-2.
+    </t>
+    <t>
+      A successful response MUST use HTTP 200 with
+      <tt>Content-Type: application/json</tt> and a body conforming to
+      <tt>public-key-response.schema.json</tt>. The response MUST include
+      <tt>aid</tt>, <tt>key_id</tt>, <tt>kid</tt>, <tt>jwk</tt>,
+      <tt>valid_from</tt>, <tt>valid_until</tt>, and <tt>status</tt>.
+      The <tt>kid</tt> value MUST equal
+      <tt>{aid} + "#" + key_id</tt>, and <tt>jwk.kid</tt> MUST equal
+      <tt>kid</tt>. The <tt>jwk</tt> member MUST contain Ed25519 public
+      verification material.
+    </t>
+    <t>
+      <tt>GET /v1/agents/{aid}/public-key</tt> returns the current active
+      verification key for <tt>{aid}</tt>. For the active key,
+      <tt>status</tt> MUST be <tt>"active"</tt>. The
+      <tt>valid_until</tt> member MAY be <tt>null</tt> to indicate that the
+      key has not yet been retired.
+    </t>
+    <t>
+      <tt>GET /v1/agents/{aid}/public-key/{key-id}</tt> returns the retained
+      key version identified by <tt>{key-id}</tt>, where <tt>{key-id}</tt>
+      is the JOSE <tt>kid</tt> fragment without the leading <tt>#</tt>.
+      Historical responses MUST set <tt>status</tt> to <tt>"retired"</tt>
+      when a later key version is active. The Registry MUST retain historical
+      keys according to Section 19.4.2.
+    </t>
+    <t>
+      If <tt>{aid}</tt> is not registered, <tt>{key-id}</tt> is malformed,
+      the requested key version is not found, or the requested key version is
+      older than the Registry's conformant retention window, the Registry
+      MUST reject with <tt>unknown_aid</tt> (HTTP 404). Revocation,
+      suspension, or deactivation of an AID MUST NOT suppress public-key
+      lookup for retained keys; Relying Parties need those keys to verify
+      signatures before applying revocation and lifecycle checks.
+    </t>
+  </section>
+
+  <section anchor="agent-capabilities-registry" numbered="true">
+    <name>Agent Capability Manifest Endpoint</name>
+    <t>
+      A conformant AIP Registry MUST implement
+      <tt>GET /v1/agents/{aid}/capabilities</tt>. A successful response MUST
+      use HTTP 200 with <tt>Content-Type: application/json</tt> and a body
+      conforming to <tt>capability-manifest.schema.json</tt>. The returned
+      manifest MUST be the current Registry-stored Capability Manifest for
+      <tt>{aid}</tt>, and <tt>manifest.aid</tt> MUST equal the
+      percent-decoded path <tt>{aid}</tt>.
+    </t>
+    <t>
+      If <tt>{aid}</tt> is not registered, the Registry MUST reject with
+      <tt>unknown_aid</tt> (HTTP 404). If the Registry cannot return a
+      stored manifest for a registered AID, or if the stored manifest is
+      malformed, has an invalid signature, fails catalog constraint
+      validation, or is not bound to <tt>{aid}</tt>, the Registry MUST reject
+      with <tt>manifest_invalid</tt>. The Registry MUST return the current
+      manifest even if <tt>expires_at</tt> has passed; Relying Parties then
+      reject with <tt>manifest_expired</tt> under Section 9 Step 9.
+    </t>
+    <t>
+      A conformant AIP Registry MUST also implement
+      <tt>PUT /v1/agents/{aid}/capabilities</tt> to replace the current
+      Capability Manifest. The request body MUST conform to
+      <tt>capability-manifest.schema.json</tt>, MUST have <tt>aid</tt> equal
+      to the percent-decoded path <tt>{aid}</tt>, MUST use a <tt>version</tt>
+      value exactly one greater than the Registry's current stored manifest
+      version for that AID, and MUST have a valid signature from
+      <tt>granted_by</tt>. On success, the Registry MUST store the submitted
+      manifest as the new current manifest and return HTTP 200 with the stored
+      manifest body. Unknown AIDs return <tt>unknown_aid</tt>; malformed
+      manifests, invalid signatures, version conflicts, catalog constraint
+      failures, and AID mismatches return <tt>manifest_invalid</tt>; submitted
+      manifests whose <tt>expires_at</tt> has already passed return
+      <tt>manifest_expired</tt>.
+    </t>
+  </section>
+
+  <section anchor="agent-revocation-status-registry" numbered="true">
+    <name>Agent Revocation Status Endpoint</name>
+    <t>
+      A conformant AIP Registry MUST implement
+      <tt>GET /v1/agents/{aid}/revocation</tt>. This endpoint returns the
+      authoritative live revocation status used by Section 9 Step 7 for Tier
+      2 validation.
+    </t>
+    <t>
+      If the path <tt>{aid}</tt> does not identify a registered AID in the
+      authoritative Registry, the Registry MUST reject with
+      <tt>unknown_aid</tt> (HTTP 404). If the AID is registered, the Registry
+      MUST return HTTP 200 with a JSON body conforming to
+      <tt>revocation-status.schema.json</tt>, including when the AID has no
+      active revocations.
+    </t>
+    <t>
+      The response fields are:
+    </t>
+    <dl newline="false">
+      <dt><tt>aid</tt></dt>
+      <dd>The registered AID being checked. This value MUST equal the
+      percent-decoded path <tt>{aid}</tt>.</dd>
+
+      <dt><tt>checked_at</tt></dt>
+      <dd>ISO 8601 UTC timestamp at which the authoritative Registry evaluated
+      the revocation state.</dd>
+
+      <dt><tt>status</tt></dt>
+      <dd><tt>"active"</tt> when no active revocation applies,
+      <tt>"restricted"</tt> when only <tt>scope_revoke</tt> or
+      <tt>delegation_revoke</tt> applies, and <tt>"revoked"</tt> when
+      <tt>full_revoke</tt> applies to the AID, when <tt>principal_revoke</tt>
+      targets the AID, or when <tt>principal_revoke</tt> targets the root
+      Principal DID associated with the AID's current registration
+      authority.</dd>
+
+      <dt><tt>revoked</tt></dt>
+      <dd>Boolean. MUST be <tt>true</tt> when <tt>full_revoke</tt> or
+      <tt>principal_revoke</tt> applies directly to the AID or through the
+      AID's root Principal DID. Relying Parties MUST reject Credential Tokens
+      for the AID when this value is <tt>true</tt>.</dd>
+
+      <dt><tt>delegation_revoked</tt></dt>
+      <dd>Boolean. MUST be <tt>true</tt> when an active
+      <tt>delegation_revoke</tt> applies. Relying Parties MUST reject
+      delegation-chain use rooted at this AID when this value is
+      <tt>true</tt>.</dd>
+
+      <dt><tt>scopes_revoked</tt></dt>
+      <dd>Array containing the union of active <tt>scope_revoke</tt> scopes
+      for the AID. The array is empty when no active scope revocation
+      applies.</dd>
+
+      <dt><tt>active_revocations</tt></dt>
+      <dd>Array of the signed Revocation Objects that currently affect this
+      AID. The array is empty when <tt>status</tt> is
+      <tt>"active"</tt>. When a principal-wide <tt>principal_revoke</tt>
+      affects the AID, this array MUST include the signed
+      <tt>principal_revoke</tt> object whose <tt>target_id</tt> is the
+      Principal DID.</dd>
+    </dl>
+    <t>
+      A registered, non-revoked AID therefore returns HTTP 200 with
+      <tt>status: "active"</tt>, <tt>revoked: false</tt>,
+      <tt>delegation_revoked: false</tt>, an empty
+      <tt>scopes_revoked</tt> array, and an empty
+      <tt>active_revocations</tt> array.
+    </t>
+  </section>
+
+  <section anchor="revocation-submission-registry" numbered="true">
+    <name>Revocation Submission Endpoint</name>
+    <t>
+      A conformant AIP Registry MUST implement
+      <tt>POST /v1/revocations</tt>. The request body MUST be a Revocation
+      Object conforming to <tt>revocation-object.schema.json</tt>. Request
+      validation, issuer authorization, idempotency, response behavior, CRL
+      update effects, and child-propagation processing are defined by
+      <xref target="revocation-submission-validation"/>.
+    </t>
+  </section>
+
+  <section anchor="crl-response-registry" numbered="true">
+    <name>CRL Response</name>
+    <t>
+      A conformant AIP Registry MUST implement <tt>GET /v1/crl</tt> as the
+      canonical origin endpoint for the AIP Certificate Revocation List. The
+      endpoint returns the signed CRL document defined in <xref target="crl"/> and
+      conforming to <tt>crl.schema.json</tt>. Registries MAY publish an
+      absolute CDN or distributed-object URI in the signed Registry Trust
+      Record's <tt>signed.endpoints.crl</tt>; the origin endpoint and any
+      published distribution URI MUST return the same current CRL payload or a
+      byte-for-byte older payload that remains valid before its
+      <tt>next_update</tt>.
+    </t>
+    <t>
+      The CRL endpoint is not a generic paginated collection endpoint. Cursor
+      pagination MUST NOT be applied to the <tt>revocations</tt> array of a
+      signed CRL document because doing so would change the object covered by
+      the CRL signature and could cause clients to validate against an
+      incomplete revocation set.
+    </t>
+    <t>
+      A Registry whose active CRL is too large to publish as a single
+      efficient document MAY publish a segmented CRL. In that mode,
+      <tt>GET /v1/crl</tt> returns a signed CRL index document whose
+      <tt>signed.publication_mode</tt> is <tt>"index"</tt>, whose
+      <tt>signed.revocations</tt> array is empty, and whose
+      <tt>signed.segments</tt> array lists signed CRL segment documents. Each
+      segment URI, including <tt>/v1/crl/segments/{segment_id}</tt> when used
+      by the origin Registry, MUST return
+      <tt>Content-Type: application/aip-crl+json</tt> and a signed CRL document whose
+      <tt>signed.publication_mode</tt> is <tt>"segment"</tt>.
+    </t>
+    <t>
+      The signed CRL index MUST identify the partitioning scheme with
+      <tt>partition_key_alg: "sha-256-target-id-hex"</tt>. Segment ranges are
+      inclusive ranges over the lowercase hexadecimal SHA-256 digest of the
+      Revocation Object <tt>target_id</tt> string. Segment ranges in one CRL
+      index MUST be non-overlapping and together cover every active
+      Revocation Object in the indexed CRL. A Relying Party using a segmented
+      CRL for bounded-staleness validation MUST retrieve and verify every
+      segment whose range contains the partition key for any target identifier
+      it must check, including the token's root Principal DID and every AID in
+      the validated <tt>aip_chain</tt>.
+    </t>
+    <t>
+      For each referenced segment, the Relying Party MUST verify the segment
+      CRL signature against the Registry Trust Record identified by the
+      segment's <tt>signed.trust_record_version</tt>, verify that the
+      segment's <tt>registry_id</tt>, <tt>crl_id</tt>, <tt>sequence</tt>,
+      <tt>issued_at</tt>, and <tt>next_update</tt> match the signed index,
+      and verify that the JCS canonicalized segment document hashes to the
+      segment reference's <tt>sha256</tt> value. If any required segment is
+      unavailable or fails verification, bounded-staleness validation MUST
+      fail with <tt>registry_unavailable</tt>.
+    </t>
+  </section>
+
+  <section anchor="agent-heartbeat-registry" numbered="true">
+    <name>Agent Heartbeat Endpoint</name>
+    <t>
+      A conformant AIP Registry MUST implement
+      <tt>POST /v1/agents/{aid}/heartbeat</tt>. This endpoint records
+      liveness for the AID identified by the path parameter and is the
+      submission mechanism used by the optional Dead Man's Switch in
+      Section 21.8.
+    </t>
+    <t>
+      The request MUST include <tt>Authorization: DPoP &lt;token&gt;</tt>,
+      where <tt>&lt;token&gt;</tt> is a Credential Token issued by the same
+      AID as the path parameter. The Registry MUST validate the Credential
+      Token using the Section 9 validation algorithm with the Registry as
+      the Relying Party. The token <tt>aud</tt> claim MUST identify either
+      the Registry's <tt>registry_id</tt> or the heartbeat endpoint URI.
+      The token <tt>aip_scope</tt> MUST include <tt>registry.heartbeat</tt>.
+    </t>
+    <t>
+      The request MUST include a DPoP proof bound to the HTTP method and
+      heartbeat URI. If the DPoP proof is absent, reject with
+      <tt>dpop_proof_required</tt>. If the proof is malformed or invalid,
+      reject with <tt>invalid_token</tt>.
+    </t>
+    <t>
+      After Credential Token validation, the Registry MUST verify that the
+      path <tt>{aid}</tt> equals both the Credential Token issuer
+      (<tt>iss</tt>) and the leaf Principal Token subject
+      (<tt>aip_chain[n-1].sub</tt>). If either value differs from the path
+      AID, reject with <tt>invalid_token</tt>. If the token does not contain
+      <tt>registry.heartbeat</tt>, or if the current Capability Manifest does
+      not grant <tt>registry.heartbeat</tt>, reject with
+      <tt>insufficient_scope</tt>.
+    </t>
+    <t>
+      On success, the Registry MUST record <tt>last_heartbeat_at</tt> using
+      the Registry's receipt time. Client-supplied body timestamps, if any,
+      MUST NOT be used to advance liveness. A successful heartbeat MAY also
+      update the agent's <tt>last_active</tt> reputation metadata.
+    </t>
   </section>
 
   <section anchor="approval-endpoints-registry" numbered="true">
@@ -75,7 +541,7 @@ did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3
       <tbody>
         <tr><td>POST</td><td>/v1/approvals</td><td>Submit Approval Envelope for approval</td></tr>
         <tr><td>GET</td><td>/v1/approvals/{id}</td><td>Retrieve Approval Envelope with step statuses</td></tr>
-        <tr><td>POST</td><td>/v1/approvals/{id}/approve</td><td>Principal approves (wallet call; sets `principal_signature`)</td></tr>
+        <tr><td>POST</td><td>/v1/approvals/{id}/approve</td><td>Principal approves (Principal Wallet call; sets <tt>principal_signature</tt>)</td></tr>
         <tr><td>POST</td><td>/v1/approvals/{id}/reject</td><td>Principal rejects</td></tr>
         <tr><td>POST</td><td>/v1/approvals/{id}/steps/{n}/claim</td><td>Claim step for execution; returns Step Execution Token</td></tr>
         <tr><td>POST</td><td>/v1/approvals/{id}/steps/{n}/complete</td><td>Mark step completed</td></tr>
@@ -84,75 +550,505 @@ did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3
         <tr><td>POST</td><td>/v1/approvals/{id}/compensation-steps/{n}/claim</td><td>Claim compensation step</td></tr>
         <tr><td>POST</td><td>/v1/approvals/{id}/compensation-steps/{n}/complete</td><td>Mark compensation step completed</td></tr>
         <tr><td>POST</td><td>/v1/approvals/{id}/compensation-steps/{n}/fail</td><td>Mark compensation step failed</td></tr>
+        <tr><td>GET</td><td>/v1/approvals/{id}/compensation-steps/{n}</td><td>Get compensation step status (used by Relying Parties for Step Execution Token verification)</td></tr>
       </tbody>
     </table>
 
-    <t>**`POST /v1/approvals` validation:** The Registry MUST perform all checks defined in Section 13.10 before accepting an Approval Envelope. The Registry MUST return HTTP 201 with the stored envelope (including the Registry-assigned `status: "pending_approval"`) on success.</t>
-    <t>**`POST /v1/approvals/{id}/approve` flow:** This endpoint is called by the Principal Wallet after the principal completes the signing ceremony. The request body MUST contain the `principal_signature` field: a base64url EdDSA signature computed by the principal's wallet over the JCS-canonical serialisation of the full Approval Envelope with `principal_signature` set to the empty string `""` before serialisation — identical to the pattern used for `creator_signature`. The signing key MUST be the private key of `principal_id`. The Registry MUST verify this signature against the `principal_id`'s resolved public key before transitioning the envelope to `approved`.</t>
-    <t>**Atomicity requirement for step claim:** The Registry MUST implement step-claim operations atomically (e.g., using optimistic locking or a distributed lock) to prevent two actors from claiming the same step simultaneously. Only one claim MUST succeed; the other MUST receive `approval_step_already_claimed`.</t>
-    <t>**Step Execution Token format:** The Step Execution Token returned by `POST .../steps/{n}/claim` is a JWT signed by a key referenced in `active_verification_keys.step_execution` of the Registry Trust Record version current at issuance time, with the claims described in Section 13.8. Its TTL MUST comply with normal TTL rules for the scopes involved.</t>
+    <t><strong><tt>POST /v1/approvals</tt> validation:</strong> The Registry
+    MUST validate the request body as an
+    <tt>ApprovalEnvelopeSubmission</tt>, reject any read-only stored-resource
+    fields in that body, and perform all checks defined in Section 13.10
+    before accepting an Approval Envelope. The Registry MUST return HTTP 201
+    with the <tt>StoredApprovalEnvelope</tt>, including the Registry-assigned
+    <tt>status: "pending_approval"</tt> and initial step statuses, on
+    success.</t>
+    <t><strong><tt>POST /v1/approvals/{id}/approve</tt> flow:</strong> This
+    endpoint is called by the Principal Wallet after the principal completes
+    the signing ceremony. The request body MUST contain the
+    <tt>principal_signature</tt> field: a base64url EdDSA signature computed
+    by the principal's Principal Wallet over the immutable approval signing input
+    defined in Section 13.3. That signing input is the accepted
+    <tt>ApprovalEnvelopeSubmission</tt> content plus
+    <tt>creator_signature</tt> and <tt>principal_signature: ""</tt>; it
+    excludes Registry-managed <tt>status</tt>, <tt>approved_at</tt>, and step
+    status/timestamp fields. The signing key MUST be a verification method
+    controlled by <tt>principal_id</tt>. The Registry MUST verify this
+    signature against the resolved <tt>principal_id</tt> DID Document before
+    transitioning the envelope to <tt>approved</tt>.</t>
+    <t><strong>Atomicity requirement for approval:</strong> The Registry MUST
+    implement <tt>POST /v1/approvals/{id}/approve</tt> and
+    <tt>POST /v1/approvals/{id}/reject</tt> as atomic lifecycle transitions.
+    Approval MUST be a conditional update from <tt>pending_approval</tt> to
+    <tt>approved</tt> and MUST succeed only when the request is committed
+    before <tt>approval_window_expires_at</tt>. Rejection MUST be a
+    conditional update from <tt>pending_approval</tt> to <tt>rejected</tt>.
+    Only one concurrent approval or rejection request for the same Approval
+    Envelope can succeed. If another Principal Wallet, expiry job, cancellation cascade,
+    approval, or rejection has already changed the envelope state, the Registry
+    MUST reject the losing request with <tt>approval_state_conflict</tt> and
+    MUST NOT overwrite the stored <tt>principal_signature</tt>,
+    <tt>approved_at</tt>, or terminal state. If the envelope is still in
+    <tt>pending_approval</tt> and <tt>approval_window_expires_at</tt> has
+    passed, the Registry MUST reject an approval request with
+    <tt>approval_envelope_expired</tt> and transition or leave the envelope in
+    <tt>expired</tt>. A byte-for-byte retry of the winning approval request MAY
+    return the stored approved envelope as an idempotent success.</t>
+    <t><strong>Atomicity requirement for step claim:</strong> The Registry MUST
+    implement step-claim operations atomically, for example using optimistic
+    locking or a distributed lock, to prevent two actors from claiming the same
+    step simultaneously. Only one claim MUST succeed; the other MUST receive
+    <tt>approval_step_already_claimed</tt>.</t>
+    <t><strong>Step endpoint request and response bodies:</strong> Forward-step
+    and compensation-step <tt>claim</tt>, <tt>complete</tt>, and
+    <tt>fail</tt> request and response bodies MUST conform to the profiles in
+    <tt>approval-step-endpoints.schema.json</tt>. Complete and fail requests
+    MUST present the compact Step Execution Token issued for the active claim.
+    The Registry MUST validate the SET, match it to the request path and
+    stored claim <tt>jti</tt>, enforce the claim deadline, and process exact
+    idempotent retries as defined in Section 13.8.</t>
+    <t><strong>Step Execution Token format:</strong> The Step Execution Token returned by
+    <tt>POST /v1/approvals/{approval_id}/steps/{step_id}/claim</tt> or
+    <tt>POST /v1/approvals/{approval_id}/compensation/{compensation_step_id}/claim</tt>
+    is a Registry-issued JWT with JOSE
+    <tt>typ: "AIP-SET+JWT"</tt>, <tt>alg: "EdDSA"</tt>, and a
+    <tt>kid</tt> matching a JWK in
+    <tt>active_verification_keys.step_execution</tt> of the Registry Trust
+    Record version current at issuance time. The protected JOSE header MUST
+    also include <tt>aip_trv</tt> equal to that Registry Trust
+    Record version. Its payload claims are described in Section 13.8. Its TTL
+    MUST comply with the Step Execution Token TTL derivation rule in
+    <xref target="step-execution-token"/>.</t>
+  </section>
+
+  <section anchor="resource-registration-registry" numbered="true">
+    <name>Resource Registration</name>
+    <t>
+      AIP Registries that support token exchange
+      (<xref target="token-exchange-mcp"/>) MUST maintain a resource registry
+      mapping target resource URIs to their authorization configuration. Each
+      Registered Resource Record MUST conform to
+      <tt>resource-record.schema.json</tt> and MUST include:
+    </t>
+    <dl newline="false">
+      <dt><tt>resource_uri</tt></dt>
+      <dd>string, REQUIRED. The RFC 9728 resource identifier.</dd>
+
+      <dt><tt>authorization_server</tt></dt>
+      <dd>string, REQUIRED. The URI of the authorization server for this
+      resource, either the AIP Registry itself or an external authorization
+      server.</dd>
+
+      <dt><tt>enterprise_idp_required</tt></dt>
+      <dd>boolean, OPTIONAL. When true, token exchange requests targeting this
+      resource MUST use the Enterprise IdP Federation Profile
+      (<xref target="enterprise-idp-federation-profile"/>). Default:
+      <tt>false</tt>.</dd>
+
+      <dt><tt>enterprise_idp_token_endpoint</tt></dt>
+      <dd>string, CONDITIONAL. REQUIRED when
+      <tt>enterprise_idp_required</tt> is <tt>true</tt>. The Enterprise IdP's
+      token endpoint URI.</dd>
+
+      <dt><tt>enterprise_idp_client_id</tt></dt>
+      <dd>string, CONDITIONAL. REQUIRED when
+      <tt>enterprise_idp_required</tt> is <tt>true</tt>. The Registry's
+      registered <tt>client_id</tt> with the Enterprise IdP.</dd>
+    </dl>
+    <t>
+      Resource records are addressed by <tt>resource_id</tt>, the lowercase
+      hexadecimal SHA-256 digest of the UTF-8 <tt>resource_uri</tt> value. The
+      Registry MUST reject a create request whose path-derived or
+      body-supplied <tt>resource_id</tt> does not equal that digest with
+      <tt>registration_invalid</tt>. The Registry MUST reject duplicate
+      <tt>resource_uri</tt> create requests with HTTP 409 unless the submitted
+      record is byte-for-byte identical to the stored record, in which case it
+      MAY return the existing record.
+    </t>
+    <t>
+      A Registry MUST NOT accept unauthenticated public writes to the resource
+      registry. The registering caller MUST be authenticated as a Registry
+      operator, the resource owner, or another party authorized by local
+      Registry policy. The Registry MUST validate that
+      <tt>resource_uri</tt>, <tt>authorization_server</tt>, and any
+      <tt>enterprise_idp_token_endpoint</tt> are absolute HTTPS URIs unless a
+      local non-production policy explicitly allows another URI scheme.
+    </t>
+    <t>
+      When <tt>enterprise_idp_required</tt> is <tt>true</tt>, the Registry
+      MUST reject the record unless
+      <tt>enterprise_idp_federation_supported</tt> is true in Registry
+      discovery metadata and both <tt>enterprise_idp_token_endpoint</tt> and
+      <tt>enterprise_idp_client_id</tt> are present. Token exchange requests
+      whose <tt>resource</tt> parameter resolves to such a record MUST follow
+      the Enterprise IdP Federation Profile in
+      <xref target="enterprise-idp-federation-profile"/>. Token exchange
+      requests for an unknown <tt>resource</tt> value MUST be rejected with
+      <tt>invalid_target</tt>.
+    </t>
+    <t>
+      The resource registration endpoints have the following semantics:
+      <tt>POST /v1/resources</tt> creates a Registered Resource Record,
+      <tt>GET /v1/resources/{resource_id}</tt> retrieves one record,
+      <tt>PUT /v1/resources/{resource_id}</tt> replaces one record atomically,
+      and <tt>DELETE /v1/resources/{resource_id}</tt> removes the record from
+      future token-exchange matching. Delete does not revoke already issued
+      enterprise IdP access tokens; those tokens remain governed by the
+      enterprise IdP's own lifetime and revocation mechanisms.
+    </t>
   </section>
 
   <section anchor="oauth-registry" numbered="true">
     <name>OAuth 2.1 Authorization Server</name>
-    <t>A conformant AIP Registry supporting G3 grants MUST implement an OAuth 2.1 Authorization Server <xref target="RFC6749"/> with the following requirements:</t>
+    <t>A conformant AIP Registry supporting G3 grants MUST implement an OAuth 2.1 Authorization Server <xref target="I-D.ietf-oauth-v2-1"/> with the following requirements:</t>
     <ol>
-      <li>The authorization endpoint MUST be published in the Registry's well-known configuration at `/.well-known/oauth-authorization-server` per <xref target="RFC8414"/>.</li>
-      <li>PKCE <xref target="RFC7636"/> with `code_challenge_method: "S256"` is REQUIRED for all authorization requests.</li>
-      <li>The `scope` parameter MUST use AIP scope URIs from the `urn:aip:scope:` namespace.</li>
-      <li>The token endpoint MUST return a signed Principal Token (not a standard OAuth access token) as the `access_token` value, with `token_type: "AIP+JWT"`.</li>
-      <li>The token response MUST include `acr` and `amr` claims reflecting the authentication performed.</li>
-      <li>The authorization server MUST support the `acr_values` parameter to declare minimum identity-proofing requirements.</li>
+      <li>The authorization endpoint MUST be published in the Registry's well-known configuration at <tt>/.well-known/oauth-authorization-server</tt> per <xref target="RFC8414"/>.</li>
+      <li>PKCE <xref target="RFC7636"/> with <tt>code_challenge_method: "S256"</tt> is REQUIRED for all authorization requests.</li>
+      <li>For G3 grant ceremonies, the authorization request MUST include <tt>aip_grant_request</tt> containing the compact-JWS-signed GrantRequest defined in Section 12.2, and the Authorization Server MUST enforce the G3 binding checks in Section 12.10 before issuing an authorization code.</li>
+      <li>The <tt>scope</tt> parameter MUST use AIP scope strings from the synced AIP Scope Catalog or accepted local extension policy.</li>
+      <li>The token endpoint MUST redeem an authorization code only against the immutable GrantRequest binding stored during authorization. It MUST reject unbound, expired, replayed, or binding-mismatched authorization codes with <tt>grant_request_invalid</tt>.</li>
+      <li>For G3 grant ceremonies, the token endpoint response MUST follow the
+      G3 token endpoint response mapping in Section 12.10. The
+      <tt>access_token</tt> value is a transport alias for the compact
+      Principal Token and MUST be byte-for-byte identical to
+      <tt>grant_response.principal_token</tt>.</li>
+      <li>The Principal Token payload returned by the token endpoint MUST
+      include <tt>acr</tt> and <tt>amr</tt> claims reflecting the authentication
+      performed.</li>
+      <li>The authorization server MUST support the <tt>acr_values</tt> parameter to declare minimum identity-proofing requirements.</li>
       <li>DPoP [RFC9449] MUST be supported on the token endpoint.</li>
     </ol>
+
+    <t>
+      If an authorization request is missing <tt>code_challenge</tt>, is
+      missing <tt>code_challenge_method</tt>, or has a
+      <tt>code_challenge_method</tt> value other than <tt>S256</tt>, the
+      Authorization Server MUST reject the request with
+      <tt>pkce_required</tt>.
+    </t>
 
     <t>The token endpoint also serves RFC 8693 <xref target="RFC8693"/> token exchange.</t>
 
     <section anchor="well-known-metadata-registry" numbered="true">
-      <name>Well-Known Metadata Additions</name>
-      <t>The `/.well-known/aip-registry` response MUST also include:</t>
-      <table>
-        <thead>
-          <tr><th>Field</th><th>Type</th><th>Description</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>`registry_trust_uri`</td><td>string</td><td>URI of the current Registry Trust Record</td></tr>
-          <tr><td>`grant_tiers_supported`</td><td>array</td><td>Supported grant tiers: `["G1", "G2", "G3"]`</td></tr>
-          <tr><td>`acr_values_supported`</td><td>array</td><td>Supported `acr` values</td></tr>
-          <tr><td>`amr_values_supported`</td><td>array</td><td>Supported `amr` values</td></tr>
-          <tr><td>`oauth_authorization_server`</td><td>string</td><td>URI of the OAuth AS metadata document (present only if G3 supported)</td></tr>
-          <tr><td>`identity_proofing_required_for_tier2`</td><td>boolean</td><td>Whether this Registry requires G3 for Tier 2 operations</td></tr>
-        </tbody>
-      </table>
+      <name>Registry Metadata Additions</name>
+      <t>The <tt>/v1/registry-metadata</tt> response MUST also include:</t>
+      <dl newline="true" spacing="normal">
+        <dt><tt>registry_trust_uri</tt> (string)</dt>
+        <dd>URI of the current Registry Trust Record.</dd>
+        <dt><tt>grant_tiers_supported</tt> (array)</dt>
+        <dd>Supported grant tiers: <tt>["G1", "G2", "G3"]</tt>.</dd>
+        <dt><tt>acr_values_supported</tt> (array)</dt>
+        <dd>Supported <tt>acr</tt> values.</dd>
+        <dt><tt>acr_equivalence_map</tt> (object)</dt>
+        <dd>Optional JSON object whose keys are ACR value strings received in <tt>aip_chain[0]</tt> and whose values are arrays of ACR value strings that the key maps to. A key ACR value satisfies a requirement for any ACR value in its array. Registries MUST only declare downward equivalences, where received assurance is equal to or higher than required assurance under a documented ACR equivalence policy. If absent, exact ACR matching is required with no exceptions.</dd>
+        <dt><tt>amr_values_supported</tt> (array)</dt>
+        <dd>Supported <tt>amr</tt> values.</dd>
+        <dt><tt>oauth_authorization_server</tt> (string)</dt>
+        <dd>URI of the OAuth AS metadata document; present only if G3 is supported.</dd>
+        <dt><tt>endpoints.resources</tt> (string)</dt>
+        <dd>Resource registration collection endpoint. REQUIRED when token
+        exchange is supported.</dd>
+        <dt><tt>identity_proofing_required_for_tier2</tt> (boolean)</dt>
+        <dd>Whether this Registry requires G3 for Tier 2 operations. When true, enforced during Registration Check 14c, Validation Step 8 Post-Check C, and Validation Step 9d.</dd>
+        <dt><tt>mtls_client_certificate_profile</tt> (string)</dt>
+        <dd>Client-certificate binding profile for Tier 3 operations. When Tier 3 is accepted, this value MUST be <tt>"aip-san-uri-v1"</tt>.</dd>
+        <dt><tt>mtls_trust_anchors_uri</tt> (string)</dt>
+        <dd>HTTPS URI documenting the Tier 3 client-certificate trust anchor set and revocation-checking mechanism. REQUIRED when Tier 3 is accepted.</dd>
+        <dt><tt>enterprise_idp_federation_supported</tt> (boolean)</dt>
+        <dd>Whether the Registry supports the Enterprise IdP Federation Profile in <xref target="enterprise-idp-federation-profile"/>. SHOULD be present in all Registry Metadata documents. Absence is treated as equivalent to false. Gateways that surface this capability through <tt>/.well-known/oauth-protected-resource</tt> SHOULD ensure the value is consistent with the Registry's declared support in this document. A mismatch between the two documents MUST be treated as a Registry configuration error.</dd>
+        <dt><tt>enterprise_idp_token_exchange_grant_types_supported</tt> (array)</dt>
+        <dd>Enterprise IdP grant types the Registry can use for secondary exchange. Values SHOULD include RFC 7523 JWT bearer and/or RFC 8693 token exchange when federation is supported.</dd>
+        <dt><tt>enterprise_idp_issuers_supported</tt> (array)</dt>
+        <dd>OIDC issuer identifiers or issuer patterns accepted for enterprise principal assertions and secondary token exchange, subject to local trust policy.</dd>
+        <dt><tt>aip_catalog_uri</tt> (string)</dt>
+        <dd>URI of the synced AIP Catalog bundle or mirror.</dd>
+        <dt><tt>aip_catalog_version</tt> (string)</dt>
+        <dd>Draft-aligned catalog version, e.g. <tt>draft-02</tt>.</dd>
+        <dt><tt>aip_catalog_snapshot_id</tt> (string)</dt>
+        <dd>Immutable Catalog Snapshot identifier.</dd>
+        <dt><tt>aip_catalog_sha256</tt> (string)</dt>
+        <dd>Lowercase SHA-256 digest of the exact catalog bundle bytes, formatted as <tt>sha256:&lt;64hex&gt;</tt>.</dd>
+        <dt><tt>step_claim_timeout_seconds</tt> (integer)</dt>
+        <dd>Registry claim timeout for Approval Envelope steps. MUST be 1-600 seconds inclusive.</dd>
+      </dl>
     </section>
   </section>
 
   <section anchor="scope-map-registry" numbered="true">
-    <name>Scope Map</name>
-    <t>All AIP capability scopes MUST be representable as URIs in the
-      `urn:aip:scope:` namespace:</t>
+    <name>AIP Catalog Sync, Scope Map, and Namespace Map</name>
+    <t>
+      Concrete AIP scope, scope-family, and namespace registrations are
+      defined by an immutable AIP Catalog Snapshot. This specification defines
+      the wire grammar, Registry sync requirements, integrity metadata,
+      validation semantics, and minimum Draft-02 catalog content. The catalog
+      defines the concrete entries and their metadata for each draft snapshot.
+    </t>
+    <t>
+      The canonical list of built-in AIP scopes, scope families, and
+      namespaces is the set of entries with <tt>class: "standard"</tt> in the
+      applicable Catalog Snapshot. Entries with <tt>class: "standard"</tt> in
+      that snapshot are the only built-in AIP registrations for that draft
+      line. A Registry, deployer, or Relying Party MUST NOT mint a new
+      standard AIP scope, scope family, or namespace by local policy alone;
+      interoperable standard entries MUST appear in an applicable AIP Catalog
+      Snapshot.
+    </t>
+    <t>
+      The Draft-02 Catalog Snapshot is identified by
+      <tt>catalog_version: "draft-02"</tt> and
+      <tt>catalog_snapshot_id: "https://provai.dev/aip/catalog/draft-02"</tt>. The
+      authoritative Draft-02 Catalog Snapshot is the deterministic
+      <tt>dist/catalog.json</tt> release artifact from the separate
+      <tt>provai-dev/aip-catalog</tt> repository for the immutable
+      Draft-02 release. A conformant Registry for this draft MUST publish, in
+      <tt>/v1/registry-metadata</tt>, an HTTPS
+      <tt>aip_catalog_uri</tt> from which the exact JSON Catalog Bundle can be
+      retrieved and an <tt>aip_catalog_sha256</tt> value containing the
+      lowercase SHA-256 digest of the exact UTF-8 bytes retrieved from that
+      URI. A mirror is conformant only when it serves bytes whose SHA-256
+      digest equals the published <tt>aip_catalog_sha256</tt> value and whose
+      JSON content carries <tt>catalog_version: "draft-02"</tt>,
+      <tt>aip_draft: "draft-02"</tt>, and
+      <tt>catalog_source_uri: "https://github.com/provai-dev/aip-catalog"</tt>.
+      The Registry metadata field <tt>aip_catalog_snapshot_id</tt> identifies
+      the pinned snapshot; it is not required to be duplicated inside the
+      catalog JSON bundle.
+    </t>
+    <t>
+      Draft-02 conformance MUST be based on the pinned Catalog Snapshot
+      identified above. A Registry MUST NOT use a <tt>latest</tt>,
+      <tt>latest-live</tt>, branch head, mutable tag, or other moving catalog
+      input to determine standard Draft-02 scope, scope-family, namespace, or
+      security metadata. Changes to any standard entry, including changes to
+      <tt>tier</tt>, <tt>destructive</tt>, <tt>requires_dpop</tt>,
+      <tt>ttl_max_seconds</tt>, <tt>grant_tier_min</tt>,
+      <tt>constraint_schema</tt>, <tt>status</tt>, or
+      <tt>class</tt>, require a new <tt>catalog_snapshot_id</tt>, a new
+      <tt>aip_catalog_sha256</tt>, and a corresponding AIP draft or protocol
+      version update before they affect Draft-02 conformance.
+    </t>
+    <t>
+      The Draft-02 JSON Catalog Bundle MUST be generated by the validation
+      and distribution tooling in the <tt>aip-catalog</tt> repository. The
+      bundle MUST contain top-level <tt>catalog_name</tt>,
+      <tt>catalog_version</tt>, <tt>aip_draft</tt>,
+      <tt>catalog_source_uri</tt>, <tt>scopes</tt>,
+      <tt>scope_families</tt>, and <tt>namespaces</tt> members. The
+      <tt>namespaces</tt> array MUST include standard entries for
+      <tt>personal</tt>, <tt>enterprise</tt>, <tt>service</tt>,
+      <tt>orchestrator</tt>, and <tt>ephemeral</tt>, and a reserved entry for
+      <tt>registry</tt>. The
+      <tt>scope_families</tt> array MUST include standard entries for
+      <tt>transactions.*</tt> and <tt>communicate.*</tt>. The
+      <tt>scopes</tt> array MUST include standard entries for
+      <tt>transactions</tt>, <tt>web.forms_submit</tt>,
+      <tt>email.send</tt>, <tt>web.download</tt>,
+      <tt>spawn_agents.create</tt>, <tt>spawn_agents.manage</tt>, and
+      <tt>approvals.create</tt>. A
+      missing required standard entry, missing required security or provenance
+      metadata field, stale generated bundle, or digest mismatch invalidates
+      the Registry's Draft-02 catalog conformance.
+    </t>
+    <t>
+      For standard AIP scope entries in the Draft-02 catalog, every active or
+      experimental scope with <tt>destructive: true</tt> MUST also have
+      <tt>requires_dpop: true</tt>. The Draft-02 catalog additionally marks
+      non-destructive but high-risk external-effect scopes
+      <tt>email.send</tt>, <tt>web.download</tt>, and
+      <tt>web.forms_submit</tt> with <tt>requires_dpop: true</tt>. A Registry
+      mirror MUST NOT weaken these <tt>requires_dpop</tt> values for
+      standard scopes. The <tt>requires_dpop</tt> flag is additive: Tier 2
+      and Tier 3 operations require DPoP under Section 9 Step 10 regardless
+      of this flag, while Tier 1 scopes and endpoints can use the flag or
+      endpoint policy to require DPoP.
+    </t>
+    <t>
+      Deployers and Registry operators MAY expose non-standard scopes only as
+      explicit extensions. Extension entries intended for cross-Registry
+      interoperability MUST be registered in the AIP Catalog. Until accepted
+      in an applicable catalog snapshot, such entries are local extensions.
+      A deployer MUST NOT create a valid scope merely by including an unknown
+      string in a Capability Manifest; the Registry MUST first accept and
+      publish the extension entry in its Scope Map.
+      Local or community extension scope identifiers MUST use the
+      <tt>x.</tt> prefix followed by a namespace label controlled by the
+      Registry or deployer, for example <tt>x.example.payments.release</tt>.
+      The namespace label MUST either be an active namespace entry in the
+      Registry's Namespace Map or a local label documented by the Registry's
+      extension policy, and that policy MUST state how control of the label is
+      established. The namespace label and all following segments MUST satisfy
+      the scope string grammar below. Local extensions MUST NOT shadow,
+      override, or weaken any standard catalog scope, scope family, namespace,
+      or reserved prefix.
+    </t>
+    <t>
+      Extension scopes are not Tier 1 by default. Every exposed scope entry,
+      including local and community extensions, MUST carry explicit values for
+      <tt>tier</tt>, <tt>destructive</tt>, <tt>requires_dpop</tt>,
+      <tt>ttl_max_seconds</tt>, <tt>grant_tier_min</tt>,
+      <tt>constraint_schema</tt>, <tt>status</tt>, <tt>class</tt>,
+      <tt>owner</tt>, <tt>source</tt>, and <tt>change_type</tt>. If a
+      Registry cannot determine any required security or provenance metadata
+      for an extension scope, it MUST NOT
+      expose that scope as valid. Registration, grant, or validation attempts
+      that depend on such an incomplete scope MUST be rejected with
+      <tt>registration_invalid</tt> at registration time,
+      <tt>grant_request_invalid</tt> during grant consent, or
+      <tt>invalid_scope</tt> at token validation time.
+    </t>
+    <t>
+      The standard <tt>web.forms_submit</tt> scope is classified as Tier 2 in
+      the Draft-02 catalog, with <tt>grant_tier_min: "G2"</tt> and
+      <tt>ttl_max_seconds: 300</tt>. It does not inherit the generic
+      <tt>web.*</tt> Tier 1 default because form submission can create
+      external side effects including account changes, data submissions, and
+      financial form submissions.
+    </t>
+    <t>
+      AIP does not define a URN namespace for scope identifiers. The canonical
+      on-wire AIP scope value is the dot-notation scope string:
+    </t>
     <artwork><![CDATA[
-  scope_string → urn:aip:scope:<scope_string>
+  scope_string = dot-separated-scope-name
     ]]></artwork>
-    <t>Examples: `email.read` → `urn:aip:scope:email.read`,
-`spawn_agents.create` → `urn:aip:scope:spawn_agents.create`.</t>
-    <t>When used in OAuth `scope` parameters, the URI form MUST be used.
-Within AIP Credential Tokens (`aip_scope` array), the short string
-form remains canonical.</t>
-    <t>A conformant AIP Registry MUST implement `GET /v1/scopes` returning
-a JSON object mapping scope strings to metadata:</t>
-    <table>
-      <thead>
-        <tr><th>Field</th><th>Type</th><th>Description</th></tr>
-      </thead>
-      <tbody>
-        <tr><td>`uri`</td><td>string</td><td>Full `urn:aip:scope:` URI</td></tr>
-        <tr><td>`description`</td><td>string</td><td>Human-readable description</td></tr>
-        <tr><td>`tier`</td><td>integer</td><td>Tier classification (1, 2, or 3)</td></tr>
-        <tr><td>`destructive`</td><td>boolean</td><td>Whether the scope requires additional confirmation per Section 12.3</td></tr>
-        <tr><td>`constraint_schema`</td><td>object/null</td><td>JSON Schema fragment for scope-specific constraints</td></tr>
-      </tbody>
-    </table>
+    <t>
+      Scope strings in the Scope Map MUST match
+      <tt>&lt;dot-separated-scope-name&gt;</tt>. This allows digits
+      within each dot-separated segment after the first character. The same
+      short string form MUST be used in OAuth <tt>scope</tt> parameters and
+      within AIP Credential Tokens (<tt>aip_scope</tt> array).
+      Catalog entries also include a <tt>uri</tt> member for documentation and
+      catalog linking. Standard Draft-02 Catalog entries MUST use HTTPS URIs
+      under <tt>https://provai.dev/aip/scopes/</tt>; these HTTPS URIs are not
+      the on-wire OAuth scope values.
+    </t>
+    <t>
+      A conformant AIP Registry MUST implement <tt>GET /v1/scopes</tt>
+      returning a JSON object with catalog sync metadata and an array of scope
+      entries. The response object MUST include <tt>aip_draft</tt>,
+      <tt>catalog_version</tt>, <tt>catalog_snapshot_id</tt>,
+      <tt>catalog_source_uri</tt>, <tt>catalog_sha256</tt>,
+      <tt>synced_at</tt>, <tt>scopes</tt>, and
+      <tt>pagination</tt>. It MUST also include
+      <tt>extension_policy_uri</tt>. The
+      <tt>extension_policy_uri</tt> value MUST be non-null when the response
+      includes any <tt>community</tt> scope entry or any locally documented
+      extension scope and MAY be null otherwise.
+      Pagination MUST follow <xref target="pagination-registry"/> and cursors
+      MUST be bound to the advertised <tt>catalog_version</tt>. Each scope
+      entry MUST include
+      <tt>id</tt>, <tt>uri</tt>, <tt>family</tt>, <tt>description</tt>,
+      <tt>tier</tt>, <tt>destructive</tt>, <tt>requires_dpop</tt>,
+      <tt>ttl_max_seconds</tt>, <tt>grant_tier_min</tt>,
+      <tt>constraint_schema</tt>, <tt>status</tt>, <tt>class</tt>,
+      <tt>owner</tt>, <tt>introduced_in</tt>, <tt>updated_in</tt>,
+      <tt>change_type</tt>, and <tt>source</tt>.
+      The <tt>class</tt> value MUST be one of <tt>standard</tt>,
+      <tt>community</tt>, or <tt>reserved</tt>.
+    </t>
+    <t>
+      Principal Wallet consent UIs MUST use the standardized display titles
+      in Section 12.3 for standard Draft-02 scopes. For community or local
+      extension scopes, the Registry's extension policy MUST provide a
+      non-empty human-readable title and summary for each exposed extension
+      scope before that scope can be used in a grant ceremony. The display
+      title or summary MUST NOT broaden the authorization represented by the
+      scope metadata.
+    </t>
+    <t>
+      When <tt>constraint_schema</tt> is non-null, it MUST be a JSON Schema
+      Draft 2020-12 fragment associated with the containing
+      <tt>catalog_version</tt>. Any change to a non-null
+      <tt>constraint_schema</tt> MUST update the scope entry's
+      <tt>updated_in</tt> value and MUST be reviewed as a catalog change.
+    </t>
+    <t>
+      A conformant AIP Registry MUST implement <tt>GET /v1/namespaces</tt>
+      returning a JSON object with catalog sync metadata and an array of
+      namespace entries. The response object MUST include
+      <tt>aip_draft</tt>, <tt>catalog_version</tt>,
+      <tt>catalog_snapshot_id</tt>, <tt>catalog_source_uri</tt>,
+      <tt>catalog_sha256</tt>, <tt>synced_at</tt>, and
+      <tt>namespaces</tt>. It MUST also include <tt>pagination</tt>.
+      It MUST include <tt>extension_policy_uri</tt> when the response includes
+      any <tt>community</tt> namespace entry or any locally documented
+      extension namespace and MAY use null otherwise.
+      Pagination MUST follow <xref target="pagination-registry"/> and cursors
+      MUST be bound to the advertised <tt>catalog_version</tt>. Each namespace
+      entry MUST include <tt>id</tt>,
+      <tt>description</tt>, <tt>reserved</tt>, <tt>spawnable</tt>,
+      <tt>requires_task_id</tt>, <tt>lifecycle_rules</tt>,
+      <tt>status</tt>, <tt>class</tt>, <tt>owner</tt>,
+      <tt>introduced_in</tt>, <tt>updated_in</tt>, <tt>change_type</tt>, and
+      <tt>source</tt>. The <tt>class</tt> value MUST be one of
+      <tt>standard</tt>, <tt>community</tt>, or <tt>reserved</tt>.
+    </t>
+    <t>
+      A Registry MUST expose only catalog entries that are present in its
+      synced catalog snapshot or in an explicitly documented local or community
+      extension policy. A Relying Party MUST treat <tt>active</tt> entries as
+      valid. It MAY accept <tt>experimental</tt> entries only when local
+      policy allows experimental behavior. It MUST reject <tt>reserved</tt>,
+      <tt>removed</tt>, unknown, or conflicting entries with
+      <tt>invalid_scope</tt> for scopes or <tt>registration_invalid</tt> for
+      registration-time namespace failures.
+    </t>
+    <t>
+      Registries MUST validate submitted Capability Manifests and Capability
+      Overlays against each applicable non-null <tt>constraint_schema</tt>
+      from the synced Scope Catalog. Registration submissions that fail this
+      validation MUST be rejected with <tt>registration_invalid</tt>.
+      Capability Overlay submissions that fail this validation MUST be
+      rejected with <tt>overlay_exceeds_manifest</tt>. Relying Parties
+      performing Step 9 or Step 9b validation MUST apply the same non-null
+      <tt>constraint_schema</tt> fragments before treating manifest or overlay
+      constraints as authoritative.
+    </t>
+    <t>
+      Registries MUST expose the <tt>constraint_schema</tt> fragments that
+      correspond to their advertised <tt>catalog_version</tt>. A Registry
+      MUST NOT silently substitute a schema fragment from a different catalog
+      version for a standard scope. Local or community extension schema
+      changes MUST update the affected entry's <tt>updated_in</tt> value and
+      MUST be documented by the Registry's extension policy before the changed
+      schema is used for registration or token validation.
+    </t>
+    <t>
+      Scope-family entries in the AIP Catalog define category notation such
+      as <tt>transactions.*</tt> and <tt>communicate.*</tt>. Category notation
+      is not a literal scope string and MUST NOT appear as a token
+      <tt>aip_scope</tt> value unless it is separately registered as a concrete
+      scope.
+    </t>
+  </section>
+
+  <section anchor="capability-overlay-endpoints-registry" numbered="true">
+    <name>Capability Overlay Endpoints</name>
+    <t>
+      <tt>PUT /v1/agents/{aid}/overlays</tt> submits a Capability Overlay for
+      the AID in the path. The request body MUST conform to the Capability
+      Overlay schema in Section 5.11, and the body <tt>aid</tt> value MUST
+      equal the path <tt>{aid}</tt>.
+    </t>
+    <t>
+      The Registry MUST reject overlays whose <tt>issued_by</tt> DID uses
+      <tt>did:key</tt> with <tt>overlay_issuer_invalid</tt>. The Registry
+      MUST verify the overlay signature over the Section 2.1 signing input
+      using the Ed25519 verification method identified by
+      <tt>signature_kid</tt>. The DID portion of <tt>signature_kid</tt> MUST
+      equal <tt>issued_by</tt>. If the signature is absent, malformed, cannot
+      be verified, or verifies under a key not controlled by
+      <tt>issued_by</tt>, the Registry MUST reject with
+      <tt>overlay_signature_invalid</tt>.
+    </t>
+    <t>
+      For the tuple <tt>(aid, engagement_id, issued_by)</tt>, a submitted
+      overlay <tt>version</tt> MUST be strictly greater than the current
+      active overlay version for that tuple. If the submitted version is less
+      than or equal to the current active version, the Registry MUST reject
+      with <tt>overlay_version_conflict</tt>. If the overlay expands the base
+      Capability Manifest or fails catalog constraint validation, the Registry
+      MUST reject with <tt>overlay_exceeds_manifest</tt>.
+    </t>
   </section>
 
   <section anchor="engagement-endpoints-registry" numbered="true">
@@ -165,25 +1061,61 @@ a JSON object mapping scope strings to metadata:</t>
       <tbody>
         <tr><td>POST</td><td>/v1/engagements</td><td>Create Engagement Object</td></tr>
         <tr><td>GET</td><td>/v1/engagements/{id}</td><td>Retrieve Engagement Object</td></tr>
+        <tr><td>POST</td><td>/v1/engagements/{id}/countersign</td><td>Countersign proposed Engagement Object</td></tr>
         <tr><td>PUT</td><td>/v1/engagements/{id}</td><td>Update Engagement (append change log entry)</td></tr>
       </tbody>
     </table>
 
-    <t>Create validation: The Registry MUST verify the initiator's
-DID signature, validate that all referenced participant AIDs exist
-and are not revoked, and assign `status: "active"` with
-`seq_number: 1`.</t>
+    <t>Create validation: The Registry MUST authenticate the submitter as the
+<tt>hiring_operator</tt> or as a caller authorized by Registry policy, verify
+<tt>hiring_operator_signature</tt> and the initial change-log entry
+signatures using the Engagement signature verification profile in
+<xref target="engagement-objects"/>, validate that all referenced participant
+AIDs exist and are not revoked, and assign
+<tt>status: "proposed"</tt> with a first change log entry whose
+<tt>seq</tt> is <tt>1</tt> and whose <tt>action</tt> is
+<tt>engagement_created</tt>. The Registry MUST set <tt>version: 1</tt>
+on the stored Engagement Object. A create request that requests
+<tt>status: "active"</tt> without a valid
+<tt>deploying_principal_signature</tt> MUST be rejected with
+<tt>engagement_countersign_required</tt>.</t>
+
+    <t>Countersign validation: <tt>POST /v1/engagements/{id}/countersign</tt>
+applies only to Engagement Objects in <tt>proposed</tt> status. The request
+body MUST contain <tt>deploying_principal_signature</tt> and a new change log
+entry with <tt>action: "engagement_countersigned"</tt>. If
+<tt>deploying_principal_signature</tt> is absent, the Registry MUST reject the
+request with <tt>engagement_countersign_required</tt>. The Registry MUST verify
+that the authenticated submitter is the <tt>deploying_principal</tt>, verify
+the countersignature and the change log entry signature using the Engagement
+signature verification profile in <xref target="engagement-objects"/>, and
+verify the entry <tt>seq</tt> is
+exactly <tt>current_max + 1</tt>. If the entry <tt>seq</tt> is not exactly
+<tt>current_max + 1</tt>, the Registry MUST reject with
+<tt>change_log_sequence_invalid</tt>. On success, the Registry MUST append the
+change log entry, store <tt>deploying_principal_signature</tt>, set
+<tt>status: "active"</tt>, and set <tt>version</tt> to the appended entry's
+<tt>seq</tt> atomically.</t>
 
     <t>Update validation: The Registry MUST verify the submitter is an
-active participant, the change log entry's `seq_number` is exactly
-`current_max + 1`, and the entry signature is valid. The Registry
-MUST reject modifications to existing entries with
-`change_log_immutable`.</t>
+active participant, the change log entry's <tt>seq</tt> is exactly
+<tt>current_max + 1</tt>, and the entry signature is valid under the
+Engagement signature verification profile in
+<xref target="engagement-objects"/>. If the
+<tt>seq</tt> value is missing, repeated, skipped, or otherwise not exactly
+<tt>current_max + 1</tt>, the Registry MUST reject with
+<tt>change_log_sequence_invalid</tt>. The Registry MUST reject modifications
+to existing entries with <tt>change_log_immutable</tt>. On success, the
+Registry MUST append the entry,
+apply the mutation represented by that entry, and set <tt>version</tt> to
+the appended entry's <tt>seq</tt> atomically. The Registry MUST reject any
+PUT request that changes top-level engagement state without appending exactly
+one accepted change-log entry.</t>
   </section>
 
   <section anchor="rpnp-endpoints-registry" numbered="true">
     <name>RPNP Subscription Endpoints</name>
-    <t>A conformant AIP Registry supporting RPNP (Section 11.4) MUST
+    <t>A conformant AIP Registry supporting RPNP (<xref target="rpnp"/>) MUST
 implement:</t>
     <table>
       <thead>
@@ -196,19 +1128,73 @@ implement:</t>
       </tbody>
     </table>
 
-    <t>Subscription creation MUST be authenticated via DPoP. The
-`webhook_uri` MUST use HTTPS. The Registry MUST reject non-HTTPS
-URIs with `invalid_webhook_uri`.</t>
+    <t>Subscription creation request bodies MUST conform to
+<tt>rpnp.schema.json</tt> <tt>subscription_request</tt>, and successful
+responses MUST conform to <tt>subscription_response</tt>. Subscription
+creation MUST be authenticated using the
+<tt>subscriber_did</tt>-bound DPoP profiles defined in <xref target="rpnp-subscription"/>. The
+<tt>webhook_uri</tt> MUST use HTTPS. The Registry MUST reject non-HTTPS
+URIs with <tt>invalid_webhook_uri</tt>. The Registry MUST apply the RPNP
+subscription authorization, scope-filter, and quota checks defined in Section
+11.5.2 before creating the subscription. On success, the Registry MUST return
+HTTP 201 with the assigned <tt>subscription_id</tt>.</t>
+    <t><tt>GET /v1/subscriptions/{id}</tt> and
+<tt>DELETE /v1/subscriptions/{id}</tt> MUST use the same
+<tt>subscriber_did</tt>-bound authentication profile. The authenticated
+<tt>subscriber_did</tt> MUST equal the subscription owner unless Registry
+administrator policy explicitly authorizes the caller to inspect or cancel
+subscriptions for other subscribers. Otherwise, the Registry MUST reject with
+<tt>subscription_auth_required</tt>. <tt>GET</tt> MUST return the current
+<tt>subscription_response</tt>. <tt>DELETE</tt> MUST transition the
+subscription to <tt>cancelled</tt> and return the updated
+<tt>subscription_response</tt>.</t>
   </section>
 
   <section anchor="registry-key-management" numbered="true">
     <name>Key Management and Rotation</name>
     <t>
-      Registry trust evolution is defined in Section 7.3.6. Planned
-      rotation preserves the same <tt>registry_id</tt> and uses versioned
-      Registry Trust Records with overlapping signatures, expiry, and
-      rollback checks. Emergency compromise recovery uses explicit
-      re-bootstrap and MUST NOT be accepted automatically.
+      Registry trust evolution is defined in
+      <xref target="registry-genesis-registry-key-rotation"/>. Planned rotation
+      preserves the same <tt>registry_id</tt> and uses versioned Registry Trust
+      Records with overlapping signatures, expiry, and rollback checks.
+      Emergency compromise recovery uses explicit re-bootstrap and MUST NOT be
+      accepted automatically.
+    </t>
+  </section>
+
+  <section anchor="pagination-registry" numbered="true">
+    <name>Pagination and Large Responses</name>
+    <t>
+      Registry endpoints that return collections and are not otherwise
+      defined as signed snapshot artifacts MUST support cursor pagination.
+      This requirement applies to collection-bearing endpoints such as
+      <tt>GET /v1/scopes</tt>, <tt>GET /v1/namespaces</tt>, and collection
+      members of <tt>GET /v1/agents/{aid}/reputation</tt>. It does not apply
+      to single-resource endpoints or to signed CRL documents, which use the
+      CRL segmentation rules above.
+    </t>
+    <t>
+      Paginated endpoints MUST accept <tt>limit</tt> and <tt>cursor</tt>
+      query parameters. The <tt>limit</tt> value MUST be an integer from 1 to
+      1000 inclusive. If <tt>limit</tt> is absent, the default is 100. A
+      Registry MAY apply a lower maximum for a specific endpoint, but the
+      effective maximum MUST be at least 100. The <tt>cursor</tt> value is
+      opaque to clients and MUST be used only with the same endpoint and query
+      filter set that produced it. Invalid <tt>limit</tt> or
+      <tt>cursor</tt> values MUST be rejected with
+      <tt>invalid_request</tt>.
+    </t>
+    <t>
+      A paginated response MUST include the endpoint-specific collection
+      member, such as <tt>scopes</tt>, <tt>namespaces</tt>, or
+      <tt>revocation_history</tt>, containing no more than the effective
+      limit. It MUST also include a <tt>pagination</tt> object with
+      <tt>limit</tt>, <tt>next_cursor</tt>, and <tt>has_more</tt>. The
+      <tt>next_cursor</tt> value MUST be null when <tt>has_more</tt> is
+      false. Servers MUST use a deterministic ordering for each collection and
+      MUST bind cursors to a stable collection snapshot. If a cursor refers to
+      a snapshot that is no longer available, the Registry MUST reject the
+      request with <tt>invalid_request</tt>.
     </t>
   </section>
 </section>

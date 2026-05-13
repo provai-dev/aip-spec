@@ -1,5 +1,5 @@
 <section anchor="conventions" numbered="true">
-  <name>Conventions and Definitions</name>
+  <name>Conventions</name>
   <t>
     The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
     "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
@@ -18,7 +18,7 @@
     <xref target="RFC8259"/>. URIs are used as defined in
     <xref target="RFC3986"/>. ABNF notation is used as defined in
     <xref target="RFC5234"/>, including its core rules (ALPHA, DIGIT,
-    HEXDIG, SP, etc.) as defined in RFC5234 Appendix B.1. HTTP status
+    HEXDIG, SP, and the other rules in RFC5234 Appendix B.1). HTTP status
     codes, headers, and semantics are as defined in <xref target="RFC9110"/>.
   </t>
   <t>
@@ -30,41 +30,54 @@
     <name>Canonical JSON Serialization</name>
     <t>
       Several objects in this specification are signed outside the JWT
-      framework. For those objects, the following canonical JSON
-      serialization procedure MUST be used when computing or verifying
-      signatures, and when computing Action Hashes:
+      framework. For those objects, AIP first constructs the object-specific
+      signing input described below, then serializes that signing input with
+      the JSON Canonicalization Scheme (JCS) defined in
+      <xref target="RFC8785"/>. The following procedure MUST be used when
+      computing or verifying signatures, and when computing Action Hashes:
     </t>
     <ol type="%d">
       <li>Represent the object as a JSON value per <xref target="RFC8259"/>.</li>
-      <li>Recursively sort all object keys in lexicographic ascending order
-      (Unicode code point order). Array element order MUST be preserved;
-      arrays MUST NOT be sorted.</li>
-      <li>Remove all insignificant whitespace (no spaces, tabs, or
-      newlines outside string values).</li>
-      <li>Encode the result as a UTF-8 byte sequence with no BOM.</li>
       <li>Before computing any signature, set the object's
       <tt>"signature"</tt> field to the empty string <tt>""</tt>. The
       <tt>"signature"</tt> field MUST be included in the serialisation at
       its lexicographically correct position with value <tt>""</tt>.</li>
+      <li>Serialize the resulting signing-input JSON value using JCS
+      <xref target="RFC8785"/>. Array element order MUST be preserved; arrays
+      MUST NOT be sorted.</li>
+      <li>Encode the JCS result as a UTF-8 byte sequence with no BOM.</li>
     </ol>
     <t>
-      This procedure is equivalent to the JSON Canonicalization Scheme
-      (JCS) defined in <xref target="RFC8785"/>. Implementations SHOULD use
-      an RFC8785-conformant library to ensure correctness. When this
-      procedure is used to compute Action Hashes,
-      implementations MUST use an RFC8785-conformant library; custom
-      serializer implementations MUST NOT be used for that purpose.
+      Every object type signed with this procedure MUST define a top-level
+      signature member in its schema or in the object-specific signing profile.
+      If an unsigned object instance is being prepared for signing and the
+      top-level signature member is absent, the signer MUST inject that member
+      with value <tt>""</tt> before canonicalization. Verifiers MUST reconstruct
+      the same signing input by replacing the received signature value with
+      <tt>""</tt>. Object types that do not define a signature member MUST NOT
+      be signed with this procedure unless a later profile explicitly defines
+      the signature member name and signing input.
+    </t>
+    <t>
+      The serialization step is JCS. The preceding signature-field
+      replacement or injection is AIP-specific signing-input normalization and
+      is not part of RFC 8785 itself. Implementations SHOULD use an
+      RFC8785-conformant library to ensure serialization correctness. When
+      this procedure is used to compute Action Hashes, implementations MUST
+      use an RFC8785-conformant library; custom serializer implementations
+      MUST NOT be used for that purpose.
     </t>
     <t>EXAMPLE (informative):</t>
     <sourcecode><![CDATA[
  {"z": 1, "a": 2, "m": [3,1,2]}  →  {"a":2,"m":[3,1,2],"z":1}
 ]]></sourcecode>
     <t>
-      NOTE: This canonical serialization applies to Capability Manifests,
+      This canonical serialization procedure applies to Capability Manifests,
       Agent Identity Objects, Revocation Objects, Endorsement Objects,
-      GrantRequest Objects (when signed), and Approval Envelopes. It does
-      NOT apply to JWT-format objects (Credential Tokens, Principal
-      Tokens), which use standard JWS compact serialization per
+      GrantRequest Objects when signed, and Approval Envelopes. It MUST NOT
+      be used for JWT-format objects, including Credential Tokens, Principal
+      Tokens, Step Execution Tokens, and RPNP push notifications. JWT-format
+      objects MUST use standard JWS compact serialization per
       <xref target="RFC7515"/>.
     </t>
   </section>

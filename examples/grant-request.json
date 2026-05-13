@@ -1,5 +1,5 @@
 {
-  "_comment": "Example AIP Grant Request — AIP spec §4.5.2. Constructed by the Agent Deployer (G2 — Direct Deployer flow) and transmitted to the Principal Wallet. In the Web Redirect binding this object would be JSON-serialised, signed with the deployer's Ed25519 key, base64url-encoded, and passed as the 'request' query parameter to the Principal Wallet URI. Signature placeholder.",
+  "_comment": "Example AIP Grant Request. Constructed by the Agent Deployer (G2 — Direct Deployer flow) and transmitted to the Principal Wallet. In the Web Redirect binding this object is the compact JWS payload; the protected JWS header uses typ='aip-grant+jws', alg='EdDSA', and kid='did:web:assistant.example.com#key-1'. Signature placeholder.",
   "grant_request_id": "gr:1a2b3c4d-5e6f-4789-8abc-def012345678",
   "aip_version": "0.3",
   "agent_aid": "did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3",
@@ -41,10 +41,11 @@
   },
   "_notes": {
     "grant_tier": "This is a G2 (Direct Deployer) grant. The deployer constructs and signs the GrantRequest directly and the principal reviews it in their wallet. G3 would require an OAuth 2.1 AS involvement.",
-    "agent_aid": "The deployer MUST generate the agent's Ed25519 keypair and compute the AID before constructing the GrantRequest, so the resulting Principal Token's sub field matches.",
+    "agent_aid": "The deployer MUST generate the agent's Ed25519 keypair and compute the AID before constructing the GrantRequest. The Principal Token produced from this grant MUST use this exact value as its sub field.",
+    "deployer_signature": "For G2, the Principal Wallet verifies the compact JWS signature by resolving deployer_did and checking that the JWS kid identifies an Ed25519 verification method controlled by that DID.",
     "max_delegation_depth_0": "max_delegation_depth=0 means this agent is a leaf — it cannot spawn sub-agents. The consent UI will NOT show the sub-delegation notice.",
     "nonce_entropy": "nonce must have ≥128 bits entropy. This base64url-encoded string represents a 128-bit random value.",
-    "consent_ui_elements": "The Principal Wallet MUST display: (1) agent name 'Alice-Personal-Assistant', type 'personal', (2) model 'Anthropic — claude-sonnet-4-6', (3) purpose verbatim, (4) deployer 'Example Assistant Platform' (did:web:assistant.example.com), (5) capabilities in canonical human-readable form, (6) expiry ~90 days, (7) no sub-delegation notice (depth=0).",
-    "delegation_valid_for_seconds": "7776000 seconds = 90 days. The issued Principal Token expires_at = issued_at + approved_delegation_valid_for_seconds from the GrantResponse."
+    "consent_ui_elements": "The Principal Wallet MUST display: (1) agent name 'Alice-Personal-Assistant', type 'personal', (2) model 'Anthropic — claude-sonnet-4-6', (3) purpose verbatim, (4) deployer 'Example Assistant Platform' (did:web:assistant.example.com), (5) capabilities using trusted AIP Scope Catalog display metadata, (6) expiry ~90 days, (7) no sub-delegation notice (depth=0).",
+    "delegation_valid_for_seconds": "7776000 seconds = 90 days. The wallet may approve a shorter duration, but approved_delegation_valid_for_seconds MUST NOT exceed this value. The issued Principal Token expires_at = issued_at + approved_delegation_valid_for_seconds from the GrantResponse."
   }
 }
