@@ -1,0 +1,889 @@
+<section anchor="approval-envelopes" numbered="true">
+  <name>Approval Envelopes</name>
+  <t>
+    Approval Envelopes enable a single human approval to authorise a
+    pre-declared sequence of dependent agent actions. The principal
+    approves the complete workflow graph upfront, and each Relying
+    Party independently verifies its specific step against the
+    Registry without requiring additional human interaction.
+  </t>
+
+  <section anchor="approval-motivation" numbered="true">
+  <name>Motivation</name>
+    <t>
+      <strong>The Cascading Approval Problem:</strong> Without Approval
+      Envelopes, multi-step agent workflows require the human to
+      approve each step independently, eliminating the benefit
+      of autonomous agents. For example, an agent places an order
+      with an e-commerce platform (step 1), which triggers a
+      payment processor (step 2). Without Approval Envelopes,
+      each step would require independent approval.
+    </t>
+  </section>
+
+  <section anchor="token-expiry-pending" numbered="true">
+  <name>The Token-Expiry-While-Pending Problem</name>
+    <t>
+      A Credential Token with a catalog-derived TTL may expire
+      while approval is pending. Approval Envelopes decouple
+      the approval phase from execution: the envelope waits
+      in pending_approval state without requiring a valid
+      token, and step-claim tokens are issued at execution
+      time.
+    </t>
+  </section>
+
+  <section anchor="approval-schema" numbered="true">
+  <name>Approval Envelope Schema</name>
+    <t>
+      Approval Envelopes have two wire profiles. An
+      <tt>ApprovalEnvelopeSubmission</tt> is submitted by the orchestrating
+      agent to <tt>POST /v1/approvals</tt>. A
+      <tt>StoredApprovalEnvelope</tt> is returned by Registry read and
+      mutation endpoints and includes Registry-managed lifecycle fields. A
+      Registry MUST validate <tt>POST /v1/approvals</tt> request bodies
+      against the submission profile and MUST NOT accept read-only stored
+      fields in the submission body.
+    </t>
+
+                <table>
+          <name>ApprovalEnvelopeSubmission Fields</name>
+          <thead>
+            <tr>
+              <th align="left">Field</th>
+              <th align="center">Required</th>
+              <th align="left">Constraints</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>approval_id</td>
+              <td>REQUIRED</td>
+              <td>pattern: apr:&lt;UUIDv4-lowerhex&gt;</td>
+            </tr>
+            <tr>
+              <td>created_by</td>
+              <td>REQUIRED</td>
+              <td>AID of orchestrating agent</td>
+            </tr>
+            <tr>
+              <td>creator_kid</td>
+              <td>REQUIRED</td>
+              <td>DID URL identifying the Ed25519 verification method controlled by <tt>created_by</tt></td>
+            </tr>
+            <tr>
+              <td>principal_id</td>
+              <td>REQUIRED</td>
+              <td>W3C DID; MUST NOT be did:aip</td>
+            </tr>
+            <tr>
+              <td>engagement_id</td>
+              <td>OPTIONAL</td>
+              <td>pattern: eng:&lt;UUIDv4-lowerhex&gt;; links to parent Engagement Object</td>
+            </tr>
+            <tr>
+              <td>description</td>
+              <td>REQUIRED</td>
+              <td>minLength: 1; maxLength: 512</td>
+            </tr>
+            <tr>
+              <td>created_at</td>
+              <td>REQUIRED</td>
+              <td>ISO 8601 UTC; set by orchestrating agent; MUST NOT be in the future beyond 30-second clock skew</td>
+            </tr>
+            <tr>
+              <td>approval_window_expires_at</td>
+              <td>REQUIRED</td>
+              <td>ISO 8601 UTC; MUST be strictly after <tt>created_at</tt>; MUST NOT be more than 72 hours after <tt>created_at</tt></td>
+            </tr>
+            <tr>
+              <td>steps</td>
+              <td>REQUIRED</td>
+              <td>minItems: 1; maxItems: 20</td>
+            </tr>
+            <tr>
+              <td>compensation_steps</td>
+              <td>OPTIONAL</td>
+              <td>Compensation steps for SAGA rollback</td>
+            </tr>
+            <tr>
+              <td>total_value</td>
+              <td>OPTIONAL</td>
+              <td>Total financial value; MUST equal sum of step values, treating omitted step values as 0</td>
+            </tr>
+            <tr>
+              <td>currency</td>
+              <td>OPTIONAL</td>
+              <td>ISO 4217; pattern: ^[A-Z]{3}$</td>
+            </tr>
+            <tr>
+              <td>notification_uri</td>
+              <td>OPTIONAL</td>
+              <td>HTTPS URI for principal notification callbacks; included in creator and principal signing inputs when present</td>
+            </tr>
+            <tr>
+              <td>creator_signature</td>
+              <td>REQUIRED</td>
+              <td>base64url EdDSA signature</td>
+            </tr>
+          </tbody>
+        </table>
+
+    <t>
+      An <tt>ApprovalEnvelopeSubmission</tt> MUST NOT contain top-level
+      <tt>status</tt>, <tt>principal_signature</tt>, or
+      <tt>approved_at</tt>. Its forward steps MUST NOT contain read-only
+      <tt>status</tt>, <tt>claimed_at</tt>, or <tt>completed_at</tt> fields.
+      Its compensation steps MUST NOT contain read-only <tt>status</tt>
+      fields. If any read-only field is present in the submission body, the
+      Registry MUST reject with <tt>approval_envelope_invalid</tt>.
+    </t>
+
+    <table>
+      <name>StoredApprovalEnvelope Registry Fields</name>
+      <thead>
+        <tr>
+          <th align="left">Field</th>
+          <th align="center">Required</th>
+          <th align="left">Constraints</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>status</td>
+          <td>REQUIRED</td>
+          <td>Registry-managed lifecycle state; initially pending_approval</td>
+        </tr>
+        <tr>
+          <td>principal_signature</td>
+          <td>CONDITIONAL</td>
+          <td>Set only by successful principal approval; required for approved, executing, completed, compensating, compensated, and failed envelopes</td>
+        </tr>
+        <tr>
+          <td>principal_kid</td>
+          <td>CONDITIONAL</td>
+          <td>DID URL identifying the principal verification method; required whenever <tt>principal_signature</tt> is present</td>
+        </tr>
+        <tr>
+          <td>approved_at</td>
+          <td>CONDITIONAL</td>
+          <td>Registry timestamp set with the winning approval transition; required whenever principal_signature is present</td>
+        </tr>
+        <tr>
+          <td>steps[].status</td>
+          <td>REQUIRED</td>
+          <td>Registry-managed step lifecycle state; initially pending</td>
+        </tr>
+        <tr>
+          <td>steps[].claimed_at</td>
+          <td>CONDITIONAL</td>
+          <td>Registry timestamp set when a Step Execution Token is issued</td>
+        </tr>
+        <tr>
+          <td>steps[].completed_at</td>
+          <td>CONDITIONAL</td>
+          <td>Registry timestamp set when a forward step completes</td>
+        </tr>
+        <tr>
+          <td>compensation_steps[].status</td>
+          <td>REQUIRED when compensation_steps is present</td>
+          <td>Registry-managed compensation lifecycle state; initially pending</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <t>
+      total_value and currency MUST both be present or both absent.
+      When present, total_value MUST equal the sum of value fields
+      across ALL steps. A step that omits <tt>value</tt> contributes
+      <tt>0</tt> to this sum. Required and optional steps are both included
+      in the sum when they carry a <tt>value</tt> field. This value is the
+      maximum approved financial exposure of the envelope, not a prediction
+      that every optional step will execute.
+    </t>
+
+    <t>
+      When present, <tt>engagement_id</tt> scopes the Approval Envelope
+      to the parent Engagement Object. The field is part of the Approval
+      Envelope body and MUST NOT be supplied only as external Registry
+      metadata. Both <tt>creator_signature</tt> and
+      <tt>principal_signature</tt> signing inputs MUST include
+      <tt>engagement_id</tt> whenever it is present.
+    </t>
+    <t>
+      The <tt>creator_signature</tt> signing input is the Section 2.1
+      canonical JSON serialization of the
+      <tt>ApprovalEnvelopeSubmission</tt> object with
+      <tt>creator_signature</tt> set to <tt>""</tt>. The
+      <tt>principal_signature</tt> signing input is the same immutable
+      submission object after successful submission, including
+      <tt>creator_signature</tt>, <tt>principal_kid</tt>, and a
+      <tt>principal_signature</tt> member set to <tt>""</tt>. Both signing
+      inputs include <tt>creator_kid</tt>, <tt>notification_uri</tt>, and
+      <tt>engagement_id</tt> when present. The DID portion of
+      <tt>creator_kid</tt> MUST equal <tt>created_by</tt>; the DID portion of
+      <tt>principal_kid</tt> MUST equal <tt>principal_id</tt>. Neither
+      signing input includes Registry-managed top-level lifecycle fields
+      (<tt>status</tt> or <tt>approved_at</tt>) or Registry-managed step fields
+      (<tt>status</tt>, <tt>claimed_at</tt>, or <tt>completed_at</tt>).
+    </t>
+  </section>
+
+  <section anchor="step-schema" numbered="true">
+  <name>Step Schema</name>
+    <t>
+      Each element in the steps array represents one atomic action
+      at one Relying Party.
+    </t>
+
+                <table>
+          <name>Step Fields</name>
+          <thead>
+            <tr>
+              <th align="left">Field</th>
+              <th align="center">Required</th>
+              <th align="left">Constraints</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>step_index</td>
+              <td>REQUIRED</td>
+              <td>1-based; unique within envelope</td>
+            </tr>
+            <tr>
+              <td>actor</td>
+              <td>REQUIRED</td>
+              <td>AID executing this step</td>
+            </tr>
+            <tr>
+              <td>relying_party_uri</td>
+              <td>REQUIRED</td>
+              <td>URI of the Relying Party</td>
+            </tr>
+            <tr>
+              <td>action_type</td>
+              <td>REQUIRED</td>
+              <td>Application-defined; maxLength: 128</td>
+            </tr>
+            <tr>
+              <td>action_hash</td>
+              <td>REQUIRED</td>
+              <td>sha256:64-hex; see Section 13.7</td>
+            </tr>
+            <tr>
+              <td>scopes</td>
+              <td>REQUIRED</td>
+              <td>minItems: 1; uniqueItems: true; each item is an AIP scope string required for this step</td>
+            </tr>
+            <tr>
+              <td>description</td>
+              <td>REQUIRED</td>
+              <td>minLength: 1; maxLength: 256</td>
+            </tr>
+            <tr>
+              <td>required</td>
+              <td>REQUIRED</td>
+              <td>boolean; false = optional step</td>
+            </tr>
+            <tr>
+              <td>triggered_by</td>
+              <td>REQUIRED</td>
+              <td>null or step_index; 0 forbidden</td>
+            </tr>
+            <tr>
+              <td>compensation_index</td>
+              <td>OPTIONAL</td>
+              <td>1-based pointer to a compensation step; null or absent means no compensation action is defined</td>
+            </tr>
+            <tr>
+              <td>value</td>
+              <td>OPTIONAL</td>
+              <td>Financial value; minimum: 0; omitted means 0 for total_value validation</td>
+            </tr>
+            <tr>
+              <td>currency</td>
+              <td>OPTIONAL</td>
+              <td>ISO 4217 currency code for this step's value; when present, MUST match envelope currency</td>
+            </tr>
+            <tr>
+              <td>status</td>
+              <td>READ-ONLY</td>
+              <td>pending | claimed | completed | failed | compensated | skipped | cancelled</td>
+            </tr>
+          </tbody>
+        </table>
+
+    <t>
+      The triggered_by field implements the SAGA DAG. A step
+      with triggered_by: null is a root step. A step with
+      triggered_by: N MUST NOT be claimed before step N reaches
+      completed status. Circular dependencies MUST be rejected.
+    </t>
+
+    <t>
+      Multiple steps MAY share the same triggered_by value,
+      enabling parallel execution paths.
+    </t>
+
+    <t>
+      The <tt>compensation_index</tt> field, when present on a forward
+      step, identifies the single compensation step that rolls back that
+      forward step. The value is a 1-based identifier that MUST equal the
+      <tt>compensation_index</tt> field of exactly one entry in
+      <tt>compensation_steps</tt>; it is not a zero-based JSON array offset.
+      The Registry MUST reject envelopes where a non-null
+      <tt>compensation_index</tt> does not reference an existing compensation
+      step, or where more than one forward step references the same
+      compensation step.
+    </t>
+  </section>
+
+  <section anchor="compensation-schema" numbered="true">
+  <name>Compensation Step Schema</name>
+    <t>
+      Compensation steps define SAGA rollback actions pre-authorised
+      by the principal. If a forward step fails, compensation
+      actions execute without requiring new human approval.
+    </t>
+    <t>
+      A compensation step is selected only through a forward step's
+      <tt>compensation_index</tt> field. The Registry MUST NOT infer a
+      compensation relationship from matching <tt>action_type</tt> values,
+      array position, actor identity, or relying party URI.
+    </t>
+
+                <table>
+          <name>Compensation Step Fields</name>
+          <thead>
+            <tr>
+              <th align="left">Field</th>
+              <th align="center">Required</th>
+              <th align="left">Constraints</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>compensation_index</td>
+              <td>REQUIRED</td>
+              <td>1-based; unique within compensation_steps</td>
+            </tr>
+            <tr>
+              <td>actor</td>
+              <td>REQUIRED</td>
+              <td>AID executing compensation</td>
+            </tr>
+            <tr>
+              <td>relying_party_uri</td>
+              <td>REQUIRED</td>
+              <td>URI of the Relying Party</td>
+            </tr>
+            <tr>
+              <td>action_type</td>
+              <td>REQUIRED</td>
+              <td>Application-defined rollback</td>
+            </tr>
+            <tr>
+              <td>action_hash</td>
+              <td>REQUIRED</td>
+              <td>sha256:64-hex</td>
+            </tr>
+            <tr>
+              <td>scopes</td>
+              <td>REQUIRED</td>
+              <td>minItems: 1; uniqueItems: true; each item is an AIP scope string required for this compensation step</td>
+            </tr>
+            <tr>
+              <td>description</td>
+              <td>REQUIRED</td>
+              <td>Plain-language rollback description</td>
+            </tr>
+          </tbody>
+        </table>
+  </section>
+
+  <section anchor="approval-lifecycle" numbered="true">
+  <name>Approval Envelope Lifecycle</name>
+    <t>
+      The Registry maintains lifecycle state with valid transitions:
+    </t>
+
+    <artwork type="example"><![CDATA[
+	   pending_approval --> approved --> executing --> completed
+	       |                |             |
+	       v                v             v
+	   rejected          expired     compensating --> compensated
+	                                      |
+	                                      v
+	                                    failed
+
+	   pending_approval --> cancelled
+	   approved         --> cancelled
+	   executing        --> cancelled
+]]></artwork>
+
+    <t>
+      <strong>Transition rules:</strong>
+    </t>
+
+    <dl newline="true">
+      <dt>pending_approval to approved</dt>
+      <dd>Principal signs via Principal Wallet. Registry atomically stores
+      <tt>principal_signature</tt>, sets <tt>approved_at</tt>, and transitions
+      the envelope to <tt>approved</tt>. Only envelopes currently in
+      <tt>pending_approval</tt> can make this transition.</dd>
+
+      <dt>pending_approval to rejected</dt>
+      <dd>Principal declines.</dd>
+
+      <dt>pending_approval to expired</dt>
+      <dd><tt>approval_window_expires_at</tt> passes before a successful
+      approval transition is committed.</dd>
+
+      <dt>approved to executing</dt>
+      <dd>First step is claimed. Automatic transition.</dd>
+
+      <dt>executing to completed</dt>
+      <dd>All required: true steps reach completed status.</dd>
+
+      <dt>executing to compensating</dt>
+      <dd>Any required: true step fails with compensation_index present.</dd>
+
+      <dt>compensating to compensated</dt>
+      <dd>All compensation steps complete successfully.</dd>
+
+      <dt>compensating to failed</dt>
+      <dd>One or more compensation steps fail. Terminal state.</dd>
+
+      <dt>pending_approval, approved, or executing to cancelled</dt>
+      <dd>Parent Engagement Object transitions to terminated. The
+      Registry MUST NOT transition Approval Envelopes to cancelled
+      solely because the parent Engagement Object transitions to
+      completed.</dd>
+    </dl>
+
+    <t>
+      The <tt>approval_window_expires_at</tt> field is an approval-deadline
+      only. It controls whether an envelope is eligible to transition from
+      <tt>pending_approval</tt> to <tt>approved</tt>. Once an envelope has
+      transitioned to <tt>approved</tt> before that deadline, later passage of
+      <tt>approval_window_expires_at</tt> MUST NOT transition the envelope to
+      <tt>expired</tt> and MUST NOT be used to reject step claims. Execution
+      time limits, if any, MUST be expressed by a separate field or by
+      endpoint policy; they MUST NOT be inferred from
+      <tt>approval_window_expires_at</tt>.
+    </t>
+
+    <t>
+      Terminal states (no further transitions): completed, compensated,
+      failed, rejected, expired, cancelled.
+    </t>
+
+    <t>
+      The Registry MUST treat approval, rejection, expiry, cancellation, and
+      first step claim as mutually exclusive state transitions over the same
+      Approval Envelope lifecycle record. Implementations MUST use optimistic
+      locking, compare-and-set, a database transaction, or an equivalent
+      distributed lock so that exactly one concurrent transition out of
+      <tt>pending_approval</tt> can succeed. If multiple Principal Wallets
+      submit valid approval signatures concurrently for the same
+      <tt>principal_id</tt>, the first committed approval wins. The Registry
+      MUST NOT replace <tt>principal_signature</tt>, <tt>approved_at</tt>, or
+      the winning state with a later approval request. A later approval or
+      rejection request that races with or follows a completed lifecycle
+      transition MUST fail with <tt>approval_state_conflict</tt>, except that
+      an exact byte-for-byte retry of the already stored approval response MAY
+      be treated as idempotent and return the stored envelope.
+    </t>
+
+    <t>
+      When an envelope transitions to <tt>cancelled</tt>, pending forward
+      steps under that envelope MUST transition directly to
+      <tt>cancelled</tt>. Claimed forward steps MUST be treated as
+      <tt>failed</tt> for compensation-trigger evaluation, then MUST
+      transition to <tt>cancelled</tt> after any required compensation
+      resolution completes or fails. Completed, failed, compensated, and
+      skipped steps retain their existing status for audit purposes. The
+      Registry MUST NOT issue new Step Execution Tokens for cancelled
+      envelopes or cancelled steps.
+    </t>
+  </section>
+
+  <section anchor="action-hash" numbered="true">
+  <name>Action Hash Computation</name>
+    <t>
+      The action_hash binds the principal's approval to the
+      specific content of the action. An agent MUST NOT execute
+      a different action than the principal approved.
+    </t>
+
+    <t>
+      The action_hash is computed as:
+    </t>
+
+    <artwork type="example"><![CDATA[
+action_hash = "sha256:"
+  + LCHEX( SHA-256( JCS( action_parameters ) ) )
+]]></artwork>
+
+    <t>
+      Where action_parameters contains:
+    </t>
+
+    <ul>
+      <li>approval_id - The approval_id of the envelope</li>
+      <li>step_index - The step_index of this step</li>
+      <li>actor - The actor AID</li>
+      <li>relying_party_uri - The Relying Party URI</li>
+      <li>action_type - The action type</li>
+      <li>parameters - Application-defined JSON object</li>
+    </ul>
+
+    <t>
+      Implementations MUST use an RFC8785-conformant library.
+      Financial amounts MUST be represented as JSON numbers (not strings).
+    </t>
+  </section>
+
+  <section anchor="step-claim" numbered="true">
+  <name>Step Claim and Execution Protocol</name>
+    <t>
+      To execute a step, an agent follows this protocol:
+    </t>
+
+    <t>
+      <strong>Step 1 - Claim:</strong> The agent calls
+      POST /v1/approvals/{id}/steps/{n}/claim with a valid
+      Credential Token and action_parameters.
+    </t>
+
+    <t>
+      The Registry MUST atomically verify all of the following:
+    </t>
+
+    <ol>
+      <li>Envelope status is approved or executing</li>
+      <li>Step status is pending</li>
+      <li>All triggered_by steps are completed</li>
+      <li>Token iss matches step actor</li>
+      <li>Credential Token passes validation</li>
+      <li>Credential Token <tt>aip_scope</tt> contains every scope listed in the step's <tt>scopes</tt> array</li>
+      <li>action_hash matches stored value</li>
+    </ol>
+
+    <t>
+      The Registry MUST NOT evaluate <tt>approval_window_expires_at</tt> as a
+      step-claim condition for an envelope already in <tt>approved</tt> or
+      <tt>executing</tt> status.
+    </t>
+
+    <t>
+      If the <tt>triggered_by</tt> check fails because one or more prerequisite
+      steps have not reached <tt>"completed"</tt>, the Registry MUST reject
+      the claim with <tt>approval_step_prerequisites_unmet</tt> and MUST NOT
+      issue a Step Execution Token.
+    </t>
+
+    <t>
+      If all checks pass, the Registry returns a Step Execution Token
+      signed by a JWK listed in
+      <tt>active_verification_keys.step_execution</tt> of the
+      Registry Trust Record version current at issuance time:
+    </t>
+
+    <artwork type="example"><![CDATA[
+header = {
+  "typ": "AIP-SET+JWT",
+  "alg": "EdDSA",
+  "kid": "<Registry step-execution keyid>",
+  "aip_trv": <Registry Trust Record version>
+}
+
+payload = {
+  "iss": "<Registry ID>",
+  "sub": "<actor AID>",
+  "aud": "<relying_party_uri>",
+  "iat": <now>,
+  "exp": <now + 300>,
+  "jti": "<UUID>",
+  "aip_version": "0.3",
+  "aip_scope": ["transactions"],
+  "aip_chain": ["<compact Principal Token JWT>"],
+  "aip_approval_id": "<approval_id>",
+  "aip_step_kind": "forward",
+  "aip_approval_step": <step_index>
+}
+]]></artwork>
+
+    <t>
+      A Step Execution Token is not an agent-issued Credential Token. Its
+      <tt>iss</tt> is the Registry ID HTTPS URI, its <tt>sub</tt> is the
+      claimed step actor AID, and its JOSE <tt>kid</tt> identifies a
+      step-execution verification key from the Registry Trust Record. Relying
+      Parties MUST validate Step Execution Tokens using the SET validation
+      profile in Section 9 before applying Step 10a. The Registry MUST derive
+      the SET <tt>aip_scope</tt> value from the claimed step's
+      <tt>scopes</tt> array and MUST derive the SET <tt>exp</tt> value using
+      the TTL rule in <xref target="step-execution-token"/>.
+    </t>
+
+    <t>
+      <strong>Step 2 - Execute:</strong> The agent presents the
+      Step Execution Token to the Relying Party.
+    </t>
+
+    <t>
+      <strong>Step 3 - Complete or Fail:</strong> After execution,
+      the agent MUST call /complete or /fail before the claim deadline. The
+      claim deadline is <tt>claimed_at + step_claim_timeout_seconds</tt>,
+      where <tt>step_claim_timeout_seconds</tt> is the Registry policy value
+      published in <tt>/v1/registry-metadata</tt>. The value MUST be an
+      integer from 1 to 600 seconds inclusive.
+    </t>
+    <t>
+      If a claimed step is not completed or failed before that deadline, the
+      Registry MUST treat the claim as timed out, transition the step to
+      <tt>failed</tt>, and apply the SAGA compensation rules as if the actor
+      had explicitly reported step failure.
+    </t>
+
+    <t>
+      The JSON body profiles for claim, complete, and fail requests and
+      responses are defined in <tt>approval-step-endpoints.schema.json</tt>.
+      All request bodies in this section MUST use
+      <tt>Content-Type: application/json</tt>. The Registry MUST ignore any
+      client-supplied completion or failure timestamp for lifecycle purposes;
+      <tt>claimed_at</tt>, <tt>completed_at</tt>, and failure timestamps are
+      Registry receipt times.
+    </t>
+
+    <t>
+      <strong>Claim request:</strong> A forward step claim request body MUST
+      conform to the <tt>claim_request</tt> profile and contain
+      <tt>credential_token</tt> and <tt>action_parameters</tt>. The Registry
+      MUST validate the Credential Token using Section 9 with the Registry
+      claim endpoint as the Relying Party. The token issuer, token subject,
+      and leaf Principal Token subject MUST equal the step actor. The Registry
+      MUST recompute the step <tt>action_hash</tt> from
+      <tt>action_parameters</tt> using Section 13.7 and MUST reject a mismatch
+      with <tt>approval_step_action_mismatch</tt>. The Credential Token
+      <tt>aip_scope</tt> set MUST contain every scope in the claimed step's
+      <tt>scopes</tt> array; otherwise the Registry MUST reject with
+      <tt>insufficient_scope</tt>.
+    </t>
+
+    <t>
+      On a successful forward claim, the Registry MUST atomically transition
+      the forward step from <tt>pending</tt> to <tt>claimed</tt>, set
+      <tt>claimed_at</tt>, store the issued SET <tt>jti</tt>, transition the
+      envelope from <tt>approved</tt> to <tt>executing</tt> if this is the
+      first claimed step, and return a <tt>claim_response</tt> containing the
+      compact Step Execution Token. If the same actor repeats the same claim
+      request with the same <tt>idempotency_key</tt> before the claim expires,
+      the Registry MAY return the stored claim response. A different actor,
+      different request body, expired claim, or missing matching idempotency
+      record MUST NOT be treated as an idempotent retry.
+    </t>
+
+    <t>
+      <strong>Complete request:</strong> A complete request body MUST conform
+      to the <tt>complete_request</tt> profile and contain
+      <tt>step_execution_token</tt>. The Registry MUST validate the SET using
+      the Section 9 SET validation profile, verify that the SET
+      <tt>aip_approval_id</tt> and step identifier match the request path,
+      verify that the SET <tt>sub</tt> equals the step actor, verify that the
+      SET <tt>jti</tt> equals the stored <tt>jti</tt> for the active claim,
+      and verify that the step or compensation step is currently
+      <tt>claimed</tt> and has not passed its claim deadline. If any of these
+      checks fail, the Registry MUST reject with
+      <tt>approval_step_invalid</tt> or <tt>approval_step_not_claimed</tt> as
+      applicable.
+    </t>
+
+    <t>
+      On a successful forward-step complete request, the Registry MUST
+      transition the step to <tt>completed</tt>, set <tt>completed_at</tt>,
+      persist any supplied <tt>result_hash</tt> or <tt>evidence_uri</tt> as
+      audit metadata, and evaluate envelope completion. If all required
+      forward steps are completed and no compensation is pending, the Registry
+      MUST transition the envelope to <tt>completed</tt>. Exact retries with
+      the same <tt>idempotency_key</tt> MAY return the stored
+      <tt>complete_response</tt>; conflicting repeats MUST reject with
+      <tt>approval_state_conflict</tt>.
+    </t>
+
+    <t>
+      <strong>Fail request:</strong> A fail request body MUST conform to the
+      <tt>fail_request</tt> profile and contain <tt>step_execution_token</tt>
+      and <tt>failure_code</tt>. The Registry MUST perform the same SET,
+      actor, path, stored-<tt>jti</tt>, state, and deadline checks required
+      for completion. On success, the Registry MUST transition the step to
+      <tt>failed</tt>, persist the supplied failure metadata for audit, and
+      apply the SAGA compensation rules. Exact retries with the same
+      <tt>idempotency_key</tt> MAY return the stored
+      <tt>fail_response</tt>; conflicting repeats MUST reject with
+      <tt>approval_state_conflict</tt>.
+    </t>
+
+    <t>
+      <strong>Compensation endpoints:</strong>
+      <tt>POST /v1/approvals/{id}/compensation-steps/{n}/claim</tt>,
+      <tt>/complete</tt>, and <tt>/fail</tt> use the same request and
+      response profiles as forward-step endpoints. The path <tt>{n}</tt> is
+      the compensation step's <tt>compensation_index</tt>. Compensation claims
+      are valid only when the envelope is <tt>compensating</tt> and the
+      compensation step has been triggered by the SAGA rules in Section 13.9.
+      SETs issued for compensation claims MUST contain
+      <tt>aip_step_kind: "compensation"</tt> and
+      <tt>aip_compensation_step</tt>, and MUST NOT contain
+      <tt>aip_approval_step</tt>.
+    </t>
+  </section>
+
+  <section anchor="saga-compensation" numbered="true">
+  <name>SAGA Compensation Semantics</name>
+    <t>
+      When any required: true step fails after one or more
+      earlier steps completed, the Registry MUST:
+    </t>
+
+    <ol>
+      <li>Transition envelope status to compensating</li>
+      <li>Build the compensation set from forward steps whose status is
+      <tt>completed</tt> and whose <tt>compensation_index</tt> is non-null.
+      The failed forward step is included in this set only if its status had
+      previously reached <tt>completed</tt> before the failure was reported.</li>
+      <li>Sort that forward-step set by descending <tt>step_index</tt>.</li>
+      <li>For each sorted forward step, trigger the compensation step
+      referenced by that forward step's <tt>compensation_index</tt>.</li>
+      <li>Notify the orchestrating agent</li>
+    </ol>
+
+    <t>
+      Compensation steps that are not referenced by any completed forward
+      step MUST NOT be triggered. If the failed required step has no completed
+      side effects and no completed predecessor has a non-null
+      <tt>compensation_index</tt>, the Registry MUST transition the envelope
+      directly to <tt>failed</tt> rather than <tt>compensating</tt>. If a
+      completed forward step references a compensation step that cannot be
+      found, the envelope is invalid and the Registry MUST treat the
+      compensation attempt as failed.
+    </t>
+
+    <t>
+      Rollback ordering is based on the forward steps' descending
+      <tt>step_index</tt> values, not on <tt>compensation_index</tt> order. The
+      <tt>compensation_index</tt> value is used only to dereference the
+      pre-authorised compensation step selected for each completed forward
+      step.
+    </t>
+
+    <t>
+      Because the principal pre-approved all compensation
+      steps, no additional human interaction is required.
+      This is the core SAGA property.
+    </t>
+
+    <t>
+      If a compensation step itself fails, the envelope
+      transitions to failed (terminal). The Registry MUST set the failed
+      compensation step status to <tt>failed</tt>, set the envelope status to
+      <tt>failed</tt>, persist an audit record containing the approval ID,
+      compensation index, actor AID, failure timestamp, and failure reason, and
+      return or expose <tt>compensation_failed</tt> for the failed transition.
+    </t>
+    <t>
+      The Registry MUST create a principal notification event for the terminal
+      compensation failure. If the Approval Envelope contains a
+      <tt>notification_uri</tt>, the Registry MUST attempt delivery to that URI.
+      If RPNP is supported and a matching active subscription exists, the
+      Registry MUST also emit an RPNP event. If no delivery channel is
+      configured, the Registry MUST retain the notification event and expose it
+      in the Approval Envelope status response until acknowledged by local
+      policy. Human remediation of the failed business action remains outside
+      AIP, but the failure state, audit record, and notification event are AIP
+      protocol obligations.
+    </t>
+  </section>
+
+  <section anchor="approval-validation" numbered="true">
+  <name>Approval Envelope Validation Rules</name>
+    <t>
+      The Registry MUST reject an Approval Envelope at
+      submission time if any of the following are true:
+    </t>
+
+    <ol>
+      <li><tt>principal_id</tt> begins with the exact ASCII prefix
+        <tt>did:aip:</tt>; reject with
+        <tt>approval_envelope_invalid</tt>. This is a byte-for-byte prefix
+        comparison against the first eight characters of the string; values
+        whose first eight characters are <tt>did:aip:</tt> identify an agent
+        AID and are not valid principal identifiers.</li>
+      <li><tt>engagement_id</tt> is present but malformed: reject with
+        <tt>approval_envelope_invalid</tt>. If <tt>engagement_id</tt>
+        references an Engagement Object that does not exist, reject with
+        <tt>engagement_not_found</tt>.</li>
+      <li><tt>steps</tt> contains circular dependencies in
+        <tt>triggered_by</tt>: reject with
+        <tt>approval_envelope_invalid</tt>.</li>
+      <li><tt>steps</tt> contains duplicate <tt>step_index</tt> values:
+        reject with <tt>approval_envelope_invalid</tt>.</li>
+      <li><tt>total_value</tt> != sum of step values, treating omitted
+        step <tt>value</tt> fields as <tt>0</tt>: reject with
+        <tt>approval_envelope_invalid</tt>.</li>
+      <li>Any present step <tt>currency</tt> differs from the envelope
+        <tt>currency</tt>: reject with <tt>approval_envelope_invalid</tt>.</li>
+      <li><tt>approval_window_expires_at</tt> is in the past: reject with
+        <tt>approval_envelope_expired</tt>.</li>
+      <li><tt>created_at</tt> is in the future beyond 30-second clock skew:
+        reject with <tt>approval_envelope_invalid</tt>.</li>
+      <li><tt>approval_window_expires_at</tt> is not strictly after
+        <tt>created_at</tt>, or is more than 72 hours after
+        <tt>created_at</tt>: reject with
+        <tt>approval_envelope_invalid</tt>.</li>
+      <li><tt>compensation_index</tt> references a non-existent index:
+        reject with <tt>approval_envelope_invalid</tt>.</li>
+      <li><tt>compensation_steps</tt> contains duplicate
+        <tt>compensation_index</tt> values or values that are not sequential
+        starting at <tt>1</tt>: reject with
+        <tt>approval_envelope_invalid</tt>.</li>
+      <li>More than one forward step references the same non-null
+        <tt>compensation_index</tt>: reject with
+        <tt>approval_envelope_invalid</tt>.</li>
+      <li><tt>creator_signature</tt> does not verify: reject with
+        <tt>approval_envelope_invalid</tt>.</li>
+      <li><tt>created_by</tt> agent is revoked: reject with
+        <tt>agent_revoked</tt>.</li>
+      <li><tt>steps</tt> contains more than 20 elements: reject with
+        <tt>approval_envelope_invalid</tt>.</li>
+      <li><tt>triggered_by</tt> is 0: reject with
+        <tt>approval_envelope_invalid</tt>. An absent
+        <tt>triggered_by</tt> field is a schema violation because the field is
+        REQUIRED by the step schema and is rejected before this semantic
+        validation rule is evaluated.</li>
+      <li>A forward or compensation step omits <tt>scopes</tt>, includes an
+        empty <tt>scopes</tt> array, includes duplicate scope strings, or
+        includes a scope that is not active in the synced AIP Scope Catalog:
+        reject with <tt>approval_envelope_invalid</tt>.</li>
+    </ol>
+
+    <t>
+      The Registry MUST also reject envelopes with
+      <tt>insufficient_scope</tt> unless the submitting orchestrating agent's
+      Credential Token and current Capability Manifest both include the active
+      <tt>approvals.create</tt> scope from the synced AIP Scope Catalog.
+      Transaction, communication, filesystem, and agent-spawning scopes alone
+      do not grant authority to submit Approval Envelopes.
+    </t>
+
+    <t>
+      <strong>Rule DESTRUCTIVE-1 (Mandatory Approval):</strong> Any operation
+      involving a scope whose active AIP Scope Catalog entry has
+      <tt>destructive: true</tt> MUST be authorised via a dedicated Approval
+      Envelope step or a direct human confirmation ceremony. Registry-mediated
+      G1 grants MUST NOT be used for destructive operations without an
+      additional out-of-band confirmation.
+    </t>
+  </section>
+</section>

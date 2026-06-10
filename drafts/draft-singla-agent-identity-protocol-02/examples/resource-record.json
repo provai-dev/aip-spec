@@ -1,0 +1,18 @@
+{
+  "_comment": "Example Registered Resource Record. Submitted by an authorized Registry operator or resource owner to POST /v1/resources. The resource_id is sha256(resource_uri).",
+  "resource_id": "490f20c457c8e7138766e73a854630032187061c1cfa437ef9d6215884b1c80b",
+  "resource_uri": "https://mcp.example.com",
+  "authorization_server": "https://registry.provai.dev",
+  "status": "active",
+  "owner_did": "did:web:mcp.example.com",
+  "scopes_supported": [
+    "email.read",
+    "calendar.read"
+  ],
+  "enterprise_idp_required": true,
+  "enterprise_idp_issuer": "https://login.example-entra.test/00000000-0000-4000-8000-000000000000/v2.0",
+  "enterprise_idp_token_endpoint": "https://login.example-entra.test/00000000-0000-4000-8000-000000000000/oauth2/v2.0/token",
+  "enterprise_idp_client_id": "aip-registry-client",
+  "created_at": "2026-05-05T12:00:00Z",
+  "updated_at": "2026-05-05T12:00:00Z"
+}

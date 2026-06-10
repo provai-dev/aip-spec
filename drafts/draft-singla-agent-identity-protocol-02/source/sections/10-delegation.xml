@@ -1,0 +1,200 @@
+<section anchor="delegation-rules" numbered="true">
+  <name>Delegation</name>
+  <t>     AIP enables hierarchical delegation where a principal authorizes a     primary agent, which may in turn authorize sub-agents under narrowing    scope constraints. Delegation is encoded in the <tt>aip_chain</tt> array
+    of the Credential Token, with each Principal Token in the chain
+    representing one delegation hop from principal to agent.
+  </t>
+
+  <section anchor="delegation-chain" numbered="true">
+  <name>Delegation Chain</name>
+    <t>
+      Every Credential Token MUST include a verifiable principal chain
+      linking the acting agent to its root principal via the
+      <tt>aip_chain</tt> array. The root principal MUST be a human or
+      organizational entity identified by a W3C Decentralized Identifier
+      (DID) that does NOT use the <tt>did:aip</tt> method. Subject to the
+      Tier-specific Principal DID Method requirements in Section 20,
+      <tt>did:web</tt>, <tt>did:key</tt>, or proprietary DID methods can be
+      acceptable for Tier 1.
+    </t>
+    <t>
+      The maximum delegation depth is a hard constraint of 10. Delegation
+      depth is the zero-based <tt>delegation_depth</tt> value carried in each
+      Principal Token and MUST equal that token's index in the
+      <tt>aip_chain</tt> array. A valid chain therefore contains at most 11
+      Principal Tokens: indexes 0 through 10. An agent MUST NOT delegate to a
+      sub-agent if doing so would create a token with
+      <tt>delegation_depth</tt> greater than 10 or an <tt>aip_chain</tt>
+      longer than 11 elements.
+    </t>
+    <t>
+      An agent MUST NOT delegate to itself. For every delegated Principal
+      Token with <tt>delegation_depth</tt> greater than 0, the
+      <tt>delegated_by</tt> AID MUST identify the immediate parent agent and
+      MUST NOT equal the token's <tt>sub</tt> AID. Relying Parties enforce
+      this prohibition during Step 8e and Step 8g of Credential Token
+      validation.
+    </t>
+    <t>
+      The default value of <tt>max_delegation_depth</tt> MUST NOT exceed 3.
+      When a Principal Token does not explicitly set
+      <tt>max_delegation_depth</tt>, implementations MUST treat the default
+      as 3. This conservative default prevents accidental authorization
+      chains from becoming unmanageably deep; parties requiring deeper
+      chains MUST explicitly opt in by setting
+      <tt>max_delegation_depth</tt> to a value greater than 3 and no greater
+      than 10.
+    </t>
+  </section>
+
+  <section anchor="scope-inheritance-rules" numbered="true">
+  <name>Capability Scope Rules</name>
+    <t>
+      Scope inheritance is the mechanism by which child agents are
+      constrained to operate within the bounds of their parent's
+      authorization. Five core rules (D-1 through D-5) govern this
+      relationship; they are defined in Section 5.10 of the AIP
+      specification.
+    </t>
+    <t>
+      <strong>Scope Inheritance Rule:</strong> For each scope <tt>s</tt>
+      granted to a child agent, <tt>s</tt> MUST be present in the parent's
+      Capability Manifest AND all constraint values for <tt>s</tt> in the
+      child's manifest MUST be equal to or more restrictive than the
+      corresponding values in the parent's manifest.
+    </t>
+    <t>
+      Constraint comparison uses the recursive attenuation semantics from Rule
+      CO-1. Numeric caps and thresholds use the ordering defined for that field;
+      booleans, arrays, strings, enums, omitted fields, and unknown types follow
+      the type-specific CO-1 rules.
+    </t>
+    <t>
+      Implementations MUST enforce this rule at delegation time -- when a
+      child agent is registered, the Registry MUST validate that all scopes
+      in its Capability Manifest satisfy the inheritance rule relative to
+      its immediate parent's manifest. Implementations MAY reject delegation
+      requests that violate this rule before they are registered.
+    </t>
+    <t>
+      Relying Parties MUST independently verify this rule during validation
+      using the ordered Step 9c algorithm in the Credential Token validation
+      algorithm (see <xref target="validation-step-9c"/>). This ensures that
+      even if a Registry incorrectly permits a violating delegation, Relying
+      Parties will catch it and reject the token.
+    </t>
+  </section>
+
+  <section anchor="delegation-validation" numbered="true">
+  <name>Delegation Validation</name>
+    <t>
+      When validating a delegated Credential Token, Relying Parties MUST
+      fetch and verify the Capability Manifests of all agents in the
+      delegation chain. This section specifies the performance and caching
+      constraints for these operations.
+    </t>
+    <t>
+      <strong>Ancestor Manifest Fetch Limits:</strong> Implementations MUST
+      NOT fetch more ancestor manifests than the <tt>max_delegation_depth</tt>
+      value of the chain's root token (which defaults to 3 when absent).
+      This limit prevents accidental O(n^2) fetch patterns in deep delegation
+      chains and bounds the performance cost of validation.
+    </t>
+    <t>
+      <strong>Ancestor Manifest Caching for Tier 1:</strong> For Tier 1
+      operations (low-risk scopes with bounded-staleness threat model),
+      ancestor manifests MAY be cached for a maximum of 60 seconds. This
+      cache is per-agent and per-manifest, and MUST respect the 60-second
+      TTL. After 60 seconds, the Relying Party MUST fetch a fresh manifest.
+    </t>
+    <t>
+      <strong>No-Cache Requirement for Tier 2:</strong> For Tier 2 operations
+      (high-risk scopes with real-time threat model), the no-cache
+      requirement in the Credential Token validation algorithm (see
+      <xref target="validation-step-9c"/>) applies to ALL manifests in the
+      delegation chain -- including ancestor manifests -- not only the leaf
+      agent's manifest. The 60-second ancestor cache MUST NOT be used for
+      any manifest appearing in a Tier 2 validation. Every manifest MUST be
+      fetched fresh from the Registry.
+    </t>
+    <t>
+      <strong>Unavailable Manifests:</strong> If an ancestor manifest is
+      unavailable or cannot be fetched (due to network failure, Registry
+      downtime, or the manifest having been deleted), the Relying Party MUST
+      reject the token by returning the error code <tt>manifest_invalid</tt>.
+      Partial delegation chains are not acceptable; either all manifests in
+      the chain are available and valid, or the token is rejected.
+    </t>
+  </section>
+
+  <section anchor="delegated-identity-chaining-a2a" numbered="true">
+    <name>Delegated Identity Chaining for A2A Workflows</name>
+    <t>
+      Agent-to-agent asynchronous workflows require Relying Parties to
+      distinguish the acting agent from the originating agent that delegated
+      the work. When Agent B makes a tool call on behalf of Agent A, Agent B's
+      Credential Token MUST carry both identities using the profile in this
+      section.
+    </t>
+    <ol type="%d">
+      <li>Agent B's Credential Token <tt>aip_chain</tt> array MUST include
+      Agent A's Principal Token as an additional chain element after Agent B's
+      own root Principal Token.</li>
+      <li>The <tt>aip_scope</tt> in Agent B's Credential Token MUST be a
+      strict subset of the scopes granted in Agent A's Capability Manifest.
+      Rule D-1 enforces this at delegation time; this rule applies the same
+      attenuation requirement to the presented Credential Token.</li>
+      <li>When Agent B is acting in a delegated A2A context, Agent B's
+      Credential Token MUST include the <tt>aip_originator_aid</tt> claim.
+      The value of <tt>aip_originator_aid</tt> MUST be Agent A's AID: the AID
+      of the agent that initiated the workflow and delegated the task to
+      Agent B. The <tt>aip_originator_aid</tt> value MUST conform to the
+      <tt>did:aip</tt> ABNF defined in <xref target="aid-syntax"/>. The
+      <tt>aip_originator_aid</tt> value MUST NOT equal the <tt>sub</tt> claim
+      of Agent B's Credential Token. When <tt>aip_originator_aid</tt> is
+      present but does not meet these constraints, the Relying Party MUST
+      reject the request with <tt>a2a_originator_invalid</tt>.</li>
+      <li>Relying Parties MAY use <tt>aip_originator_aid</tt> to apply
+      originator-level access policies and to index audit events by the
+      originating agent. Full chain validation under
+      <xref target="validation-step-8"/> remains REQUIRED for every accepted
+      Credential Token.</li>
+      <li>
+        <t>Relying Parties receiving a Credential Token that contains
+        <tt>aip_originator_aid</tt> MUST perform the following validation:</t>
+        <ol type="a">
+          <li>Verify <tt>aip_originator_aid</tt> conforms to the
+          <tt>did:aip</tt> ABNF in <xref target="aid-syntax"/>. If not,
+          reject with <tt>a2a_originator_invalid</tt>.</li>
+          <li>Verify <tt>aip_originator_aid</tt> does not equal the
+          Credential Token <tt>sub</tt> claim. If equal, reject with
+          <tt>a2a_originator_invalid</tt>.</li>
+          <li>Verify <tt>aip_originator_aid</tt> appears as the
+          <tt>sub</tt> of <tt>aip_chain[0]</tt> or as a registered AID in the
+          validated delegation chain, so that Agent A is demonstrably the
+          originator of the chain. If no such binding exists, reject with
+          <tt>a2a_originator_invalid</tt>.</li>
+          <li>Relying Parties MAY use <tt>aip_originator_aid</tt> to apply
+          originator-level access policies and audit classification for the
+          already validated request context. Every new Credential Token or
+          Step Execution Token presented on a downstream call MUST still pass
+          the full validation algorithm, including
+          <xref target="validation-step-8"/>.</li>
+        </ol>
+      </li>
+    </ol>
+    <t>
+      This profile aligns with RFC 8693 actor-token semantics: the signing
+      Credential Token identifies the current actor, while
+      <tt>aip_originator_aid</tt> and the additional Principal Token context
+      allow enterprise audit systems to attribute tool calls to the
+      originating agent chain.
+    </t>
+    <t>
+      Relying Parties that support enterprise audit logging SHOULD record
+      <tt>aip_originator_aid</tt> in their audit trail as the chain originator
+      for all A2A tool calls.
+    </t>
+  </section>
+
+</section>

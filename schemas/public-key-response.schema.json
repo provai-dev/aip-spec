@@ -74,8 +74,8 @@
     },
     "status": {
       "type": "string",
-      "enum": ["active", "retired"],
-      "description": "active for the current key; retired for a retained historical key."
+      "enum": ["active", "retired", "compromised"],
+      "description": "active for the current key; retired for a retained historical key replaced by ordinary rotation; compromised for a key replaced through Emergency Key Rotation. Relying Parties MUST reject Credential Tokens signed by a compromised key whose iat is at or after the key's valid_until time."
     }
   }
 }

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <rfc xmlns:xi="http://www.w3.org/2001/XInclude"
      version="3"
-     docName="draft-singla-agent-identity-protocol-02"
+     docName="draft-singla-agent-identity-protocol-03"
      ipr="trust200902"
      category="std"
      submissionType="IETF"
@@ -11,7 +11,7 @@
   <front>
     <title abbrev="AIP">Agent Identity Protocol (AIP): Decentralized Identity and Delegation for AI Agents</title>
 
-    <seriesInfo name="Internet-Draft" value="draft-singla-agent-identity-protocol-02"/>
+    <seriesInfo name="Internet-Draft" value="draft-singla-agent-identity-protocol-03"/>
 
     <author fullname="Paras Singla" initials="P." surname="Singla">
       <organization>Independent</organization>
@@ -21,7 +21,7 @@
       </address>
     </author>
 
-    <date year="2026" month="May" day="14"/>
+    <date year="2026" month="June" day="10"/>
 
     <area>Security</area>
 

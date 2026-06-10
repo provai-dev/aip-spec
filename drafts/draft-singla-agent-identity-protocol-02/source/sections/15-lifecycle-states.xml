@@ -1,0 +1,41 @@
+<section anchor="lifecycle-states">
+  <name>Lifecycle States</name>
+  <t>
+    An AID has exactly two lifecycle states: <tt>active</tt> and
+    <tt>revoked</tt>. AIP does not define an <tt>inactive</tt> status;
+    the Dead Man's Switch mechanism (Section 21.8) uses
+    <tt>full_revoke</tt>.
+  </t>
+  <t>
+    An AID MUST remain valid until explicitly revoked. Revoked AIDs MUST
+    NOT be reused. Key rotation preserves the AID but changes the active
+    key. Outstanding tokens signed under the previous key remain valid
+    until their <tt>exp</tt>, unless the AID or token is otherwise revoked.
+    Registries MUST retain retired public verification keys for at least the
+    maximum Credential Token TTL plus clock skew after the key's
+    <tt>valid_until</tt> time, so that conforming unexpired tokens remain
+    verifiable. Relying Parties MUST perform the expiration preflight in
+    Section 9 before historical key lookup so expired tokens return
+    <tt>token_expired</tt> even after retired key material is no longer
+    retained.
+  </t>
+  <t>
+    Agents whose synced AIP Namespace Catalog entry has
+    <tt>requires_task_id: true</tt> MUST have a non-null <tt>task_id</tt>.
+    Namespace-specific lifecycle rules, including task-completion revocation
+    expectations, are defined by the AIP Namespace Catalog. For the Draft-02
+    catalog, ephemeral agents MUST be explicitly revoked on task completion.
+    The Registry MUST also persist a <tt>lifecycle_expires_at</tt> deadline
+    for each ephemeral agent at registration time. This deadline MUST be no
+    later than the earlier of the decoded root Principal Token
+    <tt>expires_at</tt> value and the initial Capability Manifest
+    <tt>expires_at</tt> value. The Registry MUST automatically issue or
+    materialise a <tt>full_revoke</tt> Revocation Object for the ephemeral AID
+    with reason <tt>lifecycle_expired</tt> no later than 15 seconds after
+    <tt>lifecycle_expires_at</tt> passes if the AID has not already been
+    revoked. This auto-revocation requirement is a Registry conformance
+    requirement; Relying Parties MUST still perform normal Principal Token,
+    Capability Manifest, and revocation validation and MUST NOT rely on
+    auto-revocation as the only expiry check.
+  </t>
+</section>

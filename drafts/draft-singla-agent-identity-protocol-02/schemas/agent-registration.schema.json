@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provai.dev/schemas/aip/agent-registration/draft-02",
+  "$comment": "Normatively defined by the AIP Registry Interface Agent Registration Metadata endpoint. Response body for GET /v1/agents/{aid} when no DID-specific Accept header is used.",
+  "title": "AIP Agent Registration Metadata",
+  "description": "Default application/json response for GET /v1/agents/{aid}. DID Document representations are returned only through DID-specific content negotiation.",
+  "type": "object",
+  "required": [
+    "aid",
+    "identity",
+    "grant_tier",
+    "registered_at",
+    "updated_at",
+    "public_key_uri",
+    "capability_manifest_uri",
+    "revocation_status_uri",
+    "registration_warnings"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "aid": {
+      "type": "string",
+      "pattern": "^did:aip:[a-z][a-z0-9]*(-[a-z0-9]+)*:[0-9a-f]{32}$",
+      "description": "Registered AID. MUST equal identity.aid."
+    },
+    "identity": {
+      "$ref": "https://provai.dev/schemas/aip/agent-identity/draft-02",
+      "description": "Current Agent Identity Object for this AID."
+    },
+    "grant_tier": {
+      "type": "string",
+      "enum": ["G1", "G2", "G3"],
+      "description": "Grant tier accepted at registration and used by Relying Parties during Step 9d Grant Tier Conformance validation."
+    },
+    "registered_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp when the Registry accepted the initial Registration Envelope."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp when registration metadata last changed."
+    },
+    "public_key_uri": {
+      "type": "string",
+      "minLength": 1,
+      "description": "URI or relative path for GET /v1/agents/{aid}/public-key."
+    },
+    "capability_manifest_uri": {
+      "type": "string",
+      "minLength": 1,
+      "description": "URI or relative path for GET /v1/agents/{aid}/capabilities."
+    },
+    "revocation_status_uri": {
+      "type": "string",
+      "minLength": 1,
+      "description": "URI or relative path for GET /v1/agents/{aid}/revocation."
+    },
+    "registration_warnings": {
+      "type": "array",
+      "description": "Structured warnings created during registration validation. Empty when no warning applies. When Registration Check 15 accepts a Tier 2 registration without identity.model.attestation_hash, this array MUST include model_attestation_missing_tier2 and the same warning MUST be returned by POST /v1/agents and GET /v1/agents/{aid}.",
+      "items": {
+        "type": "object",
+        "required": ["code", "severity", "source_check", "issued_at", "message"],
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": ["model_attestation_missing_tier2"],
+            "description": "Machine-readable warning code."
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["warning"],
+            "description": "Warning severity."
+          },
+          "source_check": {
+            "type": "string",
+            "enum": ["registration_check_15"],
+            "description": "Registration validation check that created the warning."
+          },
+          "issued_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 UTC timestamp when the Registry created the warning."
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "description": "Operator-visible warning text. MUST state that the Tier 2 agent is not cryptographically pinned to a model artifact."
+          }
+        }
+      }
+    }
+  }
+}

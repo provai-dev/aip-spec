@@ -382,8 +382,68 @@
 
     <t>
       <strong>Key compromise response:</strong> Immediately revoke with
-      reason: key_compromised, register new AID with new
-      keypair, re-establish delegations.
+      reason: key_compromised. If a fallback key is registered and is not
+      itself suspected of compromise, perform Emergency Key Rotation
+      (<xref target="agent-emergency-key-rotation-registry"/>) to retain the
+      AID and its delegation history. If no fallback key is registered, or
+      the fallback key may also be compromised, register a new AID with a
+      new keypair and re-establish delegations.
+    </t>
+  </section>
+
+  <section anchor="fallback-key-security" numbered="true">
+    <name>Fallback Key and Emergency Rotation</name>
+    <t>
+      The fallback key (Section 5) is a recovery credential with the same
+      authority as the active key: whoever holds the fallback private key can
+      take permanent control of the AID through Emergency Key Rotation
+      (<xref target="agent-emergency-key-rotation-registry"/>). Deployments
+      that register a fallback key MUST protect the fallback private key at
+      least as strongly as the active private key, and SHOULD store it in a
+      separate protection boundary — offline or in a distinct HSM, secure
+      enclave, or escrow system — so that a single compromise event cannot
+      capture both keys. The fallback private key is needed exactly twice in
+      normal operation: once to compute <tt>fallback_key_proof</tt> before
+      registration, and once if Emergency Key Rotation is ever performed. It
+      never needs to be online in between.
+    </t>
+    <t>
+      <strong>Loss versus compromise:</strong> Emergency Key Rotation is the
+      correct response to loss of the active private key, and to compromise
+      of the active private key when the fallback key remains trustworthy.
+      If the fallback private key is, or may be, compromised — including
+      whenever active and fallback keys were stored in the same protection
+      boundary during a compromise event — the operator MUST NOT rely on
+      Emergency Key Rotation; the correct response is revocation with reason
+      <tt>key_compromised</tt> followed by registration of a new AID. An
+      attacker who obtains the fallback private key can silently take over
+      the AID; the <tt>compromised</tt> key status, CRL entry, and operator
+      alerting required by
+      <xref target="agent-emergency-key-rotation-registry"/> exist so that
+      such a takeover is observable rather than silent.
+    </t>
+    <t>
+      <strong>Proof of possession:</strong> Registration Check 5c exists so
+      that a fallback key cannot be registered without control of its private
+      half. This prevents two failure modes: an operator registering a key
+      it cannot use (an unrecoverable AID that appears recoverable) and an
+      attacker squatting on a third party's public key as a fallback to
+      block that party's future registrations. Verifiers other than the
+      Registry MUST NOT treat the presence of a fallback key or proof as an
+      endorsement of the agent.
+    </t>
+    <t>
+      <strong>Single use and consumption:</strong> A fallback key
+      authenticates at most one Emergency Key Rotation, and a consumed
+      fallback key value is permanently unacceptable Registry-wide. This
+      bounds the value of a stolen fallback key to a single observable
+      takeover attempt and prevents replay of a recorded recovery across
+      AIDs. An agent that performs Emergency Key Rotation SHOULD register a
+      new fallback key in the same rotation request, because the protocol
+      provides no later opportunity to add one. <tt>fallback_public_key_x</tt>
+      is part of the public Agent Identity Object; the design assumes no
+      secrecy for the fallback public key, and Registries MUST NOT treat
+      knowledge of it as authenticating.
     </t>
   </section>
 

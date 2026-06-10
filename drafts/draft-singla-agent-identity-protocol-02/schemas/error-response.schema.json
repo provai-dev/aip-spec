@@ -1,0 +1,351 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provai.dev/schemas/aip/error-response/draft-02",
+  "$comment": "Normatively defined by the AIP Error Response Format rules. AIP protocol error responses use application/json, include X-AIP-Version, and carry this body unless a referenced OAuth binding requires OAuth-native error syntax.",
+  "title": "AIP Error Response",
+  "description": "Standard JSON response body for AIP protocol errors.",
+  "type": "object",
+  "required": ["error", "error_description", "aip_version"],
+  "additionalProperties": false,
+  "properties": {
+    "error": {
+      "type": "string",
+      "enum": [
+        "invalid_token",
+        "token_expired",
+        "token_replayed",
+        "invalid_request",
+        "unsupported_version",
+        "dpop_proof_required",
+        "agent_revoked",
+        "insufficient_scope",
+        "invalid_delegation_depth",
+        "chain_token_expired",
+        "delegation_chain_invalid",
+        "manifest_invalid",
+        "manifest_expired",
+        "approval_envelope_invalid",
+        "approval_envelope_expired",
+        "approval_not_found",
+        "approval_state_conflict",
+        "approval_step_prerequisites_unmet",
+        "approval_step_already_claimed",
+        "approval_step_not_claimed",
+        "approval_step_action_mismatch",
+        "approval_step_invalid",
+        "compensation_failed",
+        "engagement_cancelled",
+        "grant_request_expired",
+        "grant_request_replayed",
+        "grant_request_invalid",
+        "grant_rejected_by_principal",
+        "grant_nonce_mismatch",
+        "grant_tier_insufficient",
+        "registration_invalid",
+        "aid_already_registered",
+        "unknown_aid",
+        "identity_version_conflict",
+        "revocation_invalid",
+        "revocation_unauthorized",
+        "revocation_conflict",
+        "registry_unavailable",
+        "rate_limit_exceeded",
+        "mtls_required",
+        "invalid_scope",
+        "principal_did_method_forbidden",
+        "identity_proofing_insufficient",
+        "enterprise_policy_denied",
+        "idp_client_misconfigured",
+        "invalid_grant",
+        "a2a_originator_invalid",
+        "endorsement_invalid",
+        "gateway_config_invalid",
+        "enterprise_assertion_missing",
+        "enterprise_assertion_invalid",
+        "enterprise_assertion_principal_mismatch",
+        "grant_not_found",
+        "grant_deployer_mismatch",
+        "pkce_required",
+        "registry_untrusted",
+        "overlay_exceeds_manifest",
+        "overlay_issuer_invalid",
+        "overlay_version_conflict",
+        "overlay_signature_invalid",
+        "engagement_terminated",
+        "engagement_suspended",
+        "engagement_participant_removed",
+        "engagement_gate_pending",
+        "engagement_not_found",
+        "engagement_countersign_required",
+        "engagement_signature_invalid",
+        "change_log_immutable",
+        "change_log_sequence_invalid",
+        "subscription_auth_required",
+        "subscription_scope_forbidden",
+        "invalid_webhook_uri",
+        "subscription_limit_exceeded",
+        "invalid_target"
+      ],
+      "description": "Exact registered AIP error code."
+    },
+    "error_description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "description": "Human-readable diagnostic text. Clients MUST NOT parse this field for protocol decisions."
+    },
+    "aip_version": {
+      "type": "string",
+      "enum": ["0.3"],
+      "description": "AIP protocol version used to generate the error response. MUST match the X-AIP-Version response header."
+    },
+    "error_uri": {
+      "type": "string",
+      "format": "uri",
+      "description": "Optional stable documentation URI for the error code."
+    },
+    "correlation_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Optional server-generated identifier for support, audit, or log correlation."
+    },
+    "details": {
+      "oneOf": [
+        { "$ref": "#/$defs/unsupported_version_details" },
+        { "$ref": "#/$defs/scope_details" },
+        { "$ref": "#/$defs/delegation_depth_details" },
+        { "$ref": "#/$defs/rate_limit_details" },
+        { "$ref": "#/$defs/registry_dependency_details" },
+        { "$ref": "#/$defs/conflict_details" },
+        { "$ref": "#/$defs/approval_step_details" },
+        { "$ref": "#/$defs/grant_details" },
+        { "$ref": "#/$defs/field_details" },
+        { "$ref": "#/$defs/subscription_details" },
+        { "$ref": "#/$defs/generic_details" }
+      ]
+    }
+  },
+  "$defs": {
+    "non_empty_string": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "date_time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "uuid_prefixed_id": {
+      "type": "string",
+      "pattern": "^[a-z]+:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "scope": {
+      "type": "string",
+      "pattern": "^[a-z_][a-z0-9_]*([.][a-z_][a-z0-9_]*)*$"
+    },
+    "json_value": {
+      "type": ["string", "number", "integer", "boolean", "object", "array", "null"]
+    },
+    "unsupported_version_details": {
+      "type": "object",
+      "required": ["type", "supported_versions"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "unsupported_version" },
+        "requested_version": {
+          "type": ["string", "null"],
+          "description": "Version from the request header, query parameter, or protocol binding, if present."
+        },
+        "header_aip_version": {
+          "type": ["string", "null"]
+        },
+        "token_aip_version": {
+          "type": ["string", "null"]
+        },
+        "supported_versions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "scope_details": {
+      "type": "object",
+      "required": ["type", "scopes"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "scope" },
+        "scopes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/scope" }
+        },
+        "catalog_snapshot_id": { "$ref": "#/$defs/non_empty_string" },
+        "catalog_sha256": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "reason": { "$ref": "#/$defs/non_empty_string" }
+      }
+    },
+    "delegation_depth_details": {
+      "type": "object",
+      "required": ["type", "delegation_depth"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "delegation_depth" },
+        "delegation_depth": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_delegation_depth": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "chain_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "principal_token_jti": { "$ref": "#/$defs/non_empty_string" },
+        "expires_at": { "$ref": "#/$defs/date_time" }
+      }
+    },
+    "rate_limit_details": {
+      "type": "object",
+      "required": ["type", "operation", "limit", "reset_at"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "rate_limit" },
+        "operation": { "$ref": "#/$defs/non_empty_string" },
+        "limit": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "remaining": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reset_at": { "$ref": "#/$defs/date_time" },
+        "retry_after_seconds": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "registry_dependency_details": {
+      "type": "object",
+      "required": ["type", "dependency", "retryable"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "registry_dependency" },
+        "dependency": {
+          "type": "string",
+          "enum": ["registry", "did_resolver", "catalog", "crl", "trust_record", "authorization_server", "webhook"]
+        },
+        "retryable": { "type": "boolean" },
+        "retry_after_seconds": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "conflict_details": {
+      "type": "object",
+      "required": ["type", "resource"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "conflict" },
+        "resource": { "$ref": "#/$defs/non_empty_string" },
+        "current_version": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "submitted_version": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expected_version": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "current_state": { "$ref": "#/$defs/non_empty_string" },
+        "submitted_state": { "$ref": "#/$defs/non_empty_string" },
+        "id": { "$ref": "#/$defs/non_empty_string" }
+      }
+    },
+    "approval_step_details": {
+      "type": "object",
+      "required": ["type", "approval_id", "step_id"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "approval_step" },
+        "approval_id": {
+          "type": "string",
+          "pattern": "^apr:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "step_id": { "$ref": "#/$defs/non_empty_string" },
+        "step_kind": {
+          "type": "string",
+          "enum": ["forward", "compensation"]
+        },
+        "current_status": { "$ref": "#/$defs/non_empty_string" }
+      }
+    },
+    "grant_details": {
+      "type": "object",
+      "required": ["type", "grant_request_id"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "grant" },
+        "grant_request_id": {
+          "type": "string",
+          "pattern": "^gr:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "state": { "$ref": "#/$defs/non_empty_string" }
+      }
+    },
+    "field_details": {
+      "type": "object",
+      "required": ["type", "field"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "field" },
+        "field": { "$ref": "#/$defs/non_empty_string" },
+        "expected": { "$ref": "#/$defs/non_empty_string" },
+        "actual": { "$ref": "#/$defs/non_empty_string" },
+        "reason": { "$ref": "#/$defs/non_empty_string" }
+      }
+    },
+    "subscription_details": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "subscription" },
+        "subscription_id": {
+          "type": "string",
+          "pattern": "^sub:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "subscriber_did": {
+          "type": "string",
+          "pattern": "^did:[a-z][a-z0-9]*:.+$"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "generic_details": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "const": "generic" }
+      },
+      "additionalProperties": { "$ref": "#/$defs/json_value" }
+    }
+  }
+}

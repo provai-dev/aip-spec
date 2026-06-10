@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provai.dev/schemas/aip/grant-request/draft-02",
+  "$comment": "Normatively defined by the AIP-GRANT GrantRequest rules. The GrantRequest is constructed by the Agent Deployer and transmitted to the Principal Wallet via a transport binding or to the Registry Authorization Server in the G3 aip_grant_request OAuth parameter. When using Web Redirect, QR Code, or G3 OAuth bindings, the request MUST be carried as a compact JWS signed with the deployer's Ed25519 key. The JWS kid DID MUST equal deployer_did. The nonce MUST contain at least 128 bits of entropy.",
+  "title": "AIP Grant Request",
+  "description": "The request object constructed by an Agent Deployer and presented to the Principal Wallet to initiate the AIP-GRANT signing ceremony. The wallet validates, displays the consent UI, and returns a GrantResponse.",
+  "type": "object",
+  "required": [
+    "grant_request_id",
+    "aip_version",
+    "agent_aid",
+    "agent_name",
+    "agent_type",
+    "model",
+    "requested_capabilities",
+    "purpose",
+    "delegation_valid_for_seconds",
+    "deployer_did",
+    "deployer_name",
+    "nonce",
+    "request_expires_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "grant_request_id": {
+      "type": "string",
+      "pattern": "^gr:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "description": "Unique identifier for this grant request. Format: 'gr:' prefix followed by UUID v4 in canonical lowercase hyphenated form. The Principal Wallet MUST maintain a record of seen grant_request_id values for at least 30 days and MUST reject replays with grant_request_replayed."
+    },
+    "aip_version": {
+      "type": "string",
+      "enum": ["0.3"],
+      "description": "AIP protocol compatibility version. MUST be '0.3' for this spec. This is not the Internet-Draft revision suffix."
+    },
+    "agent_aid": {
+      "type": "string",
+      "pattern": "^did:aip:[a-z][a-z0-9]*(-[a-z0-9]+)*:[0-9a-f]{32}$",
+      "description": "The pre-derived AID of the agent being authorised. REQUIRED. The deployer MUST generate the agent's keypair and AID before constructing the GrantRequest, and any Principal Token produced from this grant MUST use this exact value as its sub claim."
+    },
+    "agent_name": {
+      "type": "string",
+      "maxLength": 64,
+      "description": "Human-readable agent name. Displayed verbatim in the consent UI as mandatory display element 1."
+    },
+    "agent_type": {
+      "type": "string",
+      "description": "Registered AIP Namespace Catalog value for the requested agent type. Displayed in the consent UI."
+    },
+    "model": {
+      "type": "object",
+      "required": ["provider", "model_id"],
+      "additionalProperties": false,
+      "description": "AI model information. Displayed in the consent UI as mandatory display element 2.",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "description": "AI model provider name (e.g., 'Anthropic', 'OpenAI', 'Google'). Displayed as '<provider> — <model_id>'."
+        },
+        "model_id": {
+          "type": "string",
+          "description": "AI model identifier (e.g., 'claude-sonnet-4-6'). Displayed together with provider."
+        }
+      }
+    },
+    "requested_capabilities": {
+      "type": "object",
+      "description": "The capability set being requested. Uses the same schema as the Capability Manifest 'capabilities' sub-object. The Principal Wallet resolves this object to concrete scope identifiers and generates consent UI text from trusted AIP Scope Catalog display metadata — NOT from any deployer-supplied display string. The principal MAY approve a strict subset (partial approval).",
+      "additionalProperties": true
+    },
+    "purpose": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "description": "Plain-language description of why this agent needs the requested capabilities. Displayed verbatim in the consent UI as mandatory display element 3. MUST accurately describe the agent's intended use."
+    },
+    "delegation_valid_for_seconds": {
+      "type": "integer",
+      "minimum": 300,
+      "maximum": 31536000,
+      "description": "Requested maximum delegation validity window in seconds. Minimum: 300 seconds (5 minutes). Maximum: 31536000 seconds (1 year). The issuer MAY approve a shorter window, but approved_delegation_valid_for_seconds in the GrantResponse MUST NOT exceed this value. The issued Principal Token's expires_at is issued_at plus approved_delegation_valid_for_seconds."
+    },
+    "max_delegation_depth": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10,
+      "default": 0,
+      "description": "OPTIONAL. Maximum sub-delegation depth permitted for this agent. Default: 0 (leaf agent, cannot spawn sub-agents). When > 0, the consent UI MUST display a clear sub-delegation notice as mandatory display element 7."
+    },
+    "task_id": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "OPTIONAL unless the requested agent_type namespace has requires_task_id: true in the synced AIP Namespace Catalog. Links this grant to a specific task in the audit trail."
+    },
+    "deployer_did": {
+      "type": "string",
+      "pattern": "^did:[a-z][a-z0-9]*:.+$",
+      "description": "W3C DID of the deploying organisation or individual. REQUIRED. Displayed in the consent UI and used to verify signed GrantRequest envelopes. For Web Redirect and QR Code bindings, the compact JWS kid DID MUST equal this value and resolve to an Ed25519 verification method controlled by this DID."
+    },
+    "deployer_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Human-readable name of the deployer. REQUIRED. Displayed in the consent UI alongside deployer_did. This value is display metadata only; the Principal Wallet MUST treat deployer_did and the verified GrantRequest signature as the trust anchor."
+    },
+    "nonce": {
+      "type": "string",
+      "minLength": 22,
+      "description": "Cryptographically random nonce. MUST contain at least 128 bits of entropy (minLength 22 for base64url encoding). Echoed in GrantResponse — mismatch MUST be treated as a forgery attempt."
+    },
+    "request_expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp after which this grant request is invalid. RECOMMENDED: 15 minutes to 24 hours. The Principal Wallet MUST check this against its reliable current UTC clock before showing the consent UI, MAY allow 30 seconds of clock skew, and MUST reject with grant_request_expired if current time is more than 30 seconds after this timestamp."
+    },
+    "callback_uri": {
+      "type": "string",
+      "format": "uri",
+      "description": "CONDITIONAL. REQUIRED for Web Redirect, QR Code, and G3 OAuth authorization-code bindings. MUST use HTTPS. For G3, this value MUST exactly match the OAuth redirect_uri. The Principal Wallet or Registry Authorization Server delivers the resulting GrantResponse-equivalent token response to this URI. Absent for SDK In-Process binding."
+    },
+    "state": {
+      "type": "string",
+      "maxLength": 512,
+      "description": "OPTIONAL generally, but REQUIRED for G3 OAuth authorization-code bindings. Opaque state value generated by the deployer. Echoed unchanged in the GrantResponse or G3 token response. For G3, this value MUST exactly match the OAuth state parameter. Used for CSRF protection and session correlation."
+    },
+    "deployer_public_key": {
+      "type": "object",
+      "description": "OPTIONAL. JWK key hint for the deployer's signing key. This field is not a trust anchor. The Principal Wallet MUST resolve deployer_did and verify this JWK is byte-for-byte equivalent to the verification method identified by the compact JWS kid before using it.",
+      "additionalProperties": true
+    }
+  }
+}

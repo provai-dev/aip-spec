@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provai.dev/schemas/aip/step-execution-token/draft-02",
+  "$comment": "Normatively defined by the AIP Step Execution Token rules. A Step Execution Token is a Registry-issued compact JWT, not an agent-issued Credential Token. The JWT header MUST contain typ='AIP-SET+JWT', alg='EdDSA', kid=<Registry step-execution keyid> listed in active_verification_keys.step_execution of the Registry Trust Record version current at issuance time, and aip_trv=<that Registry Trust Record version>. This schema validates the decoded payload only.",
+  "title": "AIP Step Execution Token Payload",
+  "description": "The JWT payload of an AIP Step Execution Token. The full SET is a compact JWT: base64url(header).base64url(payload).signature. Its iss is the Registry ID HTTPS URI and its sub is the actor AID.",
+  "type": "object",
+  "required": [
+    "iss",
+    "sub",
+    "aud",
+    "iat",
+    "exp",
+    "jti",
+    "aip_scope",
+    "aip_chain",
+    "aip_version",
+    "aip_approval_id",
+    "aip_step_kind"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "aip_version": {
+      "type": "string",
+      "description": "AIP protocol compatibility version. MUST be \"0.3\" for this spec.",
+      "enum": ["0.3"]
+    },
+    "iss": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://",
+      "description": "Registry ID HTTPS URI for the Registry that issued and signed this SET. MUST match the accepted Registry Trust Record."
+    },
+    "sub": {
+      "type": "string",
+      "pattern": "^did:aip:[a-z][a-z0-9]*(-[a-z0-9]+)*:[0-9a-f]{32}$",
+      "description": "AID of the actor that claimed the Approval Envelope step. MUST match the referenced step actor."
+    },
+    "aud": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        }
+      ],
+      "description": "Intended audience. The Relying Party MUST reject any SET where its own identifier is not present."
+    },
+    "iat": {
+      "type": "integer",
+      "description": "Issued-at time as a Unix timestamp in seconds."
+    },
+    "exp": {
+      "type": "integer",
+      "description": "Expiry time as a Unix timestamp. MUST be strictly greater than iat. The SET lifetime exp-iat MUST NOT exceed the minimum of the Registry's step_claim_timeout_seconds, the lowest ttl_max_seconds value for any requested aip_scope in the synced AIP Scope Catalog, and the Tier ceiling for the highest-risk requested scope."
+    },
+    "jti": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "description": "JWT ID. UUID v4 in canonical lowercase hyphenated format. SET replay detection is keyed by (iss, jti)."
+    },
+    "aip_scope": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z_][a-z0-9_]*([.][a-z_][a-z0-9_]*)*$"
+      },
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "Scopes authorised for the claimed step."
+    },
+    "aip_chain": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "description": "A compact-serialised signed JWT encoding one AIP Principal Token."
+      },
+      "minItems": 1,
+      "maxItems": 11,
+      "description": "Ordered Principal Token chain for the actor AID in sub."
+    },
+    "aip_registry": {
+      "type": "string",
+      "format": "uri",
+      "description": "OPTIONAL. When present in a SET, this value MUST equal iss."
+    },
+    "aip_approval_id": {
+      "type": "string",
+      "pattern": "^apr:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "description": "Approval Envelope identifier for the claimed step."
+    },
+    "aip_step_kind": {
+      "type": "string",
+      "enum": ["forward", "compensation"],
+      "description": "Identifies whether this SET authorizes a forward Approval Envelope step or a compensation step."
+    },
+    "aip_approval_step": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "1-based step_index of the claimed forward step. REQUIRED when aip_step_kind is forward and MUST be absent when aip_step_kind is compensation."
+    },
+    "aip_compensation_step": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "1-based compensation_index of the claimed compensation step. REQUIRED when aip_step_kind is compensation and MUST be absent when aip_step_kind is forward."
+    },
+    "aip_engagement_id": {
+      "type": "string",
+      "pattern": "^eng:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "description": "OPTIONAL. Engagement Object identifier when the parent Approval Envelope is engagement-scoped."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "aip_step_kind": { "const": "forward" } },
+        "required": ["aip_step_kind"]
+      },
+      "then": {
+        "required": ["aip_approval_step"],
+        "not": { "required": ["aip_compensation_step"] }
+      }
+    },
+    {
+      "if": {
+        "properties": { "aip_step_kind": { "const": "compensation" } },
+        "required": ["aip_step_kind"]
+      },
+      "then": {
+        "required": ["aip_compensation_step"],
+        "not": { "required": ["aip_approval_step"] }
+      }
+    }
+  ],
+  "$defs": {
+    "jwt_header_requirements": {
+      "$comment": "JWT header requirements for the AIP Step Execution Token: typ MUST be 'AIP-SET+JWT'; alg MUST be 'EdDSA'; kid MUST be an HTTPS URI matching a JWK keyid in active_verification_keys.step_execution of the accepted Registry Trust Record version; aip_trv MUST be the integer Registry Trust Record version used to select locally pinned trust state for SET signature verification."
+    }
+  }
+}

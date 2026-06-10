@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provai.dev/schemas/aip/revocation-status/draft-02",
+  "$comment": "Normatively defined by the AIP Registry Interface Agent Revocation Status Endpoint. Response body for GET /v1/agents/{aid}/revocation. The response is a status snapshot, not a signed revocation artifact; active_revocations contains the signed Revocation Objects that support the status.",
+  "title": "AIP Revocation Status Response",
+  "description": "Registry response for live revocation status lookups. Returned with HTTP 200 for every registered AID, including AIDs with no active revocations. Unknown AIDs return unknown_aid (HTTP 404) and do not use this schema.",
+  "type": "object",
+  "required": [
+    "aid",
+    "checked_at",
+    "status",
+    "revoked",
+    "delegation_revoked",
+    "scopes_revoked",
+    "active_revocations"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "aid": {
+      "type": "string",
+      "pattern": "^did:aip:[a-z][a-z0-9]*(-[a-z0-9]+)*:[0-9a-f]{32}$",
+      "description": "The registered AID whose revocation status was checked. MUST equal the path {aid} after percent-decoding."
+    },
+    "checked_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp at which the authoritative Registry evaluated revocation status."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "restricted", "revoked"],
+      "description": "active: no active revocations apply. restricted: one or more scope_revoke or delegation_revoke records apply, but no full_revoke or principal_revoke applies. revoked: a full_revoke applies to this AID, a principal_revoke targets this AID, or a principal_revoke targets the root Principal DID associated with this AID; Credential Tokens for this AID MUST be rejected."
+    },
+    "revoked": {
+      "type": "boolean",
+      "description": "True when a full_revoke applies to this AID, a principal_revoke targets this AID, or a principal_revoke targets the root Principal DID associated with this AID. Relying Parties MUST reject Credential Tokens for this AID when true."
+    },
+    "delegation_revoked": {
+      "type": "boolean",
+      "description": "True when an active delegation_revoke applies to this AID. Relying Parties MUST reject delegation-chain use rooted at this AID when true; direct principal authorisations for the AID may remain valid unless revoked is also true."
+    },
+    "scopes_revoked": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z_][a-z0-9_]*([.][a-z_][a-z0-9_]*)*$"
+      },
+      "uniqueItems": true,
+      "description": "Union of active scope_revoke scopes for this AID. Empty when no active scope revocation applies."
+    },
+    "active_revocations": {
+      "type": "array",
+      "items": {
+        "$ref": "https://provai.dev/schemas/aip/revocation-object/draft-02"
+      },
+      "description": "Signed Revocation Objects that currently affect this AID. Empty when status is active. If the AID is affected by a principal-wide principal_revoke, this array includes the signed Revocation Object whose target_id is the Principal DID."
+    }
+  }
+}

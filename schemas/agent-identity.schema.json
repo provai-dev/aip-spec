@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://provai.dev/schemas/aip/agent-identity/draft-02",
-  "$comment": "Normatively defined by the AIP Agent Identity Object rules. Canonical signing field order for previous_key_signature: aid, name, type, model, created_at, version, public_key, previous_key_signature (set to '' during signing).",
+  "$comment": "Normatively defined by the AIP Agent Identity Object rules. Canonical signing field order for previous_key_signature: aid, name, type, model, created_at, version, public_key, fallback_public_key_x, fallback_key_proof, previous_key_signature (set to '' during signing). fallback_key_proof is NOT computed over the identity object; its signing input is the domain-separated string defined in Section 5.",
   "title": "AIP Core Identity Object",
-  "description": "The persistent identity record for an AIP agent. Signing order for previous_key_signature: (aid, name, type, model, created_at, version, public_key, previous_key_signature) with previous_key_signature set to empty string during signing.",
+  "description": "The persistent identity record for an AIP agent. Signing order for previous_key_signature: (aid, name, type, model, created_at, version, public_key, fallback_public_key_x, fallback_key_proof, previous_key_signature) with previous_key_signature set to empty string during signing.",
   "type": "object",
   "required": [
     "aid",
@@ -25,7 +25,7 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 64,
-      "description": "Human-readable agent name. MUST NOT be used as a unique identifier — the aid field is the only stable identity."
+      "description": "Human-readable agent name. MUST NOT be used as a unique identifier \u2014 the aid field is the only stable identity."
     },
     "type": {
       "type": "string",
@@ -34,7 +34,10 @@
     },
     "model": {
       "type": "object",
-      "required": ["provider", "model_id"],
+      "required": [
+        "provider",
+        "model_id"
+      ],
       "additionalProperties": false,
       "description": "The AI model backing this agent. Recorded for transparency and auditability.",
       "properties": {
@@ -65,12 +68,17 @@
     "version": {
       "type": "integer",
       "minimum": 1,
-      "description": "Monotonically increasing version counter. Starts at 1 on initial registration. MUST increment by exactly 1 on each key rotation. No other field changes are permitted — the only valid reason to increment version is key rotation."
+      "description": "Monotonically increasing version counter. Starts at 1 on initial registration. MUST increment by exactly 1 on each key rotation. No other field changes are permitted \u2014 the only valid reason to increment version is key rotation."
     },
     "public_key": {
       "type": "object",
       "description": "The agent's current public key in JWK format per RFC 7517. MUST be an Ed25519 key (kty=OKP, crv=Ed25519) per RFC 8037. This protocol version does not define ES256 or RS256 Agent Identity keys.",
-      "required": ["kty", "crv", "x", "kid"],
+      "required": [
+        "kty",
+        "crv",
+        "x",
+        "kid"
+      ],
       "additionalProperties": false,
       "properties": {
         "kty": {
@@ -91,9 +99,19 @@
         "kid": {
           "type": "string",
           "pattern": "^did:aip:[a-z][a-z0-9]*(-[a-z0-9]+)*:[0-9a-f]{32}#key-[1-9][0-9]*$",
-          "description": "Key ID — a DID URL fragment uniquely identifying this key version. Format: <aid>#key-<n> where n starts at 1 and increments by 1 on each rotation. #key-0 is not valid. Must exactly match the kid in Credential Token headers signed by this key."
+          "description": "Key ID \u2014 a DID URL fragment uniquely identifying this key version. Format: <aid>#key-<n> where n starts at 1 and increments by 1 on each rotation. #key-0 is not valid. Must exactly match the kid in Credential Token headers signed by this key."
         }
       }
+    },
+    "fallback_public_key_x": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{43}$",
+      "description": "OPTIONAL fallback Ed25519 public key x value for disaster recovery. When present, the Registry persists it and uses it to authenticate Emergency Key Rotation if the active private key is lost. MUST NOT equal public_key.x and MUST be accompanied by fallback_key_proof (Registration Checks 5b and 5c). Set at initial registration (version=1); immutable during ordinary key rotation; MAY be replaced or removed only as part of Emergency Key Rotation. Single-use: once it authenticates an Emergency Key Rotation it is consumed and permanently unacceptable Registry-wide. Stored as the base64url-encoded 32-byte public key (exactly 43 characters, no padding). Case-sensitive."
+    },
+    "fallback_key_proof": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]+$",
+      "description": "REQUIRED when fallback_public_key_x is present; MUST be absent otherwise. Base64url-encoded EdDSA signature proving possession of the fallback private key. Signing input is the UTF-8 bytes of the string 'aip:fallback-key-proof:v1:' + aid + ':' + fallback_public_key_x (literal colon separators, no whitespace, no trailing newline), signed with the fallback private key. Binds only immutable values, so it remains valid across ordinary key rotations. Verified by the Registry at Registration Check 5c and whenever the fallback key is replaced during Emergency Key Rotation; Relying Parties MUST NOT evaluate this field."
     },
     "previous_key_signature": {
       "type": "string",
@@ -101,12 +119,28 @@
       "description": "OPTIONAL on initial registration (version=1). REQUIRED on key rotation (version>=2). Base64url-encoded EdDSA signature proving continuity of identity across key rotation. Computed by serializing the complete new Agent Identity Object using the Section 2.1 canonical JSON procedure with previous_key_signature set to empty string '', then signing with the retiring previous private key. The computed signature replaces the empty string in the stored object. Verifiers retrieve the immediately previous public key from /v1/agents/{aid}/public-key/{key-id} to verify; signing with the new private key does not satisfy this continuity proof."
     }
   },
+  "dependentRequired": {
+    "fallback_public_key_x": [
+      "fallback_key_proof"
+    ],
+    "fallback_key_proof": [
+      "fallback_public_key_x"
+    ]
+  },
   "if": {
-    "properties": { "version": { "minimum": 2 } },
-    "required": ["version"]
+    "properties": {
+      "version": {
+        "minimum": 2
+      }
+    },
+    "required": [
+      "version"
+    ]
   },
   "then": {
-    "required": ["previous_key_signature"],
+    "required": [
+      "previous_key_signature"
+    ],
     "properties": {
       "previous_key_signature": {
         "minLength": 1,

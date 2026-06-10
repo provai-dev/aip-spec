@@ -1,0 +1,32 @@
+<section anchor="principal-chain">
+  <name>Principal Chain</name>
+  <t>
+    The principal chain is the sequence of delegation relationships that
+    connects a root human or organisational principal, identified by a W3C
+    DID, to a leaf agent, identified by a <tt>did:aip</tt> AID. Each link in
+    the chain is represented by a Principal Token
+    (<xref target="principal-token"/>). The chain is embedded in Credential
+    Tokens and Step Execution Tokens as the <tt>aip_chain</tt> array.
+  </t>
+  <t>
+    Normative rules governing the principal chain are defined as follows:
+  </t>
+  <ul>
+    <li>Chain structure and depth rules:
+    <xref target="delegation-chain"/>.</li>
+    <li>Capability scope inheritance across the chain:
+    <xref target="scope-inheritance-rules"/>.</li>
+    <li>Chain validation algorithm:
+    <xref target="validation-step-8"/> Steps 8a through 8l and Post-Checks A,
+    B, and C.</li>
+    <li>Grant ceremony that establishes the first chain link:
+    <xref target="principal-grant"/>.</li>
+    <li>A2A identity chaining for multi-agent chains:
+    <xref target="delegated-identity-chaining-a2a"/>.</li>
+  </ul>
+  <t>
+    This section serves as the normative index for the principal chain
+    concept. Implementations MUST consult the sections above for all
+    chain-related requirements.
+  </t>
+</section>

@@ -84,6 +84,17 @@
           Legitimate key rotation is infrequent; high frequency suggests
           automated abuse or a compromised orchestrator.
         </li>
+        <li>
+          Emergency Key Rotation
+          (<xref target="agent-emergency-key-rotation-registry"/>): Registries
+          MUST apply a stricter per-AID limit to requests processed as
+          Emergency Key Rotation attempts, including rejected attempts.
+          RECOMMENDED limit: 3 attempts per 24-hour window per AID. A
+          legitimate agent performs Emergency Key Rotation at most once per
+          fallback key; repeated attempts indicate probing of the fallback
+          recovery path and SHOULD additionally trigger operator
+          alerting.
+        </li>
       </ul>
     </section>
 

@@ -16,7 +16,9 @@
       "crv": "Ed25519",
       "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
       "kid": "did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3#key-1"
-    }
+    },
+    "fallback_public_key_x": "kjotB-sw4JsPU75wP8Z55yELpjRct4_-0mayRaf0SmY",
+    "fallback_key_proof": "-2IZOtAjJOX-2rIYtyexxIXEw-5QLdhvzyoMuRO5tlL7TZI_tjgk8XRTpkeViJoHWEDGd2Av4pgwpXQAEo6xCQ"
   },
   "capability_manifest": {
     "manifest_id": "cm:a1b2c3d4-e5f6-4789-8abc-def012345678",

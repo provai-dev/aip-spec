@@ -1,0 +1,640 @@
+<section anchor="revocation" numbered="true">
+  <name>Revocation Management</name>
+  <t>
+    Revocation provides the kill switch for agent identity. When
+    an agent is revoked, its Credential Tokens and Step Execution Tokens MUST
+    be rejected as soon as the applicable revocation check observes the active
+    revocation. Tier 2 and Tier 3 checks are live and fail closed on Registry
+    unavailability. Tier 1 uses bounded-staleness CRLs, so enforcement can
+    lag until the next fresh CRL within the SLA defined in this section.
+  </t>
+
+  <section anchor="revocation-object" numbered="true">
+  <name>Revocation Object</name>
+    <t>
+      Revocation is performed by submitting a signed Revocation Object to
+      <tt>POST /v1/revocations</tt>. The Revocation Object fields, required
+      members, type enum, and signing input are defined only in Section 5.7.
+      This section defines processing effects for accepted Revocation Objects;
+      it does not define a second Revocation Object schema.
+    </t>
+    <t>
+      A <tt>principal_revoke</tt> with a Principal DID target invalidates
+      every Credential Token and Step Execution Token whose
+      <tt>aip_chain[0].principal.id</tt> equals that Principal DID. A
+      <tt>principal_revoke</tt> with an AID target invalidates every token
+      whose <tt>aip_chain</tt> depends on that AID's principal authorisation.
+      This effect is independent of <tt>propagate_to_children</tt>.
+      The <tt>propagate_to_children</tt> flag controls whether the Registry
+      also materialises descendant Revocation Objects; it does not limit the
+      validity effect of <tt>principal_revoke</tt>.
+    </t>
+  </section>
+
+  <section anchor="revocation-submission-validation" numbered="true">
+  <name>Revocation Submission Validation</name>
+    <t>
+      A conformant Registry MUST implement <tt>POST /v1/revocations</tt> for
+      externally submitted Revocation Objects. The request body MUST be a JSON
+      object conforming to <tt>revocation-object.schema.json</tt>. Unless a
+      check below specifies a more precise error code, failed validation MUST
+      be rejected with <tt>revocation_invalid</tt>.
+    </t>
+
+    <t>
+      The Registry MUST perform the following checks in order:
+    </t>
+    <ol>
+      <li>The request MUST use <tt>Content-Type: application/json</tt>. The
+      object MUST contain all required Revocation Object members, including
+      <tt>kid</tt>. If <tt>propagate_to_children</tt> is absent, the Registry
+      MUST process it as <tt>false</tt>.</li>
+      <li>If <tt>revocation_id</tt> was already accepted, the Registry MUST
+      compare the Section 2.1 canonical JSON serialization of the submitted
+      object to the stored object. If they are identical, the Registry MUST
+      return HTTP 200 with the stored Revocation Object and MUST NOT apply side
+      effects again. If they differ, the Registry MUST reject with
+      <tt>revocation_conflict</tt>.</li>
+      <li>The <tt>timestamp</tt> value MUST be a valid UTC date-time and MUST
+      NOT be more than 300 seconds in the future relative to the Registry's
+      current clock. Registries MAY accept older timestamps, but the
+      <tt>revocation_id</tt> uniqueness check remains mandatory.</li>
+      <li>The <tt>reason</tt> value MUST be one of the reason codes in the
+      Revocation Object schema. Externally submitted Revocation Objects MUST
+      NOT use <tt>parent_revoked</tt>, <tt>heartbeat_timeout</tt>, or
+      <tt>lifecycle_expired</tt>; those reason codes are reserved for
+      Registry-generated Revocation Objects.</li>
+      <li>For <tt>full_revoke</tt>, <tt>scope_revoke</tt>, and
+      <tt>delegation_revoke</tt>, <tt>target_id</tt> MUST be a registered
+      <tt>did:aip</tt> AID in the authoritative Registry. Unknown targets
+      MUST be rejected with <tt>unknown_aid</tt>. For
+      <tt>principal_revoke</tt>, <tt>target_id</tt> MUST be either a
+      registered AID or a Principal DID associated with at least one stored
+      registration in that Registry.</li>
+      <li>For <tt>scope_revoke</tt>, <tt>scopes_revoked</tt> MUST be present
+      and non-empty, and every entry MUST be an active synced AIP Scope
+      Catalog scope or an accepted local/private extension scope that is
+      currently granted by the target's effective Capability Manifest. Invalid
+      scope entries MUST be rejected with <tt>invalid_scope</tt>. For all
+      other revocation types, <tt>scopes_revoked</tt> MUST be absent.</li>
+      <li>The Registry MUST construct the target authorization chain from its
+      registration records. That chain consists of the target's root Principal
+      DID and every ancestor AID recorded through the parent-child delegation
+      index. For <tt>full_revoke</tt>, <tt>scope_revoke</tt>, and
+      <tt>delegation_revoke</tt>, <tt>issued_by</tt> MUST equal either the
+      target's root Principal DID or an ancestor AID in that chain. For
+      <tt>principal_revoke</tt> targeting a Principal DID,
+      <tt>issued_by</tt> MUST equal that Principal DID. For
+      <tt>principal_revoke</tt> targeting an AID, <tt>issued_by</tt> MUST
+      equal the target AID's root Principal DID. Unauthorized issuers MUST be
+      rejected with <tt>revocation_unauthorized</tt>.</li>
+      <li>For a DID issuer, <tt>kid</tt> MUST be a DID URL whose DID portion
+      equals <tt>issued_by</tt>. The Registry MUST resolve the DID, locate the
+      Ed25519 verification method named by <tt>kid</tt>, and verify the
+      Revocation Object signature over the Section 5.7 signing input. For a
+      <tt>did:aip</tt> issuer, the key lookup MUST use the authoritative
+      Registry public-key endpoint for the referenced AID and key version. If
+      the key cannot be resolved, is not Ed25519, is not controlled by
+      <tt>issued_by</tt>, or the signature fails, the Registry MUST reject
+      with <tt>revocation_invalid</tt>.</li>
+    </ol>
+
+    <t>
+      Registry-generated Revocation Objects are not externally submitted
+      through the public <tt>POST /v1/revocations</tt> endpoint. For
+      <tt>parent_revoked</tt>, <tt>heartbeat_timeout</tt>, and
+      <tt>lifecycle_expired</tt>, the Registry MUST set <tt>issued_by</tt> to
+      its <tt>registry_id</tt>, set <tt>kid</tt> to a JWK listed in
+      <tt>active_verification_keys.crl</tt> of the Registry Trust Record
+      current at the Revocation Object <tt>timestamp</tt>, and sign the object
+      with the corresponding private key.
+    </t>
+
+    <t>
+      Acceptance MUST be atomic. On success, the Registry MUST store the
+      Revocation Object immutably, update live revocation status, schedule CRL
+      publication within the 15-minute freshness window defined in
+      <xref target="crl"/>, and return HTTP 201 with
+      <tt>Content-Type: application/json</tt> and the stored
+      Revocation Object. If <tt>propagate_to_children</tt> is <tt>true</tt>,
+      the Registry MUST recursively materialise child Revocation Objects with
+      reason <tt>parent_revoked</tt> within 15 seconds. For
+      <tt>principal_revoke</tt>, token invalidation does not depend on
+      materialised child objects; propagation only adds audit and index
+      records.
+    </t>
+  </section>
+
+  <section anchor="crl" numbered="true">
+  <name>Certificate Revocation List (CRL)</name>
+    <t>
+      The Registry MUST expose a canonical origin CRL endpoint at
+      <tt>GET /v1/crl</tt> and MUST publish the preferred CRL retrieval URI
+      as <tt>endpoints.crl</tt> in both <tt>/v1/registry-metadata</tt>
+      and the signed Registry Trust Record. The published
+      <tt>endpoints.crl</tt> value MAY be <tt>/v1/crl</tt> or an absolute
+      HTTPS URI for a CDN or distributed object store. Relying Parties MUST
+      retrieve CRL documents from the accepted Registry Trust Record's
+      <tt>signed.endpoints.crl</tt> value rather than assuming
+      <tt>registry_id + "/v1/crl"</tt>.
+    </t>
+    <t>
+      The CRL MUST be updated within 15 minutes of a new Revocation
+      Object being accepted. The published CRL retrieval URI MUST be served
+      from a CDN or distributed infrastructure. CDN and object-store
+      distribution is not a trust anchor: CRL documents MUST be signed by a
+      JWK listed in
+      <tt>active_verification_keys.crl</tt> of the Registry
+      Trust Record version current at issuance time.
+    </t>
+    <t>
+      The CRL is an AIP signed JSON document, not an X.509 CRL. A successful
+      CRL response MUST use <tt>Content-Type: application/aip-crl+json</tt>
+      and MUST conform to <tt>crl.schema.json</tt>. The top-level object MUST
+      contain <tt>signed</tt> and <tt>signatures</tt>. The <tt>signed</tt>
+      object MUST include <tt>registry_id</tt>, <tt>trust_record_version</tt>,
+      <tt>crl_id</tt>, <tt>issued_at</tt>, <tt>next_update</tt>,
+      <tt>sequence</tt>, <tt>publication_mode</tt>,
+      <tt>revocation_count</tt>, and <tt>revocations</tt>. The
+      <tt>publication_mode</tt> value MUST be <tt>"complete"</tt>,
+      <tt>"index"</tt>, or <tt>"segment"</tt>. In <tt>"complete"</tt> mode,
+      the <tt>revocations</tt> array contains the full signed Revocation
+      Objects active for bounded-staleness validation at <tt>issued_at</tt>.
+      In <tt>"index"</tt> mode, the <tt>revocations</tt> array MUST be empty
+      and the signed object MUST contain <tt>segments</tt> as defined in
+      <xref target="crl-response-registry"/>. In <tt>"segment"</tt> mode, the <tt>revocations</tt> array
+      contains only the Revocation Objects assigned to that segment, and the
+      signed object MUST contain <tt>segment_id</tt>.
+    </t>
+    <t>
+      The CRL signing input is the RFC 8785 JSON Canonicalization Scheme (JCS)
+      serialization of the <tt>signed</tt> object only. Each signature entry
+      MUST contain <tt>keyid</tt> and <tt>sig</tt>. The <tt>keyid</tt> MUST
+      match a JWK <tt>keyid</tt> in
+      <tt>active_verification_keys.crl</tt> for the Registry Trust Record whose
+      <tt>signed.version</tt> equals the CRL
+      <tt>signed.trust_record_version</tt>. The signature algorithm is
+      EdDSA over Ed25519. A Relying Party MUST reject an unsigned, malformed,
+      or unverifiable CRL and MUST NOT treat CDN integrity, TLS termination, or
+      object-store metadata as a substitute for this signature verification.
+    </t>
+    <t>
+      CRL consumers MUST verify that <tt>signed.registry_id</tt> equals the
+      accepted Registry Trust Record's <tt>signed.registry_id</tt>, that
+      <tt>signed.trust_record_version</tt> identifies an accepted Registry
+      Trust Record, and that at least one signature verifies under that trust
+      record's <tt>active_verification_keys.crl</tt>. The
+      <tt>next_update</tt> timestamp MUST be no later than 15 minutes after
+      <tt>issued_at</tt>. Relying Parties MUST NOT use a CRL for new token
+      validations after <tt>next_update</tt>; if no fresh verifiable CRL is
+      available when one is required, validation MUST fail with
+      <tt>registry_unavailable</tt>.
+    </t>
+    <t>
+      CRL documents MUST include active <tt>principal_revoke</tt> entries by
+      <tt>target_id</tt>. For Tier 1 validation, Relying Parties MUST check
+      <tt>principal_revoke</tt> entries whose <tt>target_id</tt> equals the
+      token's root Principal DID and entries whose <tt>target_id</tt> equals
+      any AID in the token's validated <tt>aip_chain</tt>. A matching
+      <tt>principal_revoke</tt> is equivalent to <tt>agent_revoked</tt> for
+      that token.
+    </t>
+  </section>
+
+  <section anchor="revocation-checking" numbered="true">
+  <name>Revocation Checking</name>
+    <t>
+      A token's Tier is determined by its highest-risk
+      scope. A token with one Tier 2 scope and any
+      number of Tier 1 scopes is a Tier 2 token.
+    </t>
+
+    <t>
+      <strong>Tier 1 - Bounded-staleness:</strong> The Credential Token TTL is
+      the effective catalog-derived TTL defined in <xref target="token-issuance"/>. Relying
+      Parties validate revocation status at request validation time using a
+      verifiable CRL whose <tt>next_update</tt> has not passed. A Relying Party
+      MUST refresh its cached CRL before using it for new validations after
+      <tt>next_update</tt>.
+    </t>
+
+    <t>
+      <strong>Tier 2 - Real-time revocation:</strong> Applies when the
+      highest synced AIP Scope Catalog <tt>tier</tt> among requested scopes is
+      2. Real-time Registry check on EVERY request. MUST NOT cache
+      revocation status. DPoP MUST be verified for the request regardless of
+      per-scope <tt>requires_dpop</tt> metadata. If Registry unreachable:
+      MUST deny and return registry_unavailable.
+    </t>
+    <t>
+      The live Tier 2 lookup uses
+      <tt>GET /v1/agents/{aid}/revocation</tt>. A registered AID returns
+      HTTP 200 whether or not it is revoked. The response body is the
+      Revocation Status response defined in
+      <xref target="agent-revocation-status-registry"/>. Unknown AIDs return
+      <tt>unknown_aid</tt> (HTTP 404).
+    </t>
+
+    <t>
+      <strong>Tier 3 - Enterprise:</strong> MUST use mTLS. MUST support
+      OCSP per RFC 6960. Tier 3 supplements, not replaces,
+      Tier 2.
+    </t>
+
+    <t>
+      <strong>Child Agent Propagation:</strong> When the
+      Registry processes a Revocation Object with
+      propagate_to_children: true, the Registry MUST
+      recursively revoke descendants within 15 seconds.
+      A <tt>principal_revoke</tt> invalidates dependent tokens regardless of
+      this flag; propagation only controls whether descendant Revocation
+      Objects are written for indexing, CRL compactness, and auditability.
+    </t>
+
+    <t>
+      Replica Registries MUST synchronise within 45 seconds.
+      Combined end-to-end propagation MUST NOT exceed
+      60 seconds.
+    </t>
+
+    <t>
+      <strong>Approval Envelope interaction:</strong> When an
+      agent AID is revoked, the Registry MUST transition
+      all Approval Envelopes in pending_approval, approved,
+      or executing status to failed. Unclaimed steps
+      for that actor MUST be marked failed. In-progress
+      claims MUST be treated as failed; the Registry
+      MUST initiate compensation if applicable.
+    </t>
+  </section>
+
+  <section anchor="rpnp" numbered="true">
+  <name>Registry Push Notification Protocol (RPNP)</name>
+    <t>
+      RPNP is an OPTIONAL Registry capability for real-time
+      revocation event delivery.
+    </t>
+
+    <section anchor="rpnp-overview" numbered="true">
+  <name>Overview</name>
+      <t>
+        When RPNP is implemented:
+      </t>
+
+      <ul>
+        <li>Registry MUST start the first push delivery attempt within 5 seconds of the event commit time defined in <xref target="rpnp-delivery"/></li>
+        <li>Push payloads MUST be signed by a JWK listed in <tt>active_verification_keys.notifications</tt> of the Registry Trust Record version current at issuance time</li>
+        <li>Subscriber authentication MUST be verified at subscription time</li>
+      </ul>
+
+      <t>
+        For subscribing Relying Parties, the effective revocation
+        notification window is the RPNP first-attempt latency (at most 5 seconds)
+        rather than the CRL refresh interval. RPNP does not
+        replace CRL; it supplements it. Confirmed delivery depends on
+        subscriber availability and the retry rules in <xref target="rpnp-delivery"/>.
+      </t>
+    </section>
+
+    <section anchor="rpnp-subscription" numbered="true">
+  <name>Subscription</name>
+      <t>
+        A Relying Party subscribes by calling POST /v1/subscriptions:
+      </t>
+      <t>
+        The request body MUST conform to the
+        <tt>subscription_request</tt> definition in
+        <tt>rpnp.schema.json</tt>. On success, the Registry assigns a
+        <tt>subscription_id</tt> with the pattern
+        <tt>sub:&lt;uuid-v4&gt;</tt> and returns HTTP 201 with a body
+        conforming to the <tt>subscription_response</tt> definition in
+        <tt>rpnp.schema.json</tt>.
+      </t>
+
+                        <table>
+              <name>Subscription Fields</name>
+              <thead>
+                <tr>
+                  <th align="left">Field</th>
+                  <th align="center">Required</th>
+                  <th align="left">Constraints</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>subscriber_did</td>
+                  <td>REQUIRED</td>
+                  <td>MUST be did:web or did:aip</td>
+                </tr>
+                <tr>
+                  <td>event_types</td>
+                  <td>REQUIRED</td>
+                  <td>Array containing one or more of <tt>full_revoke</tt>, <tt>scope_revoke</tt>, <tt>delegation_revoke</tt>, <tt>principal_revoke</tt>, and <tt>engagement_cancelled</tt></td>
+                </tr>
+                <tr>
+                  <td>scope_filter</td>
+                  <td>REQUIRED</td>
+                  <td>aid, principal, or all</td>
+                </tr>
+                <tr>
+                  <td>targets</td>
+                  <td>CONDITIONAL</td>
+                  <td>REQUIRED when scope_filter is aid or principal</td>
+                </tr>
+                <tr>
+                  <td>webhook_uri</td>
+                  <td>REQUIRED</td>
+                  <td>HTTPS URI</td>
+                </tr>
+                <tr>
+                  <td>hmac_secret</td>
+                  <td>REQUIRED</td>
+                  <td>Base64url-encoded shared secret; minimum 32 bytes of entropy</td>
+                </tr>
+                <tr>
+                  <td>subscription_expires_at</td>
+                  <td>REQUIRED</td>
+                  <td>ISO 8601 UTC; max 90 days</td>
+                </tr>
+              </tbody>
+            </table>
+
+      <t>
+        The subscription request MUST be authenticated via DPoP proof bound
+        to <tt>subscriber_did</tt>. A DPoP proof that only proves possession
+        of an arbitrary key is not sufficient subscription authentication.
+        If the DPoP proof is absent, malformed, unverifiable, replayed,
+        not bound to <tt>subscriber_did</tt>, or not bound to the current
+        request target, the Registry MUST reject with
+        <tt>subscription_auth_required</tt>.
+      </t>
+      <t>
+        The Registry MUST accept exactly the following RPNP subscription
+        authentication profiles:
+      </t>
+      <ol type="%d">
+        <li>
+          <t><strong>DID-bound DPoP:</strong> The DPoP proof protected header
+          MUST contain a public verification key and a DID URL key identifier
+          in <tt>jwk.kid</tt>. The DID portion of <tt>jwk.kid</tt> MUST equal
+          <tt>subscriber_did</tt>. The Registry MUST resolve
+          <tt>subscriber_did</tt> and verify that <tt>jwk.kid</tt> identifies
+          an Ed25519 verification method controlled by that DID. For
+          <tt>did:web</tt>, resolution uses the DID method's normal DID
+          Document resolution. For <tt>did:aip</tt>, resolution uses the
+          authoritative AIP Registry public-key endpoint for the referenced
+          AID and key identifier. The public key in the DPoP header MUST be
+          byte-for-byte equivalent to the resolved verification method, and
+          the DPoP proof signature MUST verify under that key.</t>
+        </li>
+        <li>
+          <t><strong>Authorization-bound DPoP:</strong> The request MAY
+          include <tt>Authorization: DPoP &lt;token&gt;</tt>. In that case,
+          the Registry MUST validate the token using Section 9 with the
+          subscription endpoint as the audience, MUST validate the DPoP proof
+          using Section 9 Step 10 including the <tt>ath</tt> check, and MUST
+          verify that the token issuer, token subject, and leaf
+          <tt>aip_chain</tt> subject all equal <tt>subscriber_did</tt>. This
+          profile is available only when <tt>subscriber_did</tt> is a
+          <tt>did:aip</tt> AID.</t>
+        </li>
+      </ol>
+      <t>
+        For either profile, the Registry MUST verify <tt>htm</tt>,
+        <tt>htu</tt>, <tt>iat</tt>, and <tt>jti</tt> replay state using the
+        DPoP validation rules in Section 9 Step 10. In DID-bound DPoP without
+        an <tt>Authorization</tt> header, the <tt>ath</tt> claim MUST be
+        absent. If an <tt>Authorization</tt> header is present, <tt>ath</tt>
+        MUST be present and valid for that exact token.
+      </t>
+      <t>
+        The Registry MUST authorize the requested <tt>scope_filter</tt>
+        against the authenticated <tt>subscriber_did</tt>. If
+        <tt>scope_filter</tt> is <tt>"all"</tt> and the subscriber is not
+        explicitly authorized by Registry policy for global revocation
+        notifications, the Registry MUST reject the request with
+        <tt>subscription_scope_forbidden</tt>. If <tt>scope_filter</tt> is
+        <tt>"aid"</tt> or <tt>"principal"</tt>, every value in
+        <tt>targets</tt> MUST be within the subscriber's authorized
+        observation set; otherwise, the Registry MUST reject with
+        <tt>subscription_scope_forbidden</tt>.
+      </t>
+      <t>
+        The Registry MUST enforce configured per-subscriber and global active
+        subscription quotas before accepting a new subscription. If accepting
+        the request would exceed any applicable quota, the Registry MUST
+        reject with <tt>subscription_limit_exceeded</tt>. The Registry SHOULD
+        include <tt>Retry-After</tt> when quota exhaustion is temporary.
+      </t>
+      <t>
+        The <tt>hmac_secret</tt> value is shared secret material used by the
+        Registry to authenticate push event delivery. The value MUST be
+        transmitted only over TLS. The Registry MUST retain the secret, or a
+        reversibly encrypted form of the secret, for the lifetime of the
+        subscription so it can compute delivery HMACs. A Registry MUST NOT
+        store only a one-way hash of this value while the subscription remains
+        active. Registries MAY additionally store a hash of the secret for
+        audit or lookup purposes, but that hash is not sufficient to sign
+        delivery requests.
+      </t>
+      <t>
+        <tt>GET /v1/subscriptions/{id}</tt> MUST return the current
+        <tt>subscription_response</tt> object. The <tt>status</tt> field MUST
+        be one of <tt>active</tt>, <tt>degraded</tt>, <tt>cancelled</tt>, or
+        <tt>expired</tt>. Status responses MUST include
+        <tt>consecutive_failures</tt>, <tt>last_delivery_attempt_at</tt>,
+        <tt>last_success_at</tt>, <tt>next_retry_at</tt>, and
+        <tt>last_delivery_status</tt>, using null for timestamp fields that
+        have not yet occurred. <tt>DELETE /v1/subscriptions/{id}</tt> MUST
+        atomically transition an active or degraded subscription to
+        <tt>cancelled</tt> and return the updated
+        <tt>subscription_response</tt>.
+      </t>
+    </section>
+
+    <section anchor="rpnp-payload" numbered="true">
+  <name>Push Event Payload</name>
+      <t>
+        Push events are delivered as HTTP POST to the subscriber's
+        webhook_uri. The body is a compact-serialised JWT signed
+        by a JWK listed in
+        <tt>active_verification_keys.notifications</tt> of the
+        Registry Trust Record version current at issuance time.
+      </t>
+
+                        <table>
+              <name>RPNP JWT Fields</name>
+              <thead>
+                <tr>
+                  <th align="left">Header Field</th>
+                  <th align="left">Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>typ</td>
+                  <td>AIP-RPNP+JWT</td>
+                </tr>
+                <tr>
+                  <td>alg</td>
+                  <td>EdDSA</td>
+                </tr>
+                <tr>
+                  <td>kid</td>
+                  <td>Registry notification key ID</td>
+                </tr>
+                <tr>
+                  <td>aip_trv</td>
+                  <td>Integer Registry Trust Record version whose <tt>active_verification_keys.notifications</tt> contains <tt>kid</tt></td>
+                </tr>
+              </tbody>
+            </table>
+
+      <t>
+        The protected <tt>aip_trv</tt> header is used to select an already
+        pinned Registry Trust Record for the event issuer. Subscribers MUST
+        NOT fetch new trust state during push-event validation to establish
+        trust for that event.
+      </t>
+
+                        <table>
+              <name>RPNP Payload Fields</name>
+              <thead>
+                <tr>
+                  <th align="left">Payload Field</th>
+                  <th align="left">Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>iss</td>
+                  <td>Registry ID</td>
+                </tr>
+                <tr>
+                  <td>sub</td>
+                  <td>Affected AID or engagement ID</td>
+                </tr>
+                <tr>
+                  <td>iat</td>
+                  <td>Unix timestamp</td>
+                </tr>
+                <tr>
+                  <td>exp</td>
+                  <td>Unix timestamp; MUST be no more than 300 seconds after iat</td>
+                </tr>
+                <tr>
+                  <td>jti</td>
+                  <td>UUID v4; unique event ID</td>
+                </tr>
+                <tr>
+                  <td>subscription_id</td>
+                  <td>Subscription identifier receiving this push event</td>
+                </tr>
+                <tr>
+                  <td>event_type</td>
+                  <td>One of subscribed types</td>
+                </tr>
+                <tr>
+                  <td>event_data</td>
+                  <td>Event-specific data</td>
+                </tr>
+              </tbody>
+            </table>
+
+      <t>
+        The JWT payload MUST conform to the <tt>push_payload</tt> definition
+        in <tt>rpnp.schema.json</tt>. The request MUST include an
+        <tt>X-AIP-Signature</tt> header using this exact syntax:
+      </t>
+      <artwork type="text"><![CDATA[
+X-AIP-Signature: <sig-header>
+
+sig-header = "v1;t=" timestamp ";kid=" subscription-id ";h=" hmac
+      ]]></artwork>
+      <t>
+        The HMAC input is the ASCII decimal <tt>t</tt> value, followed by a
+        period (<tt>.</tt>), followed by the exact request body octets. The
+        <tt>h</tt> value is <tt>BASE64URL(HMAC-SHA256(hmac_secret, input))</tt>
+        without padding. The <tt>kid</tt> value MUST equal the JWT
+        <tt>subscription_id</tt>. The subscriber MUST verify the Registry JWT
+        signature, the HMAC, and the subscription binding before accepting the
+        event.
+      </t>
+      <t>
+        Subscribers MUST reject a push event if the header timestamp
+        <tt>t</tt> is more than 300 seconds from the subscriber's current
+        clock, if the JWT <tt>exp</tt> is in the past, if <tt>exp - iat</tt>
+        exceeds 300 seconds, or if the <tt>jti</tt> has already been accepted
+        for the same <tt>subscription_id</tt>. Subscribers MUST retain replay
+        state keyed by <tt>(subscription_id, jti)</tt> at least until the
+        later of the JWT <tt>exp</tt> time and 300 seconds after receipt.
+      </t>
+    </section>
+
+    <section anchor="rpnp-delivery" numbered="true">
+  <name>Delivery Guarantees</name>
+      <t>
+        RPNP provides at-least-once best-effort push delivery. It does not
+        provide exactly-once delivery, and subscribers MUST use the
+        <tt>jti</tt> replay rules in this section to make event processing
+        idempotent.
+      </t>
+      <ol>
+        <li>
+          The Registry MUST record an <tt>event_committed_at</tt> instant
+          using its reliable UTC clock when the state transition that creates
+          the push event is durably committed. For revocation events, this is
+          the instant at which the Revocation Object is accepted and live
+          revocation status is committed. For engagement cancellation events,
+          this is the instant at which the cancellation state transition is
+          committed.
+        </li>
+        <li>
+          The Registry MUST start the first HTTPS POST delivery attempt to
+          each active matching subscription no later than 5 seconds after
+          <tt>event_committed_at</tt>. The interval ends when the Registry
+          begins sending the request to the subscriber's
+          <tt>webhook_uri</tt>. This 5-second requirement applies to the first
+          delivery attempt, not to confirmed successful receipt.
+        </li>
+        <li>
+          The Registry MUST set <tt>last_delivery_attempt_at</tt> to the
+          Registry UTC time at which each delivery attempt begins. If the first
+          attempt starts more than 5 seconds after
+          <tt>event_committed_at</tt>, the Registry MUST record
+          <tt>last_delivery_status</tt> as
+          <tt>first_attempt_sla_missed</tt> until a later delivery attempt
+          overwrites it with a more recent status.
+        </li>
+        <li>
+          On delivery failure, meaning timeout or any non-2xx HTTP response,
+          the Registry MUST perform at least three retry attempts after the
+          initial delivery attempt, using exponential backoff intervals of 1s,
+          2s, and 4s as the minimum retry schedule. The Registry MAY add jitter
+          or continue retrying after those attempts, but MUST NOT schedule the
+          first three retries later than those intervals unless the subscription
+          has expired or been cancelled.
+        </li>
+        <li>
+          A delivery attempt MUST be treated as timed out if the subscriber
+          does not return a final HTTP response within 5 seconds after the
+          Registry finishes sending the request body, unless the Registry
+          applies a shorter deployment-profile timeout.
+        </li>
+        <li>
+          After 3 consecutive failures, mark the subscription
+          <tt>degraded</tt>, update <tt>consecutive_failures</tt>,
+          <tt>last_delivery_attempt_at</tt>, <tt>last_delivery_status</tt>,
+          and <tt>next_retry_at</tt>, and continue to make the event available
+          through CRL or live revocation status. Subscribers MUST fall back to
+          CRL or live Registry checks while the subscription is degraded.
+        </li>
+        <li>On any successful 2xx delivery, reset
+          <tt>consecutive_failures</tt> to 0, set
+          <tt>last_success_at</tt>, clear <tt>next_retry_at</tt>, and restore
+          <tt>status</tt> to <tt>active</tt> unless the subscription has
+          expired or been cancelled.</li>
+      </ol>
+    </section>
+  </section>
+</section>

@@ -62,9 +62,11 @@
           <tr>
             <td>Update</td>
             <td>The DID identifier is immutable. The only protocol-defined
-            update operation is key rotation through <tt>PUT /v1/agents/{aid}</tt>
+            update operation is key rotation through <tt>PUT /v1/agents/{aid}</tt>,
             with previous-key authorization as defined in
-            <xref target="agent-key-rotation-registry"/>.</td>
+            <xref target="agent-key-rotation-registry"/> or fallback-key
+            authorization as defined in
+            <xref target="agent-emergency-key-rotation-registry"/>.</td>
           </tr>
           <tr>
             <td>Deactivate</td>

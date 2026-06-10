@@ -1,0 +1,157 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provai.dev/schemas/aip/approval-step-endpoints/draft-02",
+  "$comment": "Normatively defined by the Approval Envelope step endpoint rules. Defines request and response bodies for claim, complete, and fail operations for forward and compensation steps.",
+  "title": "AIP Approval Step Endpoint Bodies",
+  "description": "Request and response body profiles for Approval Envelope forward-step and compensation-step endpoints.",
+  "$defs": {
+    "compact_jwt": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
+    },
+    "uuid_v4": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "approval_id": {
+      "type": "string",
+      "pattern": "^apr:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "idempotency_key": {
+      "$ref": "#/$defs/uuid_v4",
+      "description": "OPTIONAL. Client-selected idempotency key. Reuse is valid only for exact byte-for-byte retries of the same operation by the same actor."
+    },
+    "claim_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["credential_token", "action_parameters"],
+      "properties": {
+        "credential_token": {
+          "$ref": "#/$defs/compact_jwt",
+          "description": "Credential Token for the claiming actor. The Registry validates it with itself as Relying Party."
+        },
+        "action_parameters": {
+          "type": "object",
+          "description": "Application action descriptor used to recompute the stored action_hash."
+        },
+        "idempotency_key": {
+          "$ref": "#/$defs/idempotency_key"
+        }
+      }
+    },
+    "claim_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "approval_id",
+        "step_kind",
+        "step_index",
+        "status",
+        "claimed_at",
+        "claim_expires_at",
+        "step_execution_token"
+      ],
+      "properties": {
+        "approval_id": { "$ref": "#/$defs/approval_id" },
+        "step_kind": { "type": "string", "enum": ["forward", "compensation"] },
+        "step_index": { "type": "integer", "minimum": 1 },
+        "status": { "const": "claimed" },
+        "claimed_at": { "type": "string", "format": "date-time" },
+        "claim_expires_at": { "type": "string", "format": "date-time" },
+        "step_execution_token": { "$ref": "#/$defs/compact_jwt" }
+      }
+    },
+    "complete_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["step_execution_token"],
+      "properties": {
+        "step_execution_token": {
+          "$ref": "#/$defs/compact_jwt",
+          "description": "Exact Step Execution Token issued by the Registry for the active claim."
+        },
+        "result_hash": {
+          "$ref": "#/$defs/sha256",
+          "description": "OPTIONAL. Hash of completion evidence or relying-party result payload."
+        },
+        "evidence_uri": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://.+$",
+          "description": "OPTIONAL. HTTPS URI for completion evidence."
+        },
+        "idempotency_key": {
+          "$ref": "#/$defs/idempotency_key"
+        }
+      }
+    },
+    "complete_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["approval_id", "step_kind", "step_index", "status", "completed_at"],
+      "properties": {
+        "approval_id": { "$ref": "#/$defs/approval_id" },
+        "step_kind": { "type": "string", "enum": ["forward", "compensation"] },
+        "step_index": { "type": "integer", "minimum": 1 },
+        "status": { "const": "completed" },
+        "completed_at": { "type": "string", "format": "date-time" },
+        "envelope_status": {
+          "type": "string",
+          "enum": ["executing", "completed", "compensating", "compensated", "failed"]
+        }
+      }
+    },
+    "fail_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["step_execution_token", "failure_code"],
+      "properties": {
+        "step_execution_token": {
+          "$ref": "#/$defs/compact_jwt",
+          "description": "Exact Step Execution Token issued by the Registry for the active claim."
+        },
+        "failure_code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "failure_description": {
+          "type": "string",
+          "maxLength": 512
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "evidence_uri": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://.+$"
+        },
+        "idempotency_key": {
+          "$ref": "#/$defs/idempotency_key"
+        }
+      }
+    },
+    "fail_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["approval_id", "step_kind", "step_index", "status", "failed_at"],
+      "properties": {
+        "approval_id": { "$ref": "#/$defs/approval_id" },
+        "step_kind": { "type": "string", "enum": ["forward", "compensation"] },
+        "step_index": { "type": "integer", "minimum": 1 },
+        "status": { "const": "failed" },
+        "failed_at": { "type": "string", "format": "date-time" },
+        "envelope_status": {
+          "type": "string",
+          "enum": ["executing", "compensating", "failed"]
+        }
+      }
+    }
+  }
+}

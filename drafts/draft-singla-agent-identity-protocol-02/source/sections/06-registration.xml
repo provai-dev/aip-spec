@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<section anchor="registration-protocol">
+  <name>Registration Protocol</name>
+
+  <section anchor="registration-envelope-submission">
+    <name>Envelope Submission</name>
+    <t>
+      The Registration Envelope request body is defined only in Section 5.6.
+      An agent is registered by submitting that object to
+      <tt>POST /v1/agents</tt>. This section defines Registry processing and
+      validation; it does not define a second Registration Envelope schema.
+    </t>
+  </section>
+
+  <section anchor="registration-validation">
+    <name>Registration Validation</name>
+    <t>The Registry MUST perform the following checks in order before
+accepting a Registration Envelope. The Registry MUST either accept
+all or reject all — partial registration MUST NOT be possible.</t>
+    <t>
+      If any required condition in Checks 1 through 15, including their
+      lettered subchecks, fails and that check does not explicitly name a more
+      specific error code, the Registry MUST reject the Registration Envelope
+      with <tt>registration_invalid</tt>. Because the checks are ordered, the
+      Registry SHOULD report the error code associated with the first failed
+      check.
+    </t>
+    <ol>
+      <li>Check 1. <tt>identity</tt> MUST be present and MUST be valid JSON conforming to the Agent Identity schema.</li>
+      <li>Check 2. <tt>identity.aid</tt> MUST match the <tt>did:aip</tt> ABNF grammar defined in Section 4.1.</li>
+      <li>Check 3. <tt>identity.type</tt> MUST equal the namespace component of <tt>identity.aid</tt>. The namespace MUST have an active, non-reserved entry in the Registry's synced AIP Namespace Catalog, unless the Registry explicitly documents a private local namespace policy. A mismatch, unknown namespace, removed namespace, or reserved namespace MUST be rejected with <tt>registration_invalid</tt>.</li>
+      <li>Check 4. <tt>identity.aid</tt> MUST NOT already exist in the Registry,
+      and <tt>identity.public_key</tt> MUST NOT already be associated with a
+      registered, non-revoked AID in the Registry. If either condition fails,
+      the Registry MUST reject with <tt>aid_already_registered</tt>.</li>
+      <li>Check 5. <tt>identity.public_key</tt> MUST be an Ed25519 JWK with <tt>kty="OKP"</tt>, <tt>crv="Ed25519"</tt>, and a 43-character base64url <tt>x</tt> value.</li>
+      <li>Check 6. <tt>capability_manifest</tt> MUST be present and MUST be valid JSON conforming to the Capability Manifest schema. It MUST include <tt>manifest_id</tt>, <tt>aid</tt>, <tt>granted_by</tt>, <tt>version</tt>, <tt>issued_at</tt>, <tt>expires_at</tt>, <tt>capabilities</tt>, and <tt>signature</tt>. The <tt>version</tt> field MUST equal 1 for initial registration; <tt>manifest_id</tt> MUST match the <tt>cm:</tt> UUID pattern; <tt>issued_at</tt> and <tt>expires_at</tt> MUST be valid date-time values; <tt>capabilities</tt> MUST be an object; and <tt>signature</tt> MUST be a non-empty base64url value. The <tt>capability_manifest.expires_at</tt> value MUST be in the future at the time of registration.</li>
+      <li>Check 7. <tt>capability_manifest.aid</tt> MUST equal <tt>identity.aid</tt>.</li>
+      <li>Check 8. The <tt>principal_token</tt> string MUST be decodable as a compact-serialised JWT, MUST conform to the Principal Token schema, and MUST carry a JOSE header with <tt>typ</tt> equal to <tt>"JWT"</tt>, <tt>alg</tt> equal to <tt>"EdDSA"</tt>, and <tt>kid</tt> identifying an Ed25519 verification method controlled by the decoded <tt>iss</tt> DID or AID. For a <tt>did:aip</tt> issuer, the Registry MUST resolve the key through its public-key endpoint for that registered AID. The Registry MUST verify the Principal Token signature using the resolved verification method. If any Check 8 condition fails, the Registry MUST reject with <tt>registration_invalid</tt>.</li>
+      <li>Check 9. The decoded <tt>principal_token</tt> payload <tt>sub</tt> MUST equal <tt>identity.aid</tt>. If <tt>delegation_depth</tt> is <tt>0</tt>, <tt>delegated_by</tt> MUST be null and <tt>iss</tt> MUST equal <tt>principal.id</tt>. If <tt>delegation_depth</tt> is greater than <tt>0</tt>, <tt>delegated_by</tt> MUST be a registered, non-revoked parent AID, <tt>iss</tt> MUST equal <tt>delegated_by</tt>, and the Registry MUST reconstruct the complete candidate chain by appending the submitted Principal Token to the parent's stored registration chain. The reconstructed chain MUST satisfy the delegation-chain rules in <xref target="validation-step-8"/>, including linkage, consistent root principal, scope inheritance, task binding, and maximum delegation depth. The submitted <tt>capability_manifest</tt> scopes MUST be a subset of both the submitted Principal Token <tt>scope</tt> array and the parent's effective Capability Manifest. If any Check 9 condition fails, the Registry MUST reject with <tt>registration_invalid</tt> or <tt>invalid_delegation_depth</tt> when the depth limit is exceeded.</li>
+      <li>Check 9a. <tt>max_delegation_depth</tt> Bounds: If the root
+      Principal Token for the reconstructed registration chain contains a
+      <tt>max_delegation_depth</tt> claim, the Registry MUST verify that its
+      value is an integer in the range 0 through 10 inclusive. If
+      <tt>max_delegation_depth</tt> is absent from the root Principal Token,
+      the Registry MUST treat it as
+      3 for all subsequent registration processing. If the value exceeds 10
+      or is a negative integer, the Registry MUST reject the registration with
+      <tt>registration_invalid</tt> and MUST include the detail string
+      <tt>max_delegation_depth exceeds the hard cap of 10</tt> in the error
+      response.</li>
+      <li>Check 10. The decoded <tt>principal_token</tt> payload <tt>principal.id</tt> MUST NOT begin with <tt>did:aip:</tt>.</li>
+      <li>Check 11. If the synced AIP Namespace Catalog entry for <tt>identity.type</tt> has <tt>requires_task_id: true</tt>, the decoded <tt>principal_token</tt> payload <tt>task_id</tt> MUST be non-null and non-empty.</li>
+      <li>Check 12. <tt>capability_manifest.signature</tt> MUST be verifiable against the <tt>granted_by</tt> DID's public key.</li>
+      <li>Check 13. <tt>identity.version</tt> MUST equal 1 and
+      <tt>identity.previous_key_signature</tt> MUST be absent. Registration
+      Envelopes are initial-registration objects only; key rotation is
+      processed through <tt>PUT /v1/agents/{aid}</tt>.</li>
+      <li>Check 14a. <tt>grant_tier</tt> MUST be present and MUST be one of <tt>"G1"</tt>, <tt>"G2"</tt>, or <tt>"G3"</tt>. If <tt>grant_tier</tt> is absent or has any other value, the Registry MUST reject with <tt>registration_invalid</tt>.</li>
+      <li>Check 14b. The Registry MUST determine the requested security Tier as the highest AIP Scope Catalog <tt>tier</tt> among all active scopes in <tt>capability_manifest.capabilities</tt>.</li>
+      <li>Check 14c. The submitted <tt>grant_tier</tt> MUST satisfy the requested security Tier determined in Check 14b. Tier 1 permits <tt>"G1"</tt>, <tt>"G2"</tt>, or <tt>"G3"</tt>. Tier 2 permits <tt>"G2"</tt> or <tt>"G3"</tt> unless the Registry's <tt>identity_proofing_required_for_tier2</tt> metadata field is <tt>true</tt>, in which case Tier 2 permits only <tt>"G3"</tt>. Tier 3 permits only <tt>"G3"</tt>. If <tt>grant_tier</tt> is inconsistent with the requested security Tier or the Registry's Tier 2 identity-proofing policy, the Registry MUST reject with <tt>registration_invalid</tt>.</li>
+      <li>Check 14d. If the requested security Tier determined in Check 14b is 2 or 3, the decoded <tt>principal_token</tt> payload <tt>principal.id</tt> MUST use the <tt>did:web</tt> method. Otherwise, the Registry MUST reject with <tt>principal_did_method_forbidden</tt>.</li>
+      <li>Check 14e. If <tt>grant_tier</tt> is <tt>"G3"</tt>, the decoded <tt>principal_token</tt> payload MUST include a non-empty <tt>acr</tt> string and a non-empty <tt>amr</tt> array. If either claim is absent or empty, the Registry MUST reject with <tt>identity_proofing_insufficient</tt>.</li>
+      <li>Check 15. If the requested security Tier determined in Check 14b is 2 and <tt>identity.model.attestation_hash</tt> is absent, the Registry SHOULD accept the Registration Envelope, but only if it creates a structured registration warning with <tt>code</tt> equal to <tt>"model_attestation_missing_tier2"</tt>, <tt>severity</tt> equal to <tt>"warning"</tt>, <tt>source_check</tt> equal to <tt>"registration_check_15"</tt>, and <tt>issued_at</tt> set to the Registry's current time. The warning message MUST state that the Tier 2 agent is not cryptographically pinned to a model artifact. The Registry MUST persist this warning in Agent Registration Metadata, MUST include it in the successful <tt>POST /v1/agents</tt> response, and MUST return it in subsequent <tt>GET /v1/agents/{aid}</tt> metadata responses while the registered Agent Identity Object lacks <tt>model.attestation_hash</tt>. The persisted warning is the required audit artifact for this condition. If the requested security Tier is 3, <tt>identity.model.attestation_hash</tt> MUST be present and MUST match the <tt>sha256:&lt;64 lowercase hex characters&gt;</tt> pattern. If the requested security Tier is 3 and the field is absent or malformed, the Registry MUST reject with <tt>registration_invalid</tt>.</li>
+    </ol>
+    <t>On acceptance, the Registry MUST store the reconstructed registration
+    chain for the registered AID. For a direct registration, that chain
+    contains the submitted root Principal Token. For a sub-agent registration,
+    it contains the parent's stored registration chain followed by the
+    submitted delegated Principal Token. The Registry MUST record the
+    <tt>delegated_by</tt> field from the decoded <tt>principal_token</tt>
+    payload (or the principal's DID if <tt>delegated_by</tt> is null) in the
+    parent-child delegation index, for use in revocation propagation
+    (<xref target="revocation-checking"/>).</t>
+    <t>If the synced AIP Namespace Catalog entry for <tt>identity.type</tt> defines an automatic lifecycle expiry rule, the Registry MUST persist the resulting <tt>lifecycle_expires_at</tt> value in its stored registration record before accepting the Registration Envelope. For the Draft-02 <tt>ephemeral</tt> namespace, <tt>lifecycle_expires_at</tt> MUST be no later than the earlier of the decoded root Principal Token <tt>expires_at</tt> value and <tt>capability_manifest.expires_at</tt>.</t>
+  </section>
+
+  <section anchor="registration-errors">
+    <name>Error Responses</name>
+    <t>All AIP error responses MUST use the format defined in Section 18.1. Implementations MUST NOT return HTTP 200 for error conditions.</t>
+  </section>
+</section>

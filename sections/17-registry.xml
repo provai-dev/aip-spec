@@ -197,8 +197,11 @@ did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3
       <tt>Content-Type: application/json</tt> and MUST include a DPoP proof
       for the exact <tt>PUT</tt> request URI. For an ordinary rotation, the
       DPoP proof MUST verify against the current active public key for the
-      AID before the rotation is committed. If the path <tt>{aid}</tt> is not
-      already registered, the Registry MUST reject with
+      AID before the rotation is committed. If the DPoP proof key instead
+      equals the stored fallback public key for the AID, the Registry MUST
+      process the request as an Emergency Key Rotation
+      (<xref target="agent-emergency-key-rotation-registry"/>). If the path
+      <tt>{aid}</tt> is not already registered, the Registry MUST reject with
       <tt>unknown_aid</tt>.
     </t>
     <t>
@@ -221,10 +224,15 @@ did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3
       <li>The submitted <tt>identity.public_key</tt> is an Ed25519 JWK
       conforming to the Agent Identity schema, and its <tt>kid</tt> equals
       <tt>identity.aid + "#key-" + identity.version</tt>.</li>
+      <li>The submitted <tt>identity.public_key.x</tt> is not already
+      associated with any other registered AID, whether as an active public
+      key or as a stored fallback public key, and is not the stored fallback
+      public key of this AID.</li>
       <li>The submitted object changes only <tt>version</tt>,
       <tt>public_key</tt>, and <tt>previous_key_signature</tt>; all other Agent
-      Identity fields MUST be byte-for-byte identical to the currently stored
-      Agent Identity Object.</li>
+      Identity fields, including <tt>fallback_public_key_x</tt> and
+      <tt>fallback_key_proof</tt> when present, MUST be byte-for-byte
+      identical to the currently stored Agent Identity Object.</li>
       <li><tt>previous_key_signature</tt> is present, is a non-empty base64url
       string, and verifies using the immediately previous stored public key over
       the complete submitted Agent Identity Object serialized per Section 2.1
@@ -264,6 +272,80 @@ did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3
     </t>
   </section>
 
+  <section anchor="agent-emergency-key-rotation-registry" numbered="true">
+    <name>Emergency Key Rotation</name>
+    <t>
+      Emergency Key Rotation recovers control of an AID whose active private
+      key has been lost or compromised, without abandoning the AID, by using
+      the fallback key registered per Section 5 and Registration Checks 5b
+      and 5c. It uses the same <tt>PUT /v1/agents/{aid}</tt> endpoint as
+      ordinary rotation. A request whose DPoP proof key differs from the
+      current active public key for the AID MUST be processed as an
+      Emergency Key Rotation attempt. If the AID has no stored fallback
+      public key, the Registry MUST reject the attempt with
+      <tt>fallback_key_not_registered</tt>. If the AID has a stored fallback
+      public key and the DPoP proof key does not equal it, the Registry MUST
+      reject with <tt>invalid_token</tt>.
+    </t>
+    <t>
+      An Emergency Key Rotation request MUST satisfy all conditions of an
+      ordinary rotation defined in the preceding section, with the following
+      differences:
+    </t>
+    <ol>
+      <li>The DPoP proof MUST verify against the stored fallback public key
+      for the AID. The DPoP content requirements (<tt>htu</tt>, <tt>htm</tt>,
+      <tt>iat</tt>, <tt>jti</tt>) and replay-rejection rules are unchanged.</li>
+      <li><tt>previous_key_signature</tt> MUST verify against the stored
+      fallback public key, not the replaced active key, over the complete
+      submitted Agent Identity Object serialized per Section 2.1 with
+      <tt>previous_key_signature</tt> temporarily set to <tt>""</tt>. The
+      Registry MUST record in the registration metadata and audit log that
+      this rotation was authorized by the fallback key.</li>
+      <li>The submitted object MAY change <tt>fallback_public_key_x</tt> and
+      <tt>fallback_key_proof</tt> in addition to <tt>version</tt>,
+      <tt>public_key</tt>, and <tt>previous_key_signature</tt>. If the
+      submitted object contains a <tt>fallback_public_key_x</tt>, it MUST
+      differ from the consumed fallback key, MUST differ from the submitted
+      <tt>identity.public_key.x</tt>, MUST satisfy the uniqueness conditions
+      of Registration Check 5b, and MUST be accompanied by a
+      <tt>fallback_key_proof</tt> that satisfies Registration Check 5c. If
+      the submitted object omits <tt>fallback_public_key_x</tt>, it MUST
+      also omit <tt>fallback_key_proof</tt>, and the AID is left with no
+      fallback key; a new fallback key can then never be added, because
+      ordinary rotation forbids changing the fallback fields.</li>
+    </ol>
+    <t>
+      On first successful commit, in addition to the ordinary-rotation commit
+      actions, the Registry MUST atomically: mark the replaced active key
+      with status <tt>compromised</tt> rather than <tt>retired</tt> in its
+      historical key records and public-key endpoint responses, with
+      <tt>valid_until</tt> equal to the commit time; record a CRL entry for
+      the replaced key with reason <tt>key_compromised</tt> effective at the
+      commit time, following the Section 11 revocation publication rules; and
+      mark the authenticating fallback key as consumed. A consumed fallback
+      key MUST NOT be accepted again for any Emergency Key Rotation or any
+      registration, for any AID. The Registry MUST retain consumed fallback
+      key values for the lifetime of the Registry to enforce this rule.
+    </t>
+    <t>
+      Relying Parties MUST reject Credential Tokens signed by a key whose
+      public-key endpoint status is <tt>compromised</tt> when the token
+      <tt>iat</tt> is at or after the key's <tt>valid_until</tt> time, and
+      MUST apply the Section 11 revocation semantics for
+      <tt>key_compromised</tt> to tokens issued before that time.
+    </t>
+    <t>
+      For the exact-retry idempotency case defined for ordinary rotation, the
+      DPoP proof of a retried Emergency Key Rotation MAY verify against the
+      consumed fallback key that authorized the committed rotation.
+      Emergency Key Rotation is subject to the dedicated rate limit defined
+      in Section 19; the Registry MUST apply that limit per AID and SHOULD
+      alert the registered operator contact, when one exists, on every
+      Emergency Key Rotation attempt, successful or not.
+    </t>
+  </section>
+
   <section anchor="agent-public-key-registry" numbered="true">
     <name>Agent Public-Key Endpoints</name>
     <t>
@@ -296,8 +378,11 @@ did:aip:personal:9f3a1c82b4e6d7f0a2b5c8e1d4f7a0b3
       key version identified by <tt>{key-id}</tt>, where <tt>{key-id}</tt>
       is the JOSE <tt>kid</tt> fragment without the leading <tt>#</tt>.
       Historical responses MUST set <tt>status</tt> to <tt>"retired"</tt>
-      when a later key version is active. The Registry MUST retain historical
-      keys according to Section 19.4.2.
+      when a later key version is active, except for a key replaced through
+      Emergency Key Rotation
+      (<xref target="agent-emergency-key-rotation-registry"/>), whose
+      <tt>status</tt> MUST be <tt>"compromised"</tt>. The Registry MUST
+      retain historical keys according to Section 19.4.2.
     </t>
     <t>
       If <tt>{aid}</tt> is not registered, <tt>{key-id}</tt> is malformed,

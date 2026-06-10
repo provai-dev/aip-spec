@@ -1,0 +1,1609 @@
+<section anchor="resource-model" numbered="true">
+  <name>Resource Model and Data Structures</name>
+  <t>
+    This section defines the core data structures in AIP: JSON Schema
+    representations of agents, principals, capabilities, tokens, and
+    registration envelopes. Non-JWT signed JSON objects use the canonical JSON
+    serialization rules of Section 2.1 unless a specific object defines a
+    narrower detached-signature target.
+  </t>
+
+  <section anchor="resource-naming" numbered="true">
+    <name>Resource Naming</name>
+    <t>
+      Agent Identities (AIDs) are W3C Decentralized Identifiers [W3C-DID]
+      using the did:aip method. AID syntax is normatively defined by the
+      <tt>AID</tt>, <tt>namespace</tt>, and <tt>agent-id</tt> ABNF productions
+      in Section 4.1. This section does not define a second AID grammar.
+      JSON Schemas and implementations MUST use grammar equivalent to Section
+      4.1.
+    </t>
+    <t>
+      The namespace MUST begin with a lowercase alpha character,
+      MUST NOT end with a hyphen, and MUST NOT contain consecutive hyphens.
+      Implementations MUST reject AIDs containing uppercase hex digits or
+      uppercase namespace characters.
+    </t>
+
+    <t>
+      Concrete namespace values are maintained in the AIP Namespace Catalog
+      (<xref target="scope-map-registry"/>), not in this prose table. The namespace grammar from
+      <xref target="aid-syntax"/> remains the wire-format constraint; catalog membership
+      supplies the interoperability and lifecycle metadata for each namespace.
+    </t>
+
+    <t>
+      Any namespace marked <tt>reserved: true</tt> in the AIP Namespace
+      Catalog MUST NOT be registered via the standard POST /v1/agents
+      endpoint. The standard <tt>registry</tt> namespace is reserved and
+      MUST be created exclusively via the Registry Genesis procedure.
+    </t>
+
+    <t>
+      Compound typed identifiers use prefixed UUID v4 values:
+    </t>
+
+    <table>
+      <name>Typed Identifier Prefixes</name>
+      <thead>
+        <tr>
+          <th align="left">Object Type</th>
+          <th align="left">Prefix</th>
+          <th align="left">Example</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Capability Manifest</td>
+          <td>cm:</td>
+          <td>cm:550e8400-e29b-41d4-a716-446655440000</td>
+        </tr>
+        <tr>
+          <td>Revocation Object</td>
+          <td>rev:</td>
+          <td>rev:6ba7b810-9dad-41d1-80b4-00c04fd430c8</td>
+        </tr>
+        <tr>
+          <td>Endorsement Object</td>
+          <td>end:</td>
+          <td>end:6ba7b811-9dad-41d1-80b4-00c04fd430c8</td>
+        </tr>
+        <tr>
+          <td>Grant Request</td>
+          <td>gr:</td>
+          <td>gr:550e8401-e29b-41d4-a716-446655440000</td>
+        </tr>
+        <tr>
+          <td>Approval Envelope</td>
+          <td>apr:</td>
+          <td>apr:550e8402-e29b-41d4-a716-446655440000</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section anchor="agent-identity" numbered="true">
+    <name>Agent Identity Object</name>
+    <t>
+      The Agent Identity Object is the canonical signed JSON document that
+      establishes an agent's identity. The key-continuity signing target for
+      key rotation is defined by the <tt>previous_key_signature</tt>
+      requirements below.
+    </t>
+
+    <dl newline="false">
+      <dt>aid</dt>
+      <dd><t>Type: string. Required: REQUIRED. Constraints: MUST match did:aip ABNF; pattern is lowercase namespace plus a 32-character lowercase hexadecimal agent-id derived from the leftmost 128 bits of the SHA-256 digest of the agent public key.</t></dd>
+      <dt>name</dt>
+      <dd><t>Type: string. Required: REQUIRED. Constraints: <tt>minLength: 1</tt>, <tt>maxLength: 64</tt>.</t></dd>
+      <dt>type</dt>
+      <dd><t>Type: string. Required: REQUIRED. Constraints: MUST exactly match namespace component of <tt>aid</tt>; pattern is lowercase alphanumeric with optional hyphen-separated segments.</t></dd>
+      <dt>model</dt>
+      <dd><t>Type: object. Required: REQUIRED. Constraints: See sub-fields below.</t></dd>
+      <dt>model.provider</dt>
+      <dd><t>Type: string. Required: REQUIRED. Constraints: <tt>minLength: 1</tt>, <tt>maxLength: 64</tt>.</t></dd>
+      <dt>model.model_id</dt>
+      <dd><t>Type: string. Required: REQUIRED. Constraints: <tt>minLength: 1</tt>, <tt>maxLength: 128</tt>.</t></dd>
+      <dt>model.attestation_hash</dt>
+      <dd><t>Type: string. Required: OPTIONAL for Tier 1, SHOULD be present for Tier 2, REQUIRED for Tier 3. Constraints: pattern <tt>sha256:&lt;64 lowercase hex characters&gt;</tt>.</t></dd>
+      <dt>created_at</dt>
+      <dd><t>Type: string. Required: REQUIRED. Constraints: ISO 8601 UTC; format: <tt>date-time</tt>; immutable after registration.</t></dd>
+      <dt>version</dt>
+      <dd><t>Type: integer. Required: REQUIRED. Constraints: minimum: 1; MUST increment by exactly 1 on key rotation.</t></dd>
+      <dt>public_key</dt>
+      <dd><t>Type: object. Required: REQUIRED. Constraints: JWK per <xref target="RFC7517"/>; Ed25519 (<tt>kty=OKP</tt>, <tt>crv=Ed25519</tt>) per <xref target="RFC8037"/>.</t></dd>
+      <dt>public_key.kty</dt>
+      <dd><t>Type: string. Required: REQUIRED. Constraints: const: <tt>"OKP"</tt>.</t></dd>
+      <dt>public_key.crv</dt>
+      <dd><t>Type: string. Required: REQUIRED. Constraints: const: <tt>"Ed25519"</tt>.</t></dd>
+      <dt>public_key.x</dt>
+      <dd><t>Type: string. Required: REQUIRED. Constraints: pattern <tt>^[A-Za-z0-9_-]{43}$</tt> (32 bytes base64url, no padding).</t></dd>
+      <dt>public_key.kid</dt>
+      <dd><t>Type: string. Required: REQUIRED. Constraints: DID URL using the agent AID followed by <tt>#key-N</tt> where <tt>N</tt> is a positive integer.</t></dd>
+      <dt>previous_key_signature</dt>
+      <dd><t>Type: string. Required: OPTIONAL (version=1); REQUIRED
+      (version&gt;=2). Constraints: base64url EdDSA signature computed by the
+      retiring previous private key over the new full Agent Identity Object,
+      serialized using the Section 2.1 canonical JSON procedure with
+      <tt>previous_key_signature</tt> set to <tt>""</tt>; pattern
+      <tt>^[A-Za-z0-9_-]+$</tt>.</t></dd>
+    </dl>
+
+    <t>
+      <strong>Normative requirements:</strong>
+    </t>
+    <ul>
+      <li>The aid, type, and created_at fields MUST NOT change after initial registration.</li>
+      <li>The type field MUST exactly match the namespace component of the aid field.</li>
+      <li>The version field MUST start at 1 and MUST increment by exactly 1 on each key rotation.</li>
+      <li>The public_key.kid MUST use format &lt;aid&gt;#key-&lt;n&gt; where &lt;n&gt; starts at 1.</li>
+      <li>The <tt>model.attestation_hash</tt> field is the protocol binding
+        between the registered agent identity and a model binary or version
+        manifest. It SHOULD be present for Tier 2 deployments and MUST be
+        present for Tier 3 deployments. A missing hash means the AID is not
+        cryptographically pinned to a specific model artifact.</li>
+      <li>When version is 2 or greater, previous_key_signature MUST be present and MUST be a non-empty base64url string.</li>
+      <li>For key rotation, the <tt>previous_key_signature</tt> value MUST be
+        generated with the retiring previous private key, not the new private
+        key. The signing target is the complete new Agent Identity Object
+        after applying the new <tt>version</tt> and <tt>public_key</tt>,
+        serialized per Section 2.1 with <tt>previous_key_signature</tt>
+        temporarily set to <tt>""</tt>. The computed signature then replaces
+        that empty string in the stored Agent Identity Object. A Registry MUST
+        verify this signature with the public key from the immediately
+        previous Agent Identity Object version before accepting the
+        rotation.</li>
+    </ul>
+  </section>
+
+  <section anchor="capability-manifest" numbered="true">
+    <name>Capability Manifest</name>
+    <t>
+      The Capability Manifest is a versioned, signed JSON document that
+      declares the specific permissions granted to an agent. The
+      <tt>signature</tt> field is computed using the Section 2.1 canonical
+      JSON procedure with <tt>signature</tt> set to <tt>""</tt>. The
+      <tt>signature_kid</tt> field identifies the Ed25519 verification method
+      used for the signature.
+    </t>
+
+    <table>
+      <name>Capability Manifest Fields</name>
+      <thead>
+        <tr>
+          <th align="left">Field</th>
+          <th align="center">Type</th>
+          <th align="center">Required</th>
+          <th align="left">Constraints</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>manifest_id</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>pattern: cm:&lt;UUIDv4-lowerhex&gt;</td>
+        </tr>
+        <tr>
+          <td>aid</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>MUST match did:aip ABNF</td>
+        </tr>
+        <tr>
+          <td>granted_by</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>MUST be a valid W3C DID matching did:&lt;method&gt;:&lt;method-specific-id&gt;</td>
+        </tr>
+        <tr>
+          <td>version</td>
+          <td>integer</td>
+          <td>REQUIRED</td>
+          <td>minimum: 1; MUST increment on every update including scope_revoke</td>
+        </tr>
+        <tr>
+          <td>issued_at</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>ISO 8601 UTC; format: date-time</td>
+        </tr>
+        <tr>
+          <td>expires_at</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>ISO 8601 UTC; MUST be after issued_at</td>
+        </tr>
+        <tr>
+          <td>capabilities</td>
+          <td>object</td>
+          <td>REQUIRED</td>
+          <td>See Section 5.9 for all sub-fields</td>
+        </tr>
+        <tr>
+          <td>signature_kid</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>DID URL controlled by <tt>granted_by</tt></td>
+        </tr>
+        <tr>
+          <td>signature</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>base64url EdDSA signature; pattern: ^[A-Za-z0-9_-]+$</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <t>
+      A new manifest_id MUST be generated on every update, including
+      scope_revoke operations. Relying Parties MUST verify the manifest
+      signature field using the public key identified by
+      <tt>signature_kid</tt> before trusting any capability declared within it.
+      The DID portion of <tt>signature_kid</tt> MUST be byte-for-byte equal to
+      <tt>granted_by</tt>.
+    </t>
+  </section>
+
+  <section anchor="credential-token" numbered="true">
+    <name>Credential Token</name>
+    <t>
+      An AIP Credential Token is a compact JWT with the following format:
+    </t>
+    <artwork><![CDATA[
+  aip-token = JWT-header "." JWT-payload "." JWT-signature
+    ]]></artwork>
+    <t>
+      The token MUST be a valid JWT as defined by [RFC7519].
+      Credential Tokens conforming to this specification MUST be signed with
+      EdDSA using the registered Ed25519 key identified by the JOSE
+      <tt>kid</tt>. Credential Tokens signed with <tt>ES256</tt>,
+      <tt>RS256</tt>, symmetric algorithms, <tt>none</tt>, or non-Ed25519 key
+      material MUST be rejected.
+    </t>
+
+    <t>
+      <strong>JWT Header fields:</strong>
+    </t>
+
+    <table>
+      <name>JWT Header Fields</name>
+      <thead>
+        <tr>
+          <th align="left">Field</th>
+          <th align="center">Requirement</th>
+          <th align="left">Value / Constraints</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>typ</td>
+          <td>MUST</td>
+          <td>"AIP+JWT"</td>
+        </tr>
+        <tr>
+          <td>alg</td>
+          <td>MUST</td>
+          <td>"EdDSA"</td>
+        </tr>
+        <tr>
+          <td>kid</td>
+          <td>MUST</td>
+          <td>DID URL identifying the signing key; MUST match the kid in the signing agent's Agent Identity</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <t>
+      <strong>Credential Token Payload fields:</strong>
+    </t>
+
+    <dl newline="false">
+      <dt><tt>aip_version</tt></dt>
+      <dd>string, REQUIRED. AIP protocol compatibility version. MUST be
+      <tt>"0.3"</tt> for tokens conforming to this specification. See
+      <xref target="versioning"/> for version semantics and
+      <xref target="validation-step-5f"/> for validation.</dd>
+
+      <dt><tt>iss</tt></dt>
+      <dd>string, REQUIRED. MUST match the <tt>did:aip</tt> ABNF; MUST equal
+      the AID identified by the JWT header <tt>kid</tt>; MUST equal
+      <tt>sub</tt>; MUST equal <tt>sub</tt> of the last
+      <tt>aip_chain</tt> element.</dd>
+
+      <dt><tt>sub</tt></dt>
+      <dd>string, REQUIRED. MUST match the <tt>did:aip</tt> ABNF; MUST equal
+      <tt>iss</tt>. For an agent-issued Credential Token, this is the acting
+      leaf agent's AID. This specification does not define an
+      on-behalf-of subject distinct from the signing agent.</dd>
+
+      <dt><tt>aud</tt></dt>
+      <dd>string or array, REQUIRED. Single string or array; MUST include the
+      Relying Party's identifier.</dd>
+
+      <dt><tt>iat</tt></dt>
+      <dd>integer, REQUIRED. Unix timestamp; MUST NOT be in the future, with a
+      30-second clock skew tolerance.</dd>
+
+      <dt><tt>exp</tt></dt>
+      <dd>integer, REQUIRED. Unix timestamp; MUST be strictly greater than
+      <tt>iat</tt>; TTL limits per <xref target="token-issuance"/>.</dd>
+
+      <dt><tt>jti</tt></dt>
+      <dd>string, REQUIRED. UUID v4 canonical lowercase; unique per issuer AID
+      across all delegation chains.</dd>
+
+      <dt><tt>aip_scope</tt></dt>
+      <dd>array, REQUIRED. <tt>minItems: 1</tt>; <tt>uniqueItems: true</tt>;
+      each item matches
+      <tt>&lt;dot-separated-scope-name&gt;</tt>.</dd>
+
+      <dt><tt>aip_chain</tt></dt>
+      <dd>array, REQUIRED. <tt>minItems: 1</tt>; <tt>maxItems: 11</tt>; each
+      element is a compact-serialised signed Principal Token JWT. Elements are
+      ordered root-to-leaf, and the last element's <tt>sub</tt> is the acting
+      agent AID. The maximum length corresponds to delegation depths 0 through
+      10.</dd>
+
+      <dt><tt>aip_principal_assertion</tt></dt>
+      <dd>string, OPTIONAL for Tier 1 and Tier 2; REQUIRED for Tier 3. A
+      compact-serialised signed JWT issued by an enterprise Identity Provider,
+      such as an OIDC ID Token or equivalent JWT-formatted assertion. The
+      assertion MUST contain a <tt>sub</tt> claim identifying the human
+      principal. When present, the Relying Party MUST verify the assertion's
+      signature against the IdP's JWKS endpoint before treating the human
+      identity context as valid. The <tt>sub</tt> claim in
+      <tt>aip_principal_assertion</tt> MUST match the root Principal Token's
+      <tt>principal.id</tt> value in <tt>aip_chain[0]</tt>. The issuer
+      (<tt>iss</tt>) of this JWT MUST NOT be the AIP Registry. See
+      <xref target="validation-step-11"/> Steps 11a, 11b, and 11c for
+      normative validation.</dd>
+
+      <dt><tt>aip_originator_aid</tt></dt>
+      <dd>string, OPTIONAL; MUST be present when the agent is acting in a
+      delegated agent-to-agent (A2A) workflow as specified in
+      <xref target="delegated-identity-chaining-a2a"/>. The value is the AID
+      of the originating agent that initiated the A2A workflow. When present,
+      it MUST be a valid <tt>did:aip</tt> AID conforming to the ABNF in
+      <xref target="aid-syntax"/> and MUST NOT equal the <tt>sub</tt> claim
+      of this Credential Token.</dd>
+
+      <dt><tt>aip_registry</tt></dt>
+      <dd>string, OPTIONAL. Advisory URI of the AIP Registry; if present, Step
+      6a trust anchoring is REQUIRED.</dd>
+
+      <dt><tt>aip_engagement_id</tt></dt>
+      <dd>string, OPTIONAL. Pattern:
+      <tt>eng:&lt;UUIDv4-lowerhex&gt;</tt>;
+      present when the token is scoped to an Engagement Object.</dd>
+    </dl>
+
+  <section anchor="step-execution-token" numbered="true">
+    <name>Step Execution Token</name>
+    <t>
+      A Step Execution Token (SET) is a compact JWT issued by a Registry after
+      a step actor successfully claims an Approval Envelope step. It is not an
+      agent-issued Credential Token. Its issuer is the Registry ID, and its
+      subject is the actor AID that claimed the step.
+    </t>
+    <t>
+      <strong>SET JWT Header fields:</strong>
+    </t>
+
+    <table>
+      <name>Step Execution Token Header Fields</name>
+      <thead>
+        <tr>
+          <th align="left">Field</th>
+          <th align="center">Requirement</th>
+          <th align="left">Value / Constraints</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>typ</td>
+          <td>MUST</td>
+          <td>"AIP-SET+JWT"</td>
+        </tr>
+        <tr>
+          <td>alg</td>
+          <td>MUST</td>
+          <td>"EdDSA"</td>
+        </tr>
+        <tr>
+          <td>kid</td>
+          <td>MUST</td>
+          <td>HTTPS URI identifying a Registry step-execution verification key listed in the Registry Trust Record version current at issuance time</td>
+        </tr>
+        <tr>
+          <td>aip_trv</td>
+          <td>MUST</td>
+          <td>Integer Registry Trust Record version whose <tt>active_verification_keys.step_execution</tt> contains <tt>kid</tt></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <t>
+      The <tt>aip_trv</tt> header is a protected JOSE header value
+      used only to select an already pinned Registry Trust Record. It is not a
+      trust anchor. Relying Parties MUST NOT accept a Step Execution Token
+      unless they already have pinned trust state for <tt>iss</tt> and for
+      the indicated Registry Trust Record version.
+    </t>
+
+    <t>
+      <strong>SET Payload fields:</strong>
+    </t>
+
+    <table>
+      <name>Step Execution Token Payload Fields</name>
+      <thead>
+        <tr>
+          <th align="left">Field</th>
+          <th align="center">Type</th>
+          <th align="center">Required</th>
+          <th align="left">Constraints</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>aip_version</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>AIP protocol compatibility version; MUST be "0.3" for this spec</td>
+        </tr>
+        <tr>
+          <td>iss</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>Registry ID HTTPS URI; MUST match the issuing Registry Trust Record</td>
+        </tr>
+        <tr>
+          <td>sub</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>AID of the claimed step actor; MUST match the referenced Approval Envelope step actor</td>
+        </tr>
+        <tr>
+          <td>aud</td>
+          <td>string/array</td>
+          <td>REQUIRED</td>
+          <td>Single string or array; MUST include the Relying Party's identifier</td>
+        </tr>
+        <tr>
+          <td>iat</td>
+          <td>integer</td>
+          <td>REQUIRED</td>
+          <td>Unix timestamp; MUST NOT be in the future</td>
+        </tr>
+        <tr>
+          <td>exp</td>
+          <td>integer</td>
+          <td>REQUIRED</td>
+          <td>Unix timestamp; MUST be strictly greater than iat; MUST NOT exceed the Step Execution Token TTL limit defined below</td>
+        </tr>
+        <tr>
+          <td>jti</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>UUID v4 canonical lowercase; unique per Registry issuer across all SETs</td>
+        </tr>
+        <tr>
+          <td>aip_scope</td>
+          <td>array</td>
+          <td>REQUIRED</td>
+          <td>Scopes authorised for the claimed step</td>
+        </tr>
+        <tr>
+          <td>aip_chain</td>
+          <td>array</td>
+          <td>REQUIRED</td>
+          <td>Principal Token chain for the actor AID in sub</td>
+        </tr>
+        <tr>
+          <td>aip_registry</td>
+          <td>string</td>
+          <td>OPTIONAL</td>
+          <td>If present, MUST equal iss</td>
+        </tr>
+        <tr>
+          <td>aip_approval_id</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>Approval Envelope identifier; pattern: apr:&lt;UUIDv4-lowerhex&gt;</td>
+        </tr>
+        <tr>
+          <td>aip_step_kind</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>Either <tt>forward</tt> or <tt>compensation</tt></td>
+        </tr>
+        <tr>
+          <td>aip_approval_step</td>
+          <td>integer</td>
+          <td>CONDITIONAL</td>
+          <td>1-based step_index; REQUIRED when <tt>aip_step_kind</tt> is <tt>forward</tt>; MUST be absent for compensation SETs</td>
+        </tr>
+        <tr>
+          <td>aip_compensation_step</td>
+          <td>integer</td>
+          <td>CONDITIONAL</td>
+          <td>1-based compensation_index; REQUIRED when <tt>aip_step_kind</tt> is <tt>compensation</tt>; MUST be absent for forward SETs</td>
+        </tr>
+        <tr>
+          <td>aip_engagement_id</td>
+          <td>string</td>
+          <td>OPTIONAL</td>
+          <td>Engagement Object identifier when the parent Approval Envelope is engagement-scoped</td>
+        </tr>
+      </tbody>
+    </table>
+    <t>
+      The Registry MUST derive a Step Execution Token TTL limit as the minimum
+      of: (1) the Registry's <tt>step_claim_timeout_seconds</tt> value
+      published in <tt>/v1/registry-metadata</tt>; (2) the lowest
+      <tt>ttl_max_seconds</tt> value for any requested <tt>aip_scope</tt> in
+      the synced AIP Scope Catalog; and (3) the Tier ceiling for the
+      highest-risk requested scope from <xref target="token-issuance"/>. The
+      Registry MUST set <tt>exp</tt> no later than
+      <tt>iat + effective_set_ttl_limit</tt>. A Relying Party validating a
+      SET MUST compute the same scope and Tier limit through
+      <xref target="validation-step-6"/> and reject a SET whose
+      <tt>exp - iat</tt> exceeds that limit with <tt>invalid_token</tt>. A
+      Registry completing or failing a step MUST also enforce the stored claim
+      deadline, even if the SET has not yet expired.
+    </t>
+  </section>
+  </section>
+
+  <section anchor="principal-token" numbered="true">
+    <name>Principal Token</name>
+    <t>
+      A Principal Token is a JWT payload encoding one delegation link in
+      the AIP principal chain. Principal Tokens are embedded as compact-
+      serialised JWTs in the aip_chain array of a Credential Token or Step
+      Execution Token.
+    </t>
+
+    <t>
+      A Principal Token MUST be a compact-serialised JWT signed using
+      EdDSA. Its JOSE header is outside the payload schema but is
+      normative: <tt>typ</tt> MUST be <tt>"JWT"</tt>, <tt>alg</tt> MUST
+      be <tt>"EdDSA"</tt>, and <tt>kid</tt> MUST be a DID URL identifying
+      an Ed25519 verification method controlled by the token issuer
+      identified by <tt>iss</tt>. For the root Principal Token
+      (<tt>delegation_depth</tt> 0), the issuer is the root
+      <tt>principal.id</tt>. For delegated Principal Tokens, the issuer
+      is the parent agent AID in <tt>delegated_by</tt>, and that parent AID
+      MUST be registered in the authoritative AIP Registry. Relying Parties
+      resolve delegated Principal Token signing keys through the Registry
+      historical public-key endpoint and verify that the returned key was
+      valid at the Principal Token's <tt>issued_at</tt> instant. Principal Tokens
+      signed with <tt>ES256</tt>, <tt>RS256</tt>, symmetric algorithms,
+      <tt>none</tt>, or non-Ed25519 key material MUST be rejected.
+      X25519 verification methods MUST NOT be used for Principal Token
+      signing.
+    </t>
+
+    <table>
+      <name>Principal Token Fields</name>
+      <thead>
+        <tr>
+          <th align="left">Field</th>
+          <th align="center">Type</th>
+          <th align="center">Required</th>
+          <th align="left">Constraints</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>iss</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>W3C DID or did:aip AID; for delegation_depth 0: MUST equal principal.id; for delegation_depth &gt; 0: MUST equal delegated_by</td>
+        </tr>
+        <tr>
+          <td>sub</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>MUST match did:aip ABNF</td>
+        </tr>
+        <tr>
+          <td>principal</td>
+          <td>object</td>
+          <td>REQUIRED</td>
+          <td>See sub-fields below</td>
+        </tr>
+        <tr>
+          <td>principal.type</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>enum: ["human", "organisation"]</td>
+        </tr>
+        <tr>
+          <td>principal.id</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>W3C DID; MUST NOT use did:aip method; MUST be byte-for-byte identical across all chain elements</td>
+        </tr>
+        <tr>
+          <td>delegated_by</td>
+          <td>string/null</td>
+          <td>REQUIRED</td>
+          <td>null when delegation_depth is 0; MUST be a did:aip AID when delegation_depth &gt; 0; MUST NOT equal sub</td>
+        </tr>
+        <tr>
+          <td>delegation_depth</td>
+          <td>integer</td>
+          <td>REQUIRED</td>
+          <td>minimum: 0, maximum: 10; MUST equal the array index of this token in aip_chain</td>
+        </tr>
+        <tr>
+          <td>max_delegation_depth</td>
+          <td>integer</td>
+          <td>OPTIONAL</td>
+          <td>minimum: 0, maximum: 10; default: 3 when absent; only the value from aip_chain[0] governs the chain</td>
+        </tr>
+        <tr>
+          <td>issued_at</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>ISO 8601 UTC; format: date-time</td>
+        </tr>
+        <tr>
+          <td>expires_at</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>ISO 8601 UTC; MUST be strictly after issued_at</td>
+        </tr>
+        <tr>
+          <td>purpose</td>
+          <td>string</td>
+          <td>OPTIONAL</td>
+          <td>maxLength: 128; signed consent/audit metadata only; MUST NOT be used as an authorization constraint</td>
+        </tr>
+        <tr>
+          <td>task_id</td>
+          <td>string/null</td>
+          <td>OPTIONAL; REQUIRED when the subject namespace catalog entry has <tt>requires_task_id: true</tt></td>
+          <td>minLength: 1, maxLength: 256 when non-null; enforced at registration and during Step 8 chain validation</td>
+        </tr>
+        <tr>
+          <td>scope</td>
+          <td>array</td>
+          <td>REQUIRED</td>
+          <td>minItems: 1; uniqueItems: true</td>
+        </tr>
+        <tr>
+          <td>acr</td>
+          <td>string</td>
+          <td>OPTIONAL; REQUIRED when grant ceremony is G3</td>
+          <td>Authentication context class reference</td>
+        </tr>
+        <tr>
+          <td>amr</td>
+          <td>array</td>
+          <td>OPTIONAL; REQUIRED when grant ceremony is G3</td>
+          <td>Authentication method reference values per <xref target="RFC8176"/></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <t>
+      The principal.id field MUST be byte-for-byte identical across
+      every Principal Token in the same aip_chain array. The principal.id
+      MUST NOT begin with did:aip:.
+    </t>
+
+    <t>
+      For a root Principal Token produced by AIP-GRANT,
+      <tt>issued_at</tt> is the issuer's current UTC signing time and
+      <tt>expires_at</tt> equals <tt>issued_at</tt> plus the GrantResponse
+      <tt>approved_delegation_valid_for_seconds</tt> value. The detailed
+      derivation rule is defined in Section 12.3.
+    </t>
+
+    <t>
+      The <tt>purpose</tt> field, when present, is a signed
+      human-readable consent and audit claim. It is not a machine-enforced
+      authorization constraint. Relying Parties MAY display or log
+      <tt>purpose</tt> for operator context, but MUST NOT use it to grant
+      capabilities, satisfy scope checks, or override Capability Manifest,
+      Capability Overlay, Approval Envelope, or policy evaluation.
+    </t>
+  </section>
+
+  <section anchor="registration-envelope" numbered="true">
+    <name>Registration Envelope</name>
+    <t>
+      The Registration Envelope is the request body submitted to
+      POST /v1/agents to register a new AIP agent.
+    </t>
+
+    <table>
+      <name>Registration Envelope Fields</name>
+      <thead>
+        <tr>
+          <th align="left">Field</th>
+          <th align="center">Type</th>
+          <th align="center">Required</th>
+          <th align="left">Constraints</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>identity</td>
+          <td>object</td>
+          <td>REQUIRED</td>
+          <td>MUST conform to agent-identity schema; version MUST be 1; previous_key_signature MUST NOT be present</td>
+        </tr>
+        <tr>
+          <td>capability_manifest</td>
+          <td>object</td>
+          <td>REQUIRED</td>
+          <td>MUST conform to capability-manifest schema; version MUST be 1; aid MUST equal identity.aid</td>
+        </tr>
+        <tr>
+          <td>principal_token</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>Compact JWT (header.payload.signature); for direct registration delegation_depth MUST be 0 and delegated_by MUST be null; for sub-agent registration delegation_depth MUST be greater than 0 and delegated_by MUST identify the registered parent AID</td>
+        </tr>
+        <tr>
+          <td>grant_tier</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>enum: ["G1", "G2", "G3"]; MUST meet the minimum Grant Tier required by the highest synced AIP Scope Catalog tier in capability_manifest</td>
+        </tr>
+      </tbody>
+    </table>
+    <t>
+      A Registration Envelope registers exactly one agent: the AID in
+      <tt>identity.aid</tt>. The submitted <tt>principal_token</tt> payload
+      <tt>sub</tt> MUST equal that AID. Direct principal-to-agent
+      registrations use a root Principal Token with
+      <tt>delegation_depth: 0</tt> and <tt>delegated_by: null</tt>.
+      Sub-agent registrations use a delegated Principal Token signed by the
+      registered parent agent identified in <tt>delegated_by</tt>; the
+      Registry reconstructs the complete principal chain from the parent's
+      stored registration chain and the submitted token during Registration
+      Check 9.
+    </t>
+  </section>
+
+  <section anchor="resource-revocation-object" numbered="true">
+    <name>Revocation Object</name>
+    <t>
+      Revocation is performed by submitting a signed Revocation Object to
+      POST /v1/revocations. The <tt>signature</tt> field is computed using
+      the Section 2.1 canonical JSON procedure with <tt>signature</tt> set to
+      <tt>""</tt>. The signing input order is
+      <tt>revocation_id</tt>, <tt>target_id</tt>, <tt>type</tt>,
+      <tt>issued_by</tt>, <tt>kid</tt>, <tt>reason</tt>,
+      <tt>timestamp</tt>, <tt>propagate_to_children</tt>,
+      <tt>scopes_revoked</tt>, and <tt>signature</tt>.
+    </t>
+
+    <table>
+      <name>Revocation Object Fields</name>
+      <thead>
+        <tr>
+          <th align="left">Field</th>
+          <th align="center">Type</th>
+          <th align="center">Required</th>
+          <th align="left">Constraints</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>revocation_id</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>pattern: rev:&lt;UUIDv4-lowerhex&gt;</td>
+        </tr>
+        <tr>
+          <td>target_id</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>MUST be a did:aip AID (for full_revoke, scope_revoke, delegation_revoke) or a Principal DID (for principal_revoke)</td>
+        </tr>
+        <tr>
+          <td>type</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>enum: ["full_revoke", "scope_revoke", "delegation_revoke", "principal_revoke"]</td>
+        </tr>
+        <tr>
+          <td>issued_by</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>Issuer DID authorised for the target, or Registry ID for Registry-generated revocations</td>
+        </tr>
+        <tr>
+          <td>kid</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>Verification key identifier; DID URL controlled by issued_by for external submissions, or active Registry CRL key for Registry-generated revocations</td>
+        </tr>
+        <tr>
+          <td>reason</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>enum defined in the Revocation Reason Codes table</td>
+        </tr>
+        <tr>
+          <td>timestamp</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>ISO 8601 UTC</td>
+        </tr>
+        <tr>
+          <td>propagate_to_children</td>
+          <td>boolean</td>
+          <td>OPTIONAL</td>
+          <td>default: false</td>
+        </tr>
+        <tr>
+          <td>scopes_revoked</td>
+          <td>array</td>
+          <td>REQUIRED when scope_revoke; MUST NOT otherwise</td>
+          <td>minItems: 1</td>
+        </tr>
+        <tr>
+          <td>signature</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>base64url EdDSA</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <t>
+      <strong>Revocation Types:</strong>
+    </t>
+    <ul>
+      <li><strong>full_revoke</strong> - Permanently revokes the AID.</li>
+      <li><strong>scope_revoke</strong> - Invalidates specific scopes for the agent. For Tier 1 and 2, this MUST cause Relying Parties to reject Credential Tokens containing the revoked scopes (Step 7, Section 9).</li>
+      <li><strong>delegation_revoke</strong> - Invalidates delegation chains rooted at the target. Child agents lose authority; the target AID remains valid for direct principal interactions.</li>
+      <li><strong>principal_revoke</strong> - Issued by the root principal to revoke their authorisation of a target agent (via AID) or all agents under their authority (via Principal DID). Existing Credential Tokens and Step Execution Tokens depending on that authorisation become invalid immediately. This validity effect is independent of <tt>propagate_to_children</tt>; that flag controls only whether descendant Revocation Objects are materialised.</li>
+    </ul>
+    <t>
+      <strong>Revocation Reason Codes:</strong> The <tt>reason</tt> field MUST
+      be one of the following values:
+    </t>
+    <table>
+      <name>Revocation Reason Codes</name>
+      <thead>
+        <tr>
+          <th align="left">Reason</th>
+          <th align="left">Semantics</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><tt>device_compromised</tt></td><td>The principal's device or agent host holding relevant key material was compromised.</td></tr>
+        <tr><td><tt>key_compromised</tt></td><td>The agent private key or signing key was directly compromised.</td></tr>
+        <tr><td><tt>task_complete</tt></td><td>The agent completed its assigned task and no longer requires the delegated authority.</td></tr>
+        <tr><td><tt>policy_violation</tt></td><td>The agent or deployment violated Registry, principal, or relying-party policy.</td></tr>
+        <tr><td><tt>principal_request</tt></td><td>The principal requested revocation without a more specific protocol reason.</td></tr>
+        <tr><td><tt>account_closure</tt></td><td>The principal or deployer account associated with the delegation is being closed.</td></tr>
+        <tr><td><tt>heartbeat_timeout</tt></td><td>Registry-generated reason for Dead Man's Switch expiry.</td></tr>
+        <tr><td><tt>lifecycle_expired</tt></td><td>Registry-generated reason for namespace lifecycle expiry.</td></tr>
+        <tr><td><tt>parent_revoked</tt></td><td>Registry-generated reason for recursive child revocation after a parent revocation.</td></tr>
+        <tr><td><tt>other</tt></td><td>Other auditable reason. Implementations SHOULD record additional detail in local audit metadata.</td></tr>
+      </tbody>
+    </table>
+    <t>
+      Externally submitted Revocation Objects MUST NOT use
+      <tt>parent_revoked</tt>, <tt>heartbeat_timeout</tt>, or
+      <tt>lifecycle_expired</tt>; those values are reserved for
+      Registry-generated Revocation Objects.
+    </t>
+  </section>
+
+  <section anchor="endorsement" numbered="true">
+    <name>Endorsement Object</name>
+    <t>
+      Any Relying Party or agent MAY submit a signed Endorsement Object to
+      the Registry after a completed interaction. The <tt>signature</tt>
+      field is computed using the Section 2.1 canonical JSON procedure with
+      <tt>signature</tt> set to <tt>""</tt>.
+    </t>
+
+    <dl newline="false">
+      <dt><tt>endorsement_id</tt></dt>
+      <dd>string, REQUIRED. Pattern:
+      <tt>end:&lt;UUIDv4-lowerhex&gt;</tt>.</dd>
+
+      <dt><tt>from_aid</tt></dt>
+      <dd>string, REQUIRED. MUST NOT equal <tt>to_aid</tt>.</dd>
+
+      <dt><tt>to_aid</tt></dt>
+      <dd>string, REQUIRED. MUST NOT equal <tt>from_aid</tt>.</dd>
+
+      <dt><tt>task_id</tt></dt>
+      <dd>string, REQUIRED. <tt>minLength: 1</tt>;
+      <tt>maxLength: 256</tt>.</dd>
+
+      <dt><tt>outcome</tt></dt>
+      <dd>string, REQUIRED. One of <tt>success</tt>, <tt>partial</tt>, or
+      <tt>failure</tt>.</dd>
+
+      <dt><tt>score</tt></dt>
+      <dd>number, REQUIRED. Endorsement score in the range 1 through 5
+      inclusive. Values outside this range MUST be rejected with
+      <tt>endorsement_invalid</tt>.</dd>
+
+      <dt><tt>notes</tt></dt>
+      <dd>string or null, OPTIONAL. Maximum length 512. Signed audit context
+      only; MUST NOT affect reputation scoring or validation.</dd>
+
+      <dt><tt>timestamp</tt></dt>
+      <dd>string, REQUIRED. ISO 8601 UTC timestamp.</dd>
+
+      <dt><tt>signature_kid</tt></dt>
+      <dd>string, REQUIRED. DID URL identifying an Ed25519 verification method
+      controlled by <tt>from_aid</tt>.</dd>
+
+      <dt><tt>signature</tt></dt>
+      <dd>string, REQUIRED. Base64url EdDSA signature by
+      <tt>from_aid</tt>.</dd>
+    </dl>
+
+    <t>
+      The Registry MUST verify every submitted Endorsement Object signature.
+      The DID portion of <tt>signature_kid</tt> MUST equal
+      <tt>from_aid</tt>.
+      Only success and partial outcomes increment endorsement_count.
+      failure increments incident_count.
+    </t>
+
+    <t>
+      The <tt>notes</tt> field, when present, is signed human-readable audit
+      context about the observed task outcome. The Registry MUST preserve it
+      as part of the Endorsement Object, but MUST NOT parse, classify, or use
+      <tt>notes</tt> to compute reputation scores, increment counters, validate
+      capability authorization, or alter endorsement acceptance. Reputation
+      effects are determined by the structured fields defined in this section
+      and Section 14.
+    </t>
+  </section>
+
+  <section anchor="field-constraints" numbered="true">
+    <name>Field Constraints and Catalog-Bound Scope Identifiers</name>
+    <t>
+      The Capability Manifest <tt>capabilities</tt> object is a closed object:
+      top-level capability families not listed below MUST NOT appear unless a
+      Registry accepts them through an explicit private extension policy. The
+      immutable machine-readable schema for this draft is
+      <tt>https://provai.dev/schemas/aip/capability-manifest/draft-02</tt>,
+      also listed as <tt>capability-manifest.schema.json</tt> in the JSON
+      Schema Index.
+    </t>
+
+    <dl newline="false">
+      <dt><tt>email</tt></dt>
+      <dd><t>Permitted sub-fields are boolean <tt>read</tt>,
+        <tt>write</tt>, <tt>send</tt>, and <tt>delete</tt>, plus optional
+        integer <tt>max_recipients_per_send</tt> in the range 1-100. Boolean
+        fields default to <tt>false</tt> when absent. The recipient cap applies
+        only when <tt>send</tt> is <tt>true</tt>.</t></dd>
+
+      <dt><tt>calendar</tt></dt>
+      <dd><t>Permitted sub-fields are boolean <tt>read</tt>,
+        <tt>write</tt>, and <tt>delete</tt>. Boolean fields default to
+        <tt>false</tt> when absent.</t></dd>
+
+      <dt><tt>filesystem</tt></dt>
+      <dd><t>Permitted sub-fields are <tt>read</tt> and <tt>write</tt> arrays
+        of absolute path strings, plus boolean <tt>execute</tt> and
+        <tt>delete</tt>. Each path string MUST be non-empty and no longer than
+        512 characters. Empty or absent path arrays mean deny-all for that
+        operation. File deletion is permitted only for paths also permitted by
+        <tt>write</tt>.</t></dd>
+
+      <dt><tt>web</tt></dt>
+      <dd><t>Permitted sub-fields are boolean <tt>browse</tt>,
+        <tt>forms_submit</tt>, and <tt>download</tt>, plus optional integer
+        <tt>max_requests_per_hour</tt> in the range 1-10000. Boolean fields
+        default to <tt>false</tt> when absent.</t></dd>
+
+      <dt><tt>transactions</tt></dt>
+      <dd><t>The <tt>enabled</tt> boolean is REQUIRED when the
+        <tt>transactions</tt> object is present. When <tt>enabled</tt> is
+        <tt>true</tt>, <tt>max_single_transaction</tt>,
+        <tt>max_daily_total</tt>, and <tt>currency</tt> are REQUIRED;
+        transaction limits MUST be greater than zero; <tt>currency</tt> MUST
+        be an ISO 4217 three-letter uppercase currency code. Optional
+        <tt>require_confirmation_above</tt> MUST be less than or equal to
+        <tt>max_single_transaction</tt> when both are present.</t></dd>
+
+      <dt><tt>communicate</tt></dt>
+      <dd><t>The <tt>enabled</tt> boolean is REQUIRED when the
+        <tt>communicate</tt> object is present. Permitted channel fields are
+        boolean <tt>whatsapp</tt>, <tt>telegram</tt>, <tt>sms</tt>, and
+        <tt>voice</tt>. When <tt>enabled</tt> is <tt>true</tt>, at least one
+        channel field MUST be explicitly set to <tt>true</tt>; when
+        <tt>enabled</tt> is <tt>false</tt>, channel fields have no granting
+        effect.</t></dd>
+
+      <dt><tt>spawn_agents</tt></dt>
+      <dd><t>The <tt>enabled</tt> boolean is REQUIRED when the
+        <tt>spawn_agents</tt> object is present. When <tt>enabled</tt> is
+        <tt>true</tt>, integer <tt>max_concurrent</tt> in the range 1-100 is
+        REQUIRED. Optional <tt>types_allowed</tt> lists namespace labels the
+        agent may spawn; each value MUST be an active, spawnable entry in the
+        synced AIP Namespace Catalog unless a private namespace policy
+        explicitly permits it.</t></dd>
+
+      <dt><tt>registry</tt></dt>
+      <dd><t>Permitted sub-fields are Registry control-plane grants. Draft-02
+        defines boolean <tt>heartbeat</tt>, which grants the
+        <tt>registry.heartbeat</tt> scope for authenticated liveness
+        submissions.</t></dd>
+
+      <dt><tt>approvals</tt></dt>
+      <dd><t>Permitted sub-fields are Approval Envelope control-plane grants.
+        Draft-02 defines boolean <tt>create</tt>, which grants the
+        <tt>approvals.create</tt> scope for submitting Approval Envelopes to
+        <tt>POST /v1/approvals</tt>.</t></dd>
+    </dl>
+
+    <t>
+      An absent top-level capability family grants no capability in that
+      family. An empty <tt>capabilities</tt> object grants no capabilities.
+      Implementations MUST NOT treat absent fields as allow-all.
+    </t>
+
+    <t>
+      <strong>Scope Identifier Grammar and Catalog Binding:</strong>
+    </t>
+
+    <t>
+      Scope identifiers are dot-separated lowercase ASCII strings. Each
+      segment MUST begin with <tt>a-z</tt> or <tt>_</tt>, and subsequent
+      characters in the same segment MAY be <tt>a-z</tt>, <tt>0-9</tt>, or
+      <tt>_</tt>. The normative pattern is
+      <tt>&lt;dot-separated-scope-name&gt;</tt>. This permits
+      versioned or tiered scope names such as <tt>transactions.v2</tt> or
+      <tt>filesystem.read.tier1</tt> while preserving a non-numeric first
+      character in every segment.
+    </t>
+
+    <t>
+      Concrete scope identifiers and their security metadata are defined by
+      the immutable AIP Catalog Snapshot identified in
+      <xref target="scope-map-registry"/> and exposed by conformant
+      Registries through the Scope Map endpoint defined in
+      <xref target="scope-map-registry"/>. A
+      scope is interoperable only when it is present with
+      <tt>status: "active"</tt> or <tt>status: "experimental"</tt> in the
+      synced AIP Scope Catalog, or when a Registry explicitly documents a
+      private local extension policy.
+    </t>
+
+    <t>
+      Tokens containing a scope that is absent from the synced AIP Scope
+      Catalog, marked <tt>reserved</tt>, marked <tt>removed</tt>, or outside
+      an explicitly documented local extension policy MUST be rejected with
+      <tt>invalid_scope</tt>.
+    </t>
+
+    <t>
+      Where this document references <tt>transactions.*</tt> or
+      <tt>communicate.*</tt>, the wildcard is category notation rather than a
+      literal scope string. The matching semantics for scope-family entries
+      are defined by the AIP Scope Catalog. In the Draft-02 catalog,
+      <tt>transactions.*</tt> includes the bare <tt>transactions</tt> scope,
+      any active scope beginning with <tt>transactions.</tt>, and
+      <tt>capabilities.transactions.enabled: true</tt> in the Capability
+      Manifest; <tt>communicate.*</tt> includes active scopes beginning with
+      <tt>communicate.</tt> and <tt>capabilities.communicate.enabled: true</tt>
+      in the Capability Manifest.
+    </t>
+
+    <t>
+      Empty arrays [] for filesystem.read or filesystem.write MUST
+      be interpreted as deny-all. A require_confirmation_above value
+      above max_single_transaction is vacuous and MUST be rejected.
+      When communicate.enabled is true, at least one channel MUST be
+      explicitly set to true.
+    </t>
+  </section>
+
+  <section anchor="resource-delegation-rules" numbered="true">
+    <name>Delegation Rules</name>
+    <t>
+      <strong>Rule D-1.</strong> A delegated agent MUST NOT grant scopes or looser
+      constraint values than its own Capability Manifest contains.
+    </t>
+
+    <t>
+      <strong>Rule D-2.</strong> A delegated agent MUST NOT issue a Principal Token with
+      max_delegation_depth greater than its remaining depth
+      (max_delegation_depth - delegation_depth).
+    </t>
+
+    <t>
+      <strong>Rule D-3.</strong> Implementations MUST reject any Credential Token where
+      the <tt>delegation_depth</tt> of any chain token exceeds the root token's
+      <tt>max_delegation_depth</tt>. The hard protocol maximum for
+      <tt>max_delegation_depth</tt> is 10.
+    </t>
+
+    <t>
+      <strong>Rule D-4.</strong> The root Principal Token (index 0) MUST have
+      <tt>delegation_depth</tt> = 0. Each subsequent token at index
+      <tt>i</tt> MUST have <tt>delegation_depth</tt> =
+      <tt>i</tt>. No gaps, skips, or repeated values are permitted. Because
+      depths 0 through 10 are the complete allowed range, a valid
+      <tt>aip_chain</tt> contains at most 11 elements.
+    </t>
+
+    <t>
+      <strong>Rule D-5.</strong> Each delegation chain token MUST be signed by the
+      private key of the <tt>delegated_by</tt> AID (or root principal for
+      depth 0). For non-root delegation tokens, the signing AID MUST be a
+      registered AIP agent whose public key can be resolved from the Registry
+      as specified by Credential Token validation Step 8d-2.
+    </t>
+  </section>
+
+  <section anchor="capability-overlays" numbered="true">
+    <name>Capability Overlays</name>
+    <t>
+      A Capability Overlay is a signed restriction document stored in the
+      Registry. It narrows an agent's effective capability set for
+      operations within a specific engagement or issuer context.
+    </t>
+
+    <t>
+      <strong>Rule CO-1 (Attenuation Only):</strong> An overlay MUST NOT expand any
+      constraint value beyond what the base Capability Manifest permits.
+      The effective capability set is always the intersection of the base
+      manifest and all active overlays scoped to the engagement or issuer.
+    </t>
+
+    <table>
+      <name>Capability Overlay Fields</name>
+      <thead>
+        <tr>
+          <th align="left">Field</th>
+          <th align="center">Type</th>
+          <th align="center">Required</th>
+          <th align="left">Constraints</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>overlay_id</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>Pattern: co:&lt;UUIDv4-lowerhex&gt;</td>
+        </tr>
+        <tr>
+          <td>aid</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>The target agent's AID</td>
+        </tr>
+        <tr>
+          <td>engagement_id</td>
+          <td>string</td>
+          <td>OPTIONAL</td>
+          <td>Pattern: eng:&lt;UUIDv4-lowerhex&gt;; links to Engagement Object</td>
+        </tr>
+        <tr>
+          <td>issued_by</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>DID of the overlay issuer; MUST be did:web or did:aip (MUST NOT be did:key)</td>
+        </tr>
+        <tr>
+          <td>overlay_type</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>MUST be "restrict"</td>
+        </tr>
+        <tr>
+          <td>issued_at</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>ISO 8601 UTC timestamp</td>
+        </tr>
+        <tr>
+          <td>expires_at</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>ISO 8601 UTC; MUST be strictly after issued_at</td>
+        </tr>
+        <tr>
+          <td>version</td>
+          <td>integer</td>
+          <td>REQUIRED</td>
+          <td>Positive integer; monotonically increasing per (aid, engagement_id, issued_by) tuple</td>
+        </tr>
+        <tr>
+          <td>constraints</td>
+          <td>object</td>
+          <td>REQUIRED</td>
+          <td>Uses the same schema as Capability Manifest capabilities sub-object</td>
+        </tr>
+        <tr>
+          <td>signature_kid</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>DID URL controlled by <tt>issued_by</tt></td>
+        </tr>
+        <tr>
+          <td>signature</td>
+          <td>string</td>
+          <td>REQUIRED</td>
+          <td>Base64url EdDSA signature by issued_by over the Section 2.1 signing input</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <t>
+      <strong>Overlay Rules:</strong>
+    </t>
+    <ol>
+      <li><strong>CO-1 (Attenuation Only):</strong> For every field in constraints,
+        the value MUST be equal to or more restrictive than the
+        corresponding value in the base Capability Manifest. Constraint
+        comparison is recursive for nested objects. An omitted overlay field
+        inherits the effective base value and MUST NOT be interpreted as
+        removing or relaxing the base constraint.</li>
+      <li><strong>CO-2 (Issuer DID Method):</strong> The issued_by DID MUST use
+        did:web or did:aip. Overlays signed by did:key MUST be
+        rejected with overlay_issuer_invalid. The DID portion of
+        <tt>signature_kid</tt> MUST be byte-for-byte equal to
+        <tt>issued_by</tt>.</li>
+      <li><strong>CO-3 (Version Monotonicity):</strong> A new overlay for the same
+        (aid, engagement_id, issued_by) tuple MUST have a strictly
+        higher version than the current active overlay. A submission whose
+        version is less than or equal to the current active overlay version
+        MUST be rejected with <tt>overlay_version_conflict</tt>.</li>
+      <li><strong>CO-4 (Expiry Handling):</strong> Expired overlays MUST be treated as
+        absent.</li>
+      <li><strong>CO-5 (Engagement Termination):</strong> If an Engagement Object
+        associated with an overlay's engagement_id is
+        terminated, all overlays for that engagement MUST be invalidated
+        atomically by the Registry.</li>
+      <li><strong>CO-6 (Multiple Overlays):</strong> When multiple overlays apply to
+        the same agent, the effective capability set is the intersection
+        of ALL applicable overlays with the base manifest.</li>
+    </ol>
+
+    <t>
+      <strong>Effective Capability Computation:</strong>
+    </t>
+    <artwork><![CDATA[
+  effective = base_manifest.capabilities
+  for each active_overlay in applicable_overlays:
+      effective = intersect(effective, active_overlay.constraints)
+    ]]></artwork>
+    <t>
+      Where intersect applies per-field, the following type-specific rules are
+      normative. Scope set to <tt>false</tt> removes that scope through the
+      boolean rule below.
+    </t>
+    <t>
+      The <tt>intersect</tt> operation is defined recursively over JSON
+      values:
+    </t>
+    <dl newline="false">
+      <dt>Objects</dt>
+      <dd>
+        For each object member present in the base value, if the overlay omits
+        that member, the effective value is the base member unchanged. If the
+        overlay supplies that member, apply <tt>intersect</tt> recursively. If
+        the overlay supplies a member that is absent from the base value, the
+        overlay is valid only when this specification or the synced AIP Scope
+        Catalog defines absence of that member as an unrestricted allowance or
+        default value that the overlay narrows. Otherwise, the overlay expands
+        the manifest and MUST be rejected with
+        <tt>overlay_exceeds_manifest</tt>.
+      </dd>
+
+      <dt>Booleans</dt>
+      <dd>
+        Boolean fields use logical AND. <tt>false</tt> is more restrictive
+        than <tt>true</tt>.
+      </dd>
+
+      <dt>Numbers</dt>
+      <dd>
+        Numeric fields that represent maximum allowances, rate limits, budget
+        caps, concurrency caps, or confirmation thresholds use
+        <tt>min(base, overlay)</tt>. In the Draft-02 standard Capability
+        Manifest schema, this rule applies to
+        <tt>email.max_recipients_per_send</tt>,
+        <tt>web.max_requests_per_hour</tt>,
+        <tt>transactions.max_single_transaction</tt>,
+        <tt>transactions.max_daily_total</tt>,
+        <tt>transactions.require_confirmation_above</tt>, and
+        <tt>spawn_agents.max_concurrent</tt>. A lower
+        <tt>require_confirmation_above</tt> value is more restrictive because
+        it requires explicit confirmation for a larger set of transactions.
+        If the base manifest omits an optional numeric cap whose absence is
+        defined as "no cap" or "no confirmation threshold", an overlay MAY add
+        that cap and the effective value is the overlay value.
+        Numeric fields whose ordering semantics are not defined by the synced
+        AIP Scope Catalog or this specification MUST NOT be narrowed by
+        ordering; the overlay value MUST equal the base value or be rejected
+        with <tt>overlay_exceeds_manifest</tt>.
+      </dd>
+
+      <dt>Arrays</dt>
+      <dd>
+        Arrays of allowed values, including filesystem path arrays and
+        <tt>spawn_agents.types_allowed</tt>, use set intersection. The result
+        MAY be an empty array, which means deny-all for that allowed-value
+        list. If the base manifest omits an optional allowed-value array whose
+        absence is defined as all catalog-valid values being allowed, an
+        overlay MAY add the array and the effective value is the overlay
+        array.
+      </dd>
+
+      <dt>Strings and enums</dt>
+      <dd>
+        String and enum fields are not ordered. If an overlay supplies a
+        string or enum value, it MUST be byte-for-byte equal to the base value
+        unless the synced AIP Scope Catalog defines explicit subset semantics
+        for that field. Otherwise the overlay MUST be rejected with
+        <tt>overlay_exceeds_manifest</tt>. For example,
+        <tt>transactions.currency</tt> set to <tt>"GBP"</tt> cannot attenuate
+        a base <tt>transactions.currency</tt> value of <tt>"USD"</tt>. If the
+        overlay omits <tt>transactions.currency</tt>, the base currency is
+        inherited unchanged.
+      </dd>
+
+      <dt>Null and unknown types</dt>
+      <dd>
+        <tt>null</tt> and any value type not covered above MUST NOT be used to
+        relax or erase a base constraint. A non-equal overlay value of an
+        unknown type MUST be rejected with <tt>overlay_exceeds_manifest</tt>.
+      </dd>
+    </dl>
+  </section>
+
+  <section anchor="engagement-objects" numbered="true">
+    <name>Engagement Objects</name>
+    <t>
+      An Engagement Object is a mutable Registry resource that models a
+      multi-party engagement. It is the parent container for Capability
+      Overlays scoped via engagement_id, Approval
+      Envelopes scoped via engagement_id, and participant
+      roster and approval gate state.
+    </t>
+
+    <t><strong>Engagement Object Fields:</strong></t>
+
+    <dl newline="true" spacing="normal">
+      <dt><tt>engagement_id</tt> (string; REQUIRED)</dt>
+
+
+      <dd>Pattern: eng:&lt;UUIDv4-lowerhex&gt;</dd>
+
+
+      <dt><tt>title</tt> (string; REQUIRED)</dt>
+
+
+      <dd>maxLength: 256</dd>
+
+
+      <dt><tt>hiring_operator</tt> (string; REQUIRED)</dt>
+
+
+      <dd>DID; MUST be did:web or did:aip</dd>
+
+
+      <dt><tt>deploying_principal</tt> (string; REQUIRED)</dt>
+
+
+      <dd>DID of the deploying principal</dd>
+
+
+      <dt><tt>created_at</tt> (string; REQUIRED)</dt>
+
+
+      <dd>ISO 8601 UTC</dd>
+
+
+      <dt><tt>expires_at</tt> (string; REQUIRED)</dt>
+
+
+      <dd>ISO 8601 UTC; MUST be after created_at</dd>
+
+
+      <dt><tt>status</tt> (string; REQUIRED)</dt>
+
+
+      <dd>One of: "proposed", "active", "suspended", "completed", "terminated"</dd>
+
+
+      <dt><tt>participants</tt> (array; REQUIRED)</dt>
+
+
+      <dd>Array of Participant objects</dd>
+
+
+      <dt><tt>approval_gates</tt> (array; OPTIONAL)</dt>
+
+
+      <dd>Array of Approval Gate objects</dd>
+
+
+      <dt><tt>change_log</tt> (array; REQUIRED)</dt>
+
+
+      <dd>Append-only array of Change Log Entry objects</dd>
+
+
+      <dt><tt>hiring_operator_signature</tt> (string; REQUIRED)</dt>
+
+
+      <dd>Base64url EdDSA signature by hiring_operator over the top-level engagement signing input defined below</dd>
+
+      <dt><tt>hiring_operator_kid</tt> (string; REQUIRED)</dt>
+
+
+      <dd>DID URL identifying the Ed25519 verification method for <tt>hiring_operator_signature</tt></dd>
+
+
+      <dt><tt>deploying_principal_signature</tt> (string; COND.)</dt>
+
+
+      <dd>Base64url EdDSA countersignature by deploying_principal over the same top-level engagement signing input defined below; REQUIRED for active, suspended, completed, and terminated Engagement Objects</dd>
+
+      <dt><tt>deploying_principal_kid</tt> (string; COND.)</dt>
+
+
+      <dd>DID URL identifying the Ed25519 verification method for <tt>deploying_principal_signature</tt>; REQUIRED whenever <tt>deploying_principal_signature</tt> is present</dd>
+
+
+      <dt><tt>version</tt> (integer; REQUIRED)</dt>
+
+
+      <dd>Positive integer; MUST equal max(change_log.seq)</dd>
+
+
+    </dl>
+
+    <t>
+      <strong>Participant object fields:</strong> aid (REQUIRED), role
+      (REQUIRED, maxLength: 64), capability_overlay_id (OPTIONAL),
+      added_at (REQUIRED, ISO 8601), added_by (REQUIRED, DID),
+      removed_at (OPTIONAL, ISO 8601).
+    </t>
+
+    <t>
+      <strong>Approval Gate object fields:</strong> gate_id (REQUIRED,
+      pattern: gate:&lt;lowercase-token&gt;), name (REQUIRED, maxLength: 128),
+      required_approver (REQUIRED, DID), trigger (REQUIRED,
+      <tt>scope:&lt;scope-string&gt;</tt> or
+      <tt>action_type:&lt;action-type&gt;</tt>),
+      status (REQUIRED, one of: "pending", "approved", "rejected"),
+      approved_at (OPTIONAL, ISO 8601).
+    </t>
+
+    <t>
+      <strong>Top-level engagement signature input:</strong> Both
+      hiring_operator_signature and, when present,
+      deploying_principal_signature MUST
+      be computed over the same JCS-canonical JSON serialization of the
+      immutable engagement agreement object containing only
+      <tt>engagement_id</tt>, <tt>title</tt>, <tt>hiring_operator</tt>,
+      <tt>deploying_principal</tt>, <tt>created_at</tt>, and
+      <tt>expires_at</tt>. The top-level signing input MUST NOT include
+      mutable lifecycle or roster state (<tt>status</tt>,
+      <tt>participants</tt>, <tt>approval_gates</tt>, <tt>change_log</tt>,
+      or <tt>version</tt>) and MUST NOT include top-level signature or
+      <tt>*_kid</tt> fields. Mutable state is authenticated by the signed
+      append-only <tt>change_log</tt> entries. The countersignature does not
+      sign the other party's signature value.
+    </t>
+
+    <t>
+      <strong>Change Log Entry fields:</strong> seq (REQUIRED,
+      monotonically increasing from 1), timestamp (REQUIRED, ISO 8601),
+      action (REQUIRED), actor (REQUIRED, DID), actor_kid (REQUIRED DID URL),
+      payload (OPTIONAL, object), signature (REQUIRED, Base64url EdDSA by
+      actor over the Section 2.1 signing input with the entry
+      <tt>signature</tt> excluded).
+    </t>
+
+    <t>
+      <strong>Engagement signature verification profile:</strong> Each
+      top-level signature and each change-log entry signature MUST identify
+      its verification key with the corresponding <tt>*_kid</tt> field. The
+      <tt>kid</tt> value MUST be a DID URL whose DID portion is byte-for-byte
+      equal to the signer DID: <tt>hiring_operator</tt> for
+      <tt>hiring_operator_signature</tt>, <tt>deploying_principal</tt> for
+      <tt>deploying_principal_signature</tt>, and the change-log entry
+      <tt>actor</tt> for an entry <tt>signature</tt>. For <tt>did:aip</tt>
+      signer DIDs, the Registry MUST resolve the verification method through
+      its registered public-key endpoint for that AID. For other DID methods,
+      the Registry MUST use the signer's DID method resolution rules. The
+      resolved verification method MUST be Ed25519 verification material
+      controlled by the signer DID. Missing <tt>kid</tt> fields, malformed DID
+      URLs, signer/key DID mismatches, unsupported key types, failed DID
+      resolution, or failed EdDSA signature verification MUST cause rejection
+      with <tt>engagement_signature_invalid</tt>.
+    </t>
+
+    <t>
+      Defined change log actions: engagement_created,
+      engagement_countersigned, participant_added, participant_removed,
+      participant_role_changed, gate_added, gate_approved,
+      gate_rejected, engagement_suspended, engagement_resumed,
+      engagement_completed, engagement_terminated.
+    </t>
+
+    <t>
+      The Registry MUST reject any request that modifies or deletes an
+      existing change log entry. Only appends are permitted.
+    </t>
+
+    <t>
+      <strong>Engagement version semantics:</strong> The <tt>version</tt>
+      field is the current change-log sequence number, not an independent
+      counter. On creation, the Registry MUST create exactly one
+      <tt>engagement_created</tt> entry with <tt>seq: 1</tt> and set
+      <tt>version: 1</tt>. Each accepted mutation after creation MUST append
+      exactly one new change-log entry whose <tt>seq</tt> is
+      <tt>previous version + 1</tt>, and the Registry MUST set
+      <tt>version</tt> to that new <tt>seq</tt> in the same atomic update.
+      Therefore, for every stored Engagement Object, <tt>version</tt> MUST
+      equal <tt>max(change_log[*].seq)</tt>. A mutation that changes status,
+      participants, approval gates, countersignature state, or termination
+      state without appending a matching change-log entry MUST be rejected.
+    </t>
+
+    <t>
+      <strong>Engagement Lifecycle:</strong>
+    </t>
+
+    <artwork><![CDATA[
+  proposed --> active --> completed
+                 |
+                 +--> suspended --> active (resumed)
+                 |
+                 +--> terminated
+    ]]></artwork>
+
+    <t>
+      <strong>Engagement Lifecycle Transitions:</strong>
+    </t>
+    <ul>
+      <li>proposed to active: Requires both hiring_operator_signature
+        and deploying_principal_signature. Missing
+        deploying_principal_signature during activation MUST be rejected
+        with engagement_countersign_required.</li>
+      <li>active to suspended / completed: Hiring operator only.</li>
+      <li>active/suspended to terminated: Either party.</li>
+    </ul>
+
+    <t>
+      <strong>Termination Cascade:</strong> When an Engagement is terminated:
+    </t>
+    <ol>
+      <li>The Registry MUST set status: "terminated" atomically.</li>
+      <li>All Capability Overlays linked to this engagement_id MUST be
+        invalidated (per Rule CO-5).</li>
+      <li>All Approval Envelopes in pending_approval, approved, or
+        executing status scoped to this engagement_id MUST be
+        transitioned to cancelled using the Approval Envelope
+        cancellation rules in Section 13.6.</li>
+      <li>Subsequent Credential Token validation for operations scoped to
+        this engagement MUST fail with engagement_terminated.</li>
+    </ol>
+
+    <t>
+      This termination cascade applies only when an Engagement transitions
+      to <tt>terminated</tt>. Transition to <tt>completed</tt> does not
+      trigger any Capability Overlay invalidation or Approval Envelope
+      cancellation cascade.
+    </t>
+  </section>
+</section>

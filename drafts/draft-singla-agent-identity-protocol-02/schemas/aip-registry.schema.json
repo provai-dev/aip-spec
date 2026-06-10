@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provai.dev/schemas/aip/aip-registry/draft-02",
+  "$comment": "Normatively defined by the AIP Registry Metadata rules. This schema describes the /v1/registry-metadata document.",
+  "title": "AIP Registry Metadata Document",
+  "description": "Registry Metadata published at /v1/registry-metadata. This document identifies the Registry service and points verifiers to the current Registry Trust Record.",
+  "type": "object",
+  "required": [
+    "registry_id",
+    "registry_name",
+    "aip_version",
+    "registry_trust_uri",
+    "aip_catalog_uri",
+    "aip_catalog_version",
+    "aip_catalog_snapshot_id",
+    "aip_catalog_sha256",
+    "step_claim_timeout_seconds",
+    "endpoints"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "registry_id": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://.+$",
+      "description": "Stable HTTPS identifier for the Registry service."
+    },
+    "registry_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Human-readable Registry name."
+    },
+    "aip_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 16,
+      "description": "AIP protocol compatibility version implemented by this Registry. This is not the Internet-Draft revision suffix or Catalog snapshot identifier."
+    },
+    "registry_trust_uri": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://.+$",
+      "description": "URI of the current Registry Trust Record."
+    },
+    "aip_catalog_uri": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://.+$",
+      "description": "HTTPS URI of the pinned AIP Catalog bundle or conformant mirror used for scopes, scope families, and namespaces."
+    },
+    "aip_catalog_version": {
+      "type": "string",
+      "pattern": "^draft-[0-9]{2}$",
+      "description": "Draft-aligned AIP Catalog version, e.g. draft-02."
+    },
+    "aip_catalog_snapshot_id": {
+      "type": "string",
+      "pattern": "^https://provai\\.dev/aip/catalog/draft-[0-9]{2}$",
+      "description": "Immutable Catalog Snapshot identifier, e.g. https://provai.dev/aip/catalog/draft-02."
+    },
+    "aip_catalog_sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "Lowercase SHA-256 digest of the exact UTF-8 bytes returned from aip_catalog_uri."
+    },
+    "endpoints": {
+      "type": "object",
+      "required": [
+        "agents",
+        "crl",
+        "revocations",
+        "heartbeat",
+        "scopes",
+        "namespaces"
+      ],
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      },
+      "properties": {
+        "agents": {
+          "type": "string",
+          "minLength": 1
+        },
+        "crl": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Preferred CRL retrieval URI. May be the relative origin path /v1/crl or an absolute HTTPS CDN/distribution URI. After trust bootstrap, verifiers use the signed Registry Trust Record's endpoints.crl as authoritative."
+        },
+        "revocations": {
+          "type": "string",
+          "minLength": 1
+        },
+        "heartbeat": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scopes": {
+          "type": "string",
+          "minLength": 1
+        },
+        "namespaces": {
+          "type": "string",
+          "minLength": 1
+        },
+        "resources": {
+          "type": "string",
+          "minLength": 1,
+          "description": "CONDITIONAL. Resource registration collection endpoint. REQUIRED when token exchange is supported."
+        }
+      },
+      "description": "Service endpoints published by the Registry. Values may be relative paths resolved against registry_id or absolute HTTPS URIs."
+    },
+    "grant_tiers_supported": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "OPTIONAL. Supported grant tiers."
+    },
+    "acr_values_supported": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "OPTIONAL. Supported acr values."
+    },
+    "acr_equivalence_map": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        },
+        "minItems": 1,
+        "uniqueItems": true
+      },
+      "description": "OPTIONAL. Maps received ACR values to arrays of required ACR values that they satisfy. Registries MUST only declare downward equivalences where received assurance is equal to or higher than required assurance under a documented ACR equivalence policy."
+    },
+    "amr_values_supported": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "OPTIONAL. Supported amr values."
+    },
+    "oauth_authorization_server": {
+      "type": "string",
+      "format": "uri",
+      "description": "OPTIONAL. URI of the OAuth authorization server metadata."
+    },
+    "identity_proofing_required_for_tier2": {
+      "type": "boolean",
+      "description": "OPTIONAL. Whether this Registry requires G3 for Tier 2 operations. When true, Registration Check 14c rejects Tier 2 registrations with grant_tier G2, Validation Step 9d treats G2 as insufficient for Tier 2 operations, and Step 8 Post-Check C requires acr/amr identity-proofing claims."
+    },
+    "enterprise_idp_federation_supported": {
+      "type": "boolean",
+      "description": "OPTIONAL. True only when the Registry supports the Enterprise IdP Federation Profile. Absence is treated as equivalent to false. Relying Parties MUST NOT infer support from absence of this field."
+    },
+    "enterprise_idp_token_exchange_grant_types_supported": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "urn:ietf:params:oauth:grant-type:jwt-bearer",
+          "urn:ietf:params:oauth:grant-type:token-exchange"
+        ]
+      },
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "OPTIONAL. Enterprise IdP grant types the Registry can use for secondary token exchange when federation is supported."
+    },
+    "enterprise_idp_issuers_supported": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true,
+      "description": "OPTIONAL. OIDC issuer identifiers or issuer patterns accepted for enterprise principal assertions and secondary token exchange, subject to local trust policy."
+    },
+    "mtls_client_certificate_profile": {
+      "type": "string",
+      "const": "aip-san-uri-v1",
+      "description": "CONDITIONAL. REQUIRED when this Registry accepts Tier 3 registrations or advertises Tier 3 operation support. Identifies the Tier 3 mTLS certificate profile that binds the effective actor AID through a did:aip URI subjectAltName."
+    },
+    "mtls_trust_anchors_uri": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://.+$",
+      "description": "CONDITIONAL. REQUIRED when this Registry accepts Tier 3 registrations or advertises Tier 3 operation support. HTTPS URI documenting the client-certificate trust anchor set and revocation-checking mechanism for Tier 3 mTLS."
+    },
+    "step_claim_timeout_seconds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 600,
+      "description": "Registry policy timeout for claimed Approval Envelope steps. A claimed step that is not completed or failed within this many seconds from claimed_at is automatically failed by the Registry."
+    }
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provai.dev/schemas/aip/capability-overlay/draft-02",
+  "$comment": "Normatively defined by the AIP Capability Overlay rules. Overlay rules CO-1 through CO-6 govern validation. Effective capability computation is defined by the overlay intersection rules. Submitted via PUT /v1/agents/{aid}/overlays. The signature covers the JCS-canonical (RFC 8785) JSON with signature set to empty string and signature_kid included. overlay_type MUST be 'restrict' — AIP v0.3 does not define expand overlays.",
+  "title": "AIP Capability Overlay",
+  "description": "A signed restriction document that narrows an agent's effective capability set for operations within a specific engagement or issuer context. Rule CO-1 (Attenuation Only): an overlay MUST NOT expand any constraint beyond what the base Capability Manifest permits. The effective capability set is always the intersection of the base manifest and all active overlays.",
+  "type": "object",
+  "required": [
+    "overlay_id",
+    "aid",
+    "issued_by",
+    "overlay_type",
+    "issued_at",
+    "expires_at",
+    "version",
+    "constraints",
+    "signature_kid",
+    "signature"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "overlay_id": {
+      "type": "string",
+      "pattern": "^co:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "description": "Unique identifier for this overlay. Format: 'co:' prefix followed by a UUID v4 in canonical lowercase hyphenated form."
+    },
+    "aid": {
+      "type": "string",
+      "pattern": "^did:aip:[a-z][a-z0-9]*(-[a-z0-9]+)*:[0-9a-f]{32}$",
+      "description": "AID of the target agent whose capability set this overlay restricts. MUST be a registered AIP agent."
+    },
+    "engagement_id": {
+      "type": "string",
+      "pattern": "^eng:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "description": "OPTIONAL. Engagement Object identifier this overlay is scoped to. When present, this overlay applies only to Credential Token validations where aip_engagement_id matches. When absent, the overlay applies across all engagement contexts for the (aid, issued_by) pair."
+    },
+    "issued_by": {
+      "type": "string",
+      "pattern": "^did:(web|aip):.+$",
+      "description": "DID of the overlay issuer. MUST use did:web or did:aip method. Overlays signed by did:key MUST be rejected with overlay_issuer_invalid (Rule CO-2)."
+    },
+    "overlay_type": {
+      "type": "string",
+      "enum": ["restrict"],
+      "description": "Overlay operation type. MUST be 'restrict' in AIP v0.3. Expand overlays are not defined in this version."
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp when this overlay was issued."
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp after which this overlay is no longer active. MUST be strictly after issued_at. Expired overlays are treated as absent — the base Capability Manifest applies without restriction for that issuer/engagement context (Rule CO-4)."
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Positive integer monotonically increasing per (aid, engagement_id, issued_by) tuple. A new overlay for the same tuple MUST have a strictly higher version than the current active overlay. The Registry MUST reject downgrades with overlay_version_conflict (Rule CO-3)."
+    },
+    "constraints": {
+      "type": "object",
+      "description": "The capability restrictions imposed by this overlay. Uses the same field vocabulary as the Capability Manifest 'capabilities' object, but MAY be partial. Omitted fields inherit the base manifest value unchanged. For every field present, the value MUST be equal to or more restrictive than the base Capability Manifest using recursive CO-1 intersection: nested objects recurse; boolean fields use false-wins AND; standard numeric caps and confirmation thresholds use min(base, overlay); arrays of allowed values use set intersection; strings/enums such as transactions.currency must match unless catalog metadata defines subset semantics. If the base omits an optional limiting field whose absence means no cap or all catalog-valid values allowed, the overlay may add that field as a restriction. The Registry MUST reject overlays that violate CO-1 with overlay_exceeds_manifest.",
+      "additionalProperties": true
+    },
+    "signature_kid": {
+      "type": "string",
+      "pattern": "^did:(web|aip):.+#.+$",
+      "description": "DID URL identifying the Ed25519 verification method used to verify signature. The DID portion MUST equal issued_by."
+    },
+    "signature": {
+      "type": "string",
+      "description": "Base64url-encoded EdDSA signature by the issued_by key identified by signature_kid over the JCS-canonical (RFC 8785) JSON of this overlay with signature set to empty string ''."
+    }
+  }
+}

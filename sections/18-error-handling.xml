@@ -95,6 +95,8 @@
       <dt><tt>aid_already_registered</tt></dt><dd><t>HTTP 409. The submitted AID or public key is already associated with a registered, non-revoked AID.</t></dd>
       <dt><tt>unknown_aid</tt></dt><dd><t>HTTP 404. AID not registered in any accessible Registry.</t></dd>
       <dt><tt>identity_version_conflict</tt></dt><dd><t>HTTP 409. Agent Identity key rotation version is stale, skips a version, or conflicts with a committed rotation.</t></dd>
+      <dt><tt>fallback_proof_invalid</tt></dt><dd><t>HTTP 400. <tt>fallback_key_proof</tt> is absent while <tt>fallback_public_key_x</tt> is present, present while <tt>fallback_public_key_x</tt> is absent, or does not verify against <tt>fallback_public_key_x</tt> over the Section 5 fallback-key-proof signing input.</t></dd>
+      <dt><tt>fallback_key_not_registered</tt></dt><dd><t>HTTP 403. An Emergency Key Rotation was attempted for an AID that has no stored fallback public key, or whose fallback key has already been consumed.</t></dd>
       <dt><tt>revocation_invalid</tt></dt><dd><t>HTTP 400. Revocation Object is malformed, uses a reserved externally submitted reason, has an invalid timestamp, or has an invalid or unverifiable signature.</t></dd>
       <dt><tt>revocation_unauthorized</tt></dt><dd><t>HTTP 403. Revocation issuer is not authorized for the target or revocation type.</t></dd>
       <dt><tt>revocation_conflict</tt></dt><dd><t>HTTP 409. Revocation identifier was previously accepted with different object content.</t></dd>

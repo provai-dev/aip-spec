@@ -225,6 +225,23 @@
           Implemented.</td>
         </tr>
         <tr>
+          <td>Fallback Key Recovery (Optional Feature)</td>
+          <td>AIP Agent Deployer or Agent Issuer</td>
+          <td>A Deployer or Issuer that registers agents with
+          <tt>fallback_public_key_x</tt> MUST construct the field and its
+          <tt>fallback_key_proof</tt> per <xref target="resource-model"/>,
+          satisfy Registration Checks 5b and 5c in
+          <xref target="registration-protocol"/>, protect the fallback
+          private key per <xref target="fallback-key-security"/>, and
+          perform Emergency Key Rotation only as specified in
+          <xref target="agent-emergency-key-rotation-registry"/>. Registering
+          a fallback key is optional for agents; support for Checks 5b and
+          5c, the Emergency Key Rotation path, the <tt>compromised</tt> key
+          status, and consumed-fallback tracking is unconditional for the
+          AIP Registry class and is covered by its required requirement
+          set.</td>
+        </tr>
+        <tr>
           <td>Reputation Output (Optional Feature)</td>
           <td>AIP Registry</td>
           <td>A Registry that implements

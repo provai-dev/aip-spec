@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provai.dev/schemas/aip/public-key-response/draft-02",
+  "$comment": "Normatively defined by the AIP Registry Interface Agent Public-Key Endpoints. Response body for GET /v1/agents/{aid}/public-key and GET /v1/agents/{aid}/public-key/{key-id}.",
+  "title": "AIP Public Key Response",
+  "description": "Registry response containing an agent public verification key and the validity interval needed for Credential Token and delegated Principal Token signature validation.",
+  "type": "object",
+  "required": [
+    "aid",
+    "key_id",
+    "kid",
+    "jwk",
+    "valid_from",
+    "valid_until",
+    "status"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "aid": {
+      "type": "string",
+      "pattern": "^did:aip:[a-z][a-z0-9]*(-[a-z0-9]+)*:[0-9a-f]{32}$",
+      "description": "Registered AID that controls this key. MUST equal the percent-decoded path aid."
+    },
+    "key_id": {
+      "type": "string",
+      "pattern": "^key-[1-9][0-9]*$",
+      "description": "Key version identifier without the leading '#'."
+    },
+    "kid": {
+      "type": "string",
+      "pattern": "^did:aip:[a-z][a-z0-9]*(-[a-z0-9]+)*:[0-9a-f]{32}#key-[1-9][0-9]*$",
+      "description": "Full DID URL key identifier. MUST equal aid + '#' + key_id."
+    },
+    "jwk": {
+      "type": "object",
+      "required": ["kty", "crv", "x", "kid"],
+      "additionalProperties": false,
+      "description": "Public verification key in JWK format. Ed25519 is mandatory to implement.",
+      "properties": {
+        "kty": {
+          "type": "string",
+          "const": "OKP"
+        },
+        "crv": {
+          "type": "string",
+          "const": "Ed25519"
+        },
+        "x": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{43}$"
+        },
+        "kid": {
+          "type": "string",
+          "pattern": "^did:aip:[a-z][a-z0-9]*(-[a-z0-9]+)*:[0-9a-f]{32}#key-[1-9][0-9]*$"
+        }
+      }
+    },
+    "valid_from": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp at which this key version became valid for signature verification."
+    },
+    "valid_until": {
+      "oneOf": [
+        {
+          "type": "string",
+          "format": "date-time"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "ISO 8601 UTC timestamp after which this key version is no longer valid for newly issued signatures, or null for the current active key."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "retired"],
+      "description": "active for the current key; retired for a retained historical key."
+    }
+  }
+}

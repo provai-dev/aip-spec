@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     version="3"
+     docName="draft-singla-agent-identity-protocol-02"
+     ipr="trust200902"
+     category="std"
+     submissionType="IETF"
+     consensus="true"
+     xml:lang="en">
+
+  <front>
+    <title abbrev="AIP">Agent Identity Protocol (AIP): Decentralized Identity and Delegation for AI Agents</title>
+
+    <seriesInfo name="Internet-Draft" value="draft-singla-agent-identity-protocol-02"/>
+
+    <author fullname="Paras Singla" initials="P." surname="Singla">
+      <organization>Independent</organization>
+      <address>
+        <email>paras.singla@inviscel.com</email>
+        <uri>https://provai.dev</uri>
+      </address>
+    </author>
+
+    <date year="2026" month="May" day="14"/>
+
+    <area>Security</area>
+
+    <keyword>agent identity</keyword>
+    <keyword>AI agent</keyword>
+    <keyword>aip</keyword>
+    <keyword>agent identity protocol</keyword>
+    <keyword>autonomous agents</keyword>
+    <keyword>delegation</keyword>
+    <keyword>capability</keyword>
+    <keyword>decentralized identifier</keyword>
+    <keyword>DID</keyword>
+    <keyword>credential token</keyword>
+    <keyword>JWT</keyword>
+    <keyword>DPoP</keyword>
+    <keyword>revocation</keyword>
+    <keyword>principal chain</keyword>
+
+    <abstract>
+      <t>
+        The Agent Identity Protocol (AIP) defines a decentralized identity,
+        delegation, and authorization framework for autonomous AI agents. AIP
+        combines W3C Decentralized Identifiers (DIDs), capability-based
+        authorization, cryptographic delegation chains, and deterministic
+        validation to enable secure, auditable multi-agent workflows without
+        relying on centralized identity providers.
+      </t>
+    </abstract>
+  </front>
+
+  <middle>
+    <xi:include href="sections/01-introduction.xml"/>
+    <xi:include href="sections/02-conventions.xml"/>
+    <xi:include href="sections/03-architecture.xml"/>
+    <xi:include href="sections/04-identity.xml"/>
+    <xi:include href="sections/05-resource-model.xml"/>
+    <xi:include href="sections/06-registration.xml"/>
+    <xi:include href="sections/07-agent-resolution.xml"/>
+    <xi:include href="sections/08-credential-tokens.xml"/>
+    <xi:include href="sections/09-validation.xml"/>
+    <xi:include href="sections/10-delegation.xml"/>
+    <xi:include href="sections/11-revocation.xml"/>
+    <xi:include href="sections/12-grant.xml"/>
+    <xi:include href="sections/13-approval-envelopes.xml"/>
+    <xi:include href="sections/14-reputation.xml"/>
+    <xi:include href="sections/15-lifecycle-states.xml"/>
+    <xi:include href="sections/16-principal-chain.xml"/>
+    <xi:include href="sections/17-registry.xml"/>
+    <xi:include href="sections/18-error-handling.xml"/>
+    <xi:include href="sections/19-rate-limiting.xml"/>
+    <xi:include href="sections/20-versioning.xml"/>
+    <xi:include href="sections/21-security.xml"/>
+    <xi:include href="sections/appendix-schemas.xml"/>
+    <xi:include href="sections/22-conformance.xml"/>
+    <xi:include href="sections/22-iana.xml"/>
+  </middle>
+
+  <back>
+    <xi:include href="references/normative.xml"/>
+    <xi:include href="references/informative.xml"/>
+    <section anchor="acknowledgements" numbered="false">
+      <name>Acknowledgements</name>
+      <t>
+        AIP builds directly on the work of the W3C DID Working Group,
+        IETF OAuth Working Group, and NIST NCCoE AI Agent Identity and
+        Authorization Concept Paper (2026).
+      </t>
+    </section>
+    <section anchor="appendix-implementation-considerations" numbered="false">
+      <name>Appendix A: Implementation Considerations (Non-Normative)</name>
+      <t>
+        AIP implementations may integrate the Enterprise IdP Federation
+        Profile (<xref target="enterprise-idp-federation-profile"/>) with
+        enterprise identity providers by registering as an OAuth client with
+        the enterprise IdP and using the RFC 7523 JWT Bearer grant or RFC 8693
+        Token Exchange grant type as described in
+        <xref target="enterprise-idp-federation-profile"/>.
+      </t>
+      <t>
+        For stateless or horizontally-scaled deployments, the shared token
+        cache backend requirement is defined normatively in
+        <xref target="token-cache-requirements-stateless"/>. Development
+        deployments can use any single-instance cache store consistent with
+        the definition of a non-production deployment in
+        <xref target="terminology"/>.
+      </t>
+      <t>
+        Specific implementation guides for individual products or platforms
+        are published separately by their respective maintainers and are not
+        part of this specification.
+      </t>
+    </section>
+  </back>
+
+</rfc>

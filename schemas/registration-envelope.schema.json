@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://provai.dev/schemas/aip/registration-envelope/draft-02",
-  "$comment": "Normatively defined by the AIP Registration Envelope rules. The registration envelope is the outermost container for POST /v1/agents. It is NOT signed as a whole — each sub-document (capability_manifest, principal_token) carries its own signature. The Registration Validation algorithm defines the full ordered validation checks.",
+  "$comment": "Normatively defined by the AIP Registration Envelope rules. The registration envelope is the outermost container for POST /v1/agents. It is NOT signed as a whole \u2014 each sub-document (capability_manifest, principal_token) carries its own signature. The Registration Validation algorithm defines the full ordered validation checks.",
   "title": "AIP Registration Envelope",
   "description": "The request body submitted to POST /v1/agents to register a new AIP agent. Contains identity (the Core Identity Object), capability_manifest (the initial Capability Manifest), principal_token (a compact JWT encoding either a direct root delegation to this agent or a delegated sub-agent token issued by the registered parent agent), and grant_tier. The Registry validates all fields before persisting the agent.",
   "type": "object",
@@ -20,14 +20,18 @@
         },
         {
           "type": "object",
-          "required": ["version"],
+          "required": [
+            "version"
+          ],
           "properties": {
             "version": {
               "const": 1
             }
           },
           "not": {
-            "required": ["previous_key_signature"]
+            "required": [
+              "previous_key_signature"
+            ]
           }
         }
       ],
@@ -66,13 +70,17 @@
     },
     "grant_tier": {
       "type": "string",
-      "enum": ["G1", "G2", "G3"],
+      "enum": [
+        "G1",
+        "G2",
+        "G3"
+      ],
       "description": "The AIP-GRANT tier used to obtain the principal_token. REQUIRED. G1 = Registry-Mediated Grant; G2 = Direct Deployer grant; G3 = OAuth 2.1 Full Ceremony. MUST meet the minimum Grant Tier required by the highest synced AIP Scope Catalog tier in capability_manifest: Tier 1 permits G1/G2/G3; Tier 2 permits G2/G3 unless the Registry's identity_proofing_required_for_tier2 metadata field is true, in which case Tier 2 permits only G3; Tier 3 permits G3 only. For Tier 2 and Tier 3, the decoded principal_token principal.id MUST use did:web. For G3, the decoded principal_token payload MUST include a non-empty acr string and a non-empty amr array. Validated by Registration Check 14a through 14e and re-checked by Relying Parties at Step 9d."
     }
   },
   "$defs": {
     "registration_checks": {
-      "$comment": "Registration Checks (validated by the Registry in order): any failed required condition that does not name a more specific error returns registration_invalid. 1) identity MUST be present and valid JSON. 2) identity.aid MUST match did:aip ABNF. 3) identity.type MUST match namespace of identity.aid and an active non-reserved synced AIP Namespace Catalog entry unless local policy permits private namespaces. 4) identity.aid MUST NOT already be registered, and identity.public_key MUST NOT already be associated with a registered, non-revoked AID; either duplicate returns aid_already_registered. 5) identity.public_key MUST be OKP/Ed25519 with 43-char x. 6) capability_manifest MUST be present, conform to the Capability Manifest schema, include manifest_id/aid/granted_by/version/issued_at/expires_at/capabilities/signature_kid/signature, have version=1, and have expires_at in the future. 7) capability_manifest.aid MUST equal identity.aid. 8) principal_token MUST be a valid 3-part compact JWT with typ=JWT, alg=EdDSA, kid resolving to an issuer-controlled Ed25519 verification method, and a valid signature. 9) principal_token payload sub MUST equal identity.aid; delegation_depth=0 requires delegated_by=null and iss=principal.id; delegation_depth>0 requires delegated_by to be a registered parent AID, iss=delegated_by, and the reconstructed parent chain plus submitted token to satisfy the delegation-chain validation rules. 10) principal_token payload principal.id MUST NOT begin with did:aip:. 11) If the namespace catalog entry has requires_task_id: true, principal_token payload task_id MUST be non-null and non-empty. 12) capability_manifest.signature MUST verify using signature_kid, and the DID portion of signature_kid MUST equal granted_by. 13) identity.version MUST be 1 and identity.previous_key_signature MUST be absent; key rotation uses PUT /v1/agents/{aid}. 14a) grant_tier MUST be present and one of G1/G2/G3. 14b) The Registry determines requested security Tier from the highest synced AIP Scope Catalog tier in capability_manifest. 14c) grant_tier MUST satisfy that security Tier and identity_proofing_required_for_tier2 policy. 14d) Tier 2 and Tier 3 principal_token principal.id MUST use did:web. 14e) When G3 is used, the decoded principal_token payload MUST include a non-empty acr string and a non-empty amr array. 15) identity.model.attestation_hash SHOULD be present for Tier 2 and MUST be present for Tier 3; accepted Tier 2 registrations without it MUST persist and return model_attestation_missing_tier2 in registration_warnings, and missing or malformed Tier 3 attestation_hash returns registration_invalid."
+      "$comment": "Registration Checks (validated by the Registry in order): any failed required condition that does not name a more specific error returns registration_invalid. 1) identity MUST be present and valid JSON. 2) identity.aid MUST match did:aip ABNF. 3) identity.type MUST match namespace of identity.aid and an active non-reserved synced AIP Namespace Catalog entry unless local policy permits private namespaces. 4) identity.aid MUST NOT already be registered, and identity.public_key MUST NOT already be associated with a registered, non-revoked AID, whether as that AID's active public key or as its stored fallback public key; any duplicate returns aid_already_registered. 5) identity.public_key MUST be OKP/Ed25519 with 43-char x. 5b) If identity.fallback_public_key_x is present, it MUST be a valid 43-character base64url string, MUST NOT equal identity.public_key.x, MUST NOT already be associated with any other registered AID (including as a primary or fallback key), and MUST NOT be a fallback key already consumed by a prior Emergency Key Rotation; if any of these conditions fails, the Registry returns registration_invalid with field identity.fallback_public_key_x. The fallback key is immutable except through Emergency Key Rotation. 5c) If identity.fallback_public_key_x is present, identity.fallback_key_proof MUST be present and MUST verify with the fallback public key over the UTF-8 bytes of 'aip:fallback-key-proof:v1:' + identity.aid + ':' + identity.fallback_public_key_x; if identity.fallback_public_key_x is absent, identity.fallback_key_proof MUST be absent; either failure returns fallback_proof_invalid with field identity.fallback_key_proof. 6) capability_manifest MUST be present, conform to the Capability Manifest schema, include manifest_id/aid/granted_by/version/issued_at/expires_at/capabilities/signature_kid/signature, have version=1, and have expires_at in the future. 7) capability_manifest.aid MUST equal identity.aid. 8) principal_token MUST be a valid 3-part compact JWT with typ=JWT, alg=EdDSA, kid resolving to an issuer-controlled Ed25519 verification method, and a valid signature. 9) principal_token payload sub MUST equal identity.aid; delegation_depth=0 requires delegated_by=null and iss=principal.id; delegation_depth>0 requires delegated_by to be a registered parent AID, iss=delegated_by, and the reconstructed parent chain plus submitted token to satisfy the delegation-chain validation rules. 10) principal_token payload principal.id MUST NOT begin with did:aip:. 11) If the namespace catalog entry has requires_task_id: true, principal_token payload task_id MUST be non-null and non-empty. 12) capability_manifest.signature MUST verify using signature_kid, and the DID portion of signature_kid MUST equal granted_by. 13) identity.version MUST be 1 and identity.previous_key_signature MUST be absent; key rotation uses PUT /v1/agents/{aid}. 14a) grant_tier MUST be present and one of G1/G2/G3. 14b) The Registry determines requested security Tier from the highest synced AIP Scope Catalog tier in capability_manifest. 14c) grant_tier MUST satisfy that security Tier and identity_proofing_required_for_tier2 policy. 14d) Tier 2 and Tier 3 principal_token principal.id MUST use did:web. 14e) When G3 is used, the decoded principal_token payload MUST include a non-empty acr string and a non-empty amr array. 15) identity.model.attestation_hash SHOULD be present for Tier 2 and MUST be present for Tier 3; accepted Tier 2 registrations without it MUST persist and return model_attestation_missing_tier2 in registration_warnings, and missing or malformed Tier 3 attestation_hash returns registration_invalid."
     }
   }
 }

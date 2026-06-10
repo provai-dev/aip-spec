@@ -1,0 +1,709 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<section anchor="agent-resolution">
+  <name>Agent Resolution</name>
+  
+
+  <!-- 7.1. DID Resolution -->
+  <section anchor="did-resolution">
+    <name>DID Resolution</name>
+    
+    <t>
+      Every registered AID MUST have a corresponding W3C DID Document
+      resolvable by a DID resolver that implements the <tt>did:aip</tt>
+      method defined in this section. The DID Document is derived
+      deterministically from the Agent Identity, active Capability Manifest,
+      and lifecycle state stored in the authoritative Registry.
+    </t>
+    <t>
+      The Registry MUST generate and serve DID Documents from <tt>GET /v1/agents/{aid}</tt> when the
+      <tt>Accept: application/did+ld+json</tt> or <tt>Accept: application/did+json</tt> header is present.
+      Without one of these DID-specific <tt>Accept</tt> values, the endpoint
+      returns the default Agent Registration Metadata response defined in
+      <xref target="agent-registration-metadata-registry"/>.
+    </t>
+    <t>
+      AIP implementations MUST support DID resolution for at minimum
+      <tt>did:aip</tt>, <tt>did:key</tt>, and <tt>did:web</tt> DID methods.
+      Resolved DID Documents MAY be cached for a maximum of 300 seconds.
+    </t>
+    <t>
+      DID resolution performed during token validation MUST use an explicit
+      timeout. For any validation step that is REQUIRED because the token
+      has security Tier 2 or Tier 3 or because the token contains
+      <tt>aip_registry</tt>, each remote DID resolution attempt MUST time out
+      no later than 2 seconds after it is started, and the aggregate wall-clock
+      budget for DID resolution across a single token validation attempt MUST
+      NOT exceed 5 seconds. Local
+      non-network resolution, such as <tt>did:key</tt>, SHOULD complete without
+      consuming this remote-resolution budget. Implementations MAY use shorter
+      timeouts, but MUST NOT use a zero-duration timeout for a required remote
+      DID resolution attempt.
+    </t>
+    <t>
+      If DID resolution fails or times out during a REQUIRED validation step,
+      implementations MUST treat the result as <tt>registry_unavailable</tt>
+      and MUST reject the operation. If a Tier 1-only operation performs
+      Registry Trust Anchoring as a RECOMMENDED check and DID resolution times
+      out, the Relying Party MAY either reject with
+      <tt>registry_unavailable</tt> or skip that RECOMMENDED check according to
+      local policy.
+    </t>
+    <t>
+      If the AID has been revoked, the Registry MUST return <tt>deactivated: true</tt> in
+      <em>didDocumentMetadata</em>, per W3C-DID Section 7.1.2.
+    </t>
+  </section>
+
+  <section anchor="did-aip-method-resolution" numbered="true">
+    <name><tt>did:aip</tt> Method Resolution</name>
+
+    <t>
+      A <tt>did:aip</tt> resolver MUST NOT infer the authoritative Registry
+      from the namespace or agent-id components of the DID. The resolver MUST
+      be invoked with an authoritative Registry base URI, or MUST obtain one
+      from protocol context: the <tt>aip_registry</tt> claim in a Credential
+      Token, the <tt>iss</tt> or <tt>aip_registry</tt> value in a Step
+      Execution Token, the root principal DID Document's <tt>AIPRegistry</tt>
+      service entry, or a local trust policy that binds the AID namespace to a
+      Registry. If no authoritative Registry can be determined, resolution
+      fails and protocol validation that requires the result MUST reject with
+      <tt>registry_unavailable</tt>.
+    </t>
+
+    <t>
+      The resolver's input DID MUST match the <tt>did:aip</tt> syntax in
+      <xref target="aid-syntax"/>. A resolver receiving a malformed AID
+      MUST return a DID Core resolution result with
+      <tt>didResolutionMetadata.error</tt> set to <tt>invalidDid</tt> and
+      MUST NOT contact a Registry.
+    </t>
+
+    <t>
+      To resolve a valid AID, the resolver MUST perform the following steps:
+    </t>
+    <ol>
+      <li>Resolve and, when required by the validation context, pin the
+      authoritative Registry trust state using the Registry Genesis procedure
+      in <xref target="registry-genesis"/>.</li>
+      <li>Percent-encode the complete AID for use as the
+      <tt>{aid}</tt> path parameter according to
+      <xref target="aid-encoding"/>.</li>
+      <li>Send <tt>GET /v1/agents/{aid}</tt> to the authoritative Registry
+      with <tt>Accept: application/did+json</tt> or
+      <tt>Accept: application/did+ld+json</tt>.</li>
+      <li>If the Registry returns HTTP 404, return a DID resolution result
+      with <tt>didResolutionMetadata.error</tt> set to <tt>notFound</tt>.</li>
+      <li>If the Registry cannot be reached or times out under the limits in
+      <xref target="did-resolution"/>, return a DID resolution result with
+      <tt>didResolutionMetadata.error</tt> set to
+      <tt>registry_unavailable</tt>.</li>
+      <li>If the requested representation is unsupported, return a DID
+      resolution result with <tt>didResolutionMetadata.error</tt> set to
+      <tt>representationNotSupported</tt>.</li>
+      <li>On success, return a DID Core resolution result whose
+      <tt>didDocument.id</tt> equals the input AID, whose
+      <tt>didResolutionMetadata.contentType</tt> matches the returned
+      representation, and whose <tt>didDocumentMetadata</tt> contains
+      <tt>versionId</tt>, <tt>updated</tt>, <tt>deactivated</tt>, and
+      <tt>aip_registry</tt>.</li>
+    </ol>
+
+    <t>
+      A Registry constructs the <tt>did:aip</tt> DID Document from its stored
+      registration record as follows. The DID Document <tt>id</tt> is the AID.
+      The <tt>verificationMethod</tt> array contains the current active
+      Ed25519 public key from the current Agent Identity Object. The
+      verification method <tt>id</tt> MUST equal
+      <tt>&lt;aid&gt;#key-&lt;identity.version&gt;</tt>, its
+      <tt>controller</tt> MUST equal the AID, and its <tt>publicKeyJwk</tt>
+      MUST contain only public JWK members. The <tt>authentication</tt> array
+      MUST contain that verification method identifier. The DID Document
+      <tt>controller</tt> value MUST equal the active Capability Manifest
+      <tt>granted_by</tt> value. The <tt>didDocumentMetadata.versionId</tt>
+      value MUST equal the decimal string form of <tt>identity.version</tt>.
+    </t>
+
+    <t>
+      DID URL dereferencing for <tt>did:aip</tt> supports only the empty
+      fragment and key fragments of the form
+      <tt>#key-&lt;positive-integer&gt;</tt>. The empty fragment dereferences to
+      the DID Document. A key fragment dereferences to the corresponding
+      verification method if the Registry retains the requested historical key
+      version at <tt>GET /v1/agents/{aid}/public-key/{key-id}</tt>; otherwise
+      dereferencing returns <tt>didResolutionMetadata.error</tt> set to
+      <tt>notFound</tt>. Other fragments MUST return <tt>notFound</tt>.
+    </t>
+
+    <t>
+      The CRUD operations for the <tt>did:aip</tt> method are:
+    </t>
+    <table>
+      <thead>
+        <tr><th>Operation</th><th>Mechanism</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Create</td><td><tt>POST /v1/agents</tt> with a Registration Envelope that passes Section 6 validation</td></tr>
+        <tr><td>Read</td><td><tt>GET /v1/agents/{aid}</tt>; default metadata response, or DID Document with DID Accept header</td></tr>
+        <tr><td>Update</td><td><tt>PUT /v1/agents/{aid}</tt> for key rotation only; arbitrary DID Document mutation is not supported</td></tr>
+        <tr><td>Deactivate</td><td><tt>POST /v1/revocations</tt> with a valid <tt>full_revoke</tt> Revocation Object</td></tr>
+      </tbody>
+    </table>
+
+    <t>
+      Deactivation is permanent for the affected AID. After full revocation,
+      the Registry MUST return <tt>didDocumentMetadata.deactivated</tt> as
+      <tt>true</tt>. The Registry MAY still return the last DID Document and
+      MUST continue to serve retained historical public keys for audit and
+      signature verification, but Relying Parties MUST reject new protocol
+      operations for a deactivated AID during revocation and lifecycle
+      validation.
+    </t>
+  </section>
+
+  <!-- 7.2. DID Document Structure -->
+  <section anchor="did-document-structure">
+    <name>DID Document Structure</name>
+    
+    <t>
+      A conformant <tt>did:aip</tt> DID Document MUST include <tt>@context</tt>, <tt>id</tt>,
+      <tt>verificationMethod</tt>, <tt>authentication</tt>, and <tt>controller</tt>. See the canonical example in the
+      repository at <em>examples/did-document.json</em>. Method operations and
+      DID URL dereferencing rules are defined in
+      <xref target="did-aip-method-resolution"/>.
+    </t>
+    <t>
+      A principal that authorises agents for Tier 2 or Tier 3 operations MUST
+      use the <tt>did:web</tt> DID method, and that principal's DID Document
+      MUST include an <tt>AIPRegistry</tt> service entry in its
+      <tt>service</tt> array. Principals MUST NOT use the <tt>did:aip</tt>
+      method anywhere in the protocol.
+    </t>
+
+    <artwork type="json" ><![CDATA[
+  {
+    "id": "did:web:acme.com#aip-registry",
+    "type": "AIPRegistry",
+    "serviceEndpoint": "https://registry.acme.com"
+  }
+    ]]></artwork>
+
+    <t>
+      The <tt>serviceEndpoint</tt> MUST be an HTTPS URI pointing to the base URL of the authoritative AIP Registry for
+      agents delegated by this principal. The <tt>type</tt> MUST be exactly <tt>"AIPRegistry"</tt> (case-sensitive).
+    </t>
+
+    <t>
+      For principals using <tt>did:key</tt>: an <tt>AIPRegistry</tt> service
+      entry cannot be declared (DID Key documents have no service array).
+      <tt>did:key</tt> principals MUST NOT authorise Tier 2 or Tier 3
+      operations.
+    </t>
+
+    <t>
+      For principals using any W3C DID method other than <tt>did:web</tt> or
+      <tt>did:aip</tt>, authorisation is limited to Tier 1. Even if such a DID
+      method supports service entries, this specification does not permit it
+      for Tier 2 or Tier 3 principal authorisation. For <tt>did:web</tt>
+      principals, the <tt>AIPRegistry</tt> service entry is REQUIRED when the
+      principal authorises any agent with Tier 2 or Tier 3 scopes. It is
+      OPTIONAL for principals authorising only Tier 1 agents.
+    </t>
+
+  </section>
+
+  <!-- 7.3. Registry Genesis -->
+  <section anchor="registry-genesis">
+    <name>Registry Genesis</name>
+    
+    <t>
+      Registry Genesis is the one-time initialisation procedure by which a new AIP Registry establishes its
+      stable service identifier, generates its initial trust keys, and publishes discovery and trust metadata.
+      It MUST be performed before the Registry serves any requests.
+    </t>
+
+    <!-- 7.3.1 Key Generation -->
+    <section anchor="registry-genesis-key-generation">
+      <name>Key Generation</name>
+      
+      <t>
+        The Registry MUST generate a fresh Ed25519 trust keypair at first
+        boot. The private key MUST be stored encrypted at rest (AES-256-GCM
+        or an equivalent at-rest key-protection control satisfying
+        <xref target="key-management"/>). The corresponding public key is
+        published in the initial Registry Trust Record. Separate active
+        verification keys for CRL documents (<xref target="crl"/>) and Step Execution
+        Tokens are RECOMMENDED so that routine operational-key rotation does
+        not require trust-root rotation.
+      </t>
+    </section>
+
+    <!-- 7.3.2 Registry ID Establishment -->
+    <section anchor="registry-genesis-aid-construction">
+      <name>Registry ID Establishment</name>
+      
+      <t>
+        The Registry MUST establish a stable <tt>registry_id</tt> for the
+        Registry service. The <tt>registry_id</tt> MUST be an HTTPS URI
+        under the Registry operator's control. The RECOMMENDED value is the
+        origin that serves <tt>/v1/registry-metadata</tt>.
+      </t>
+
+      <artwork type="text"><![CDATA[
+  https://registry.example.com
+      ]]></artwork>
+
+      <t>
+        The <tt>registry_id</tt> identifies the Registry service, not a
+        single signing key. It MUST remain stable across planned key
+        rotation. At most one active <tt>registry_id</tt> MUST exist per
+        Registry deployment at any time.
+      </t>
+    </section>
+
+    <!-- 7.3.3 Self-Registration Exemption -->
+    <section anchor="registry-genesis-self-registration-exemption">
+      <name>Self-Registration Exemption</name>
+      
+      <t>
+        The Registry service identifier MUST NOT be created via
+        <tt>POST /v1/agents</tt>. Instead, the Registry MUST persist its
+        <tt>registry_id</tt> and trust keys directly to its own data store
+        during genesis. The following Registration Envelope checks
+        (Section 6.2) are explicitly inapplicable to the Registry service:
+      </t>
+      <ul>
+        <li>
+          <strong>Check 8</strong> (<tt>principal_token</tt> validation) — the Registry has no human principal and MUST
+          NOT carry a principal delegation chain.
+        </li>
+        <li>
+          <strong>Check 4</strong> (duplicate AID rejection) — genesis is
+          idempotent; if a <tt>registry_id</tt> already exists in the data
+          store the existing record MUST be used and genesis MUST NOT
+          overwrite it.
+        </li>
+      </ul>
+    </section>
+
+    <!-- 7.3.4 Registry Metadata Publication -->
+    <section anchor="registry-genesis-well-known-publication">
+      <name>Registry Metadata Publication</name>
+      
+      <t>
+        The Registry MUST publish Registry Metadata at the following endpoint
+        relative to its <tt>registry_id</tt> origin:
+      </t>
+      <artwork type="text"><![CDATA[
+GET /v1/registry-metadata
+      ]]></artwork>
+      <t>
+        The response MUST be a JSON object containing:
+      </t>
+
+      <table>
+        <thead>
+          <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><tt>registry_id</tt></td><td>string</td><td>REQUIRED</td><td>Stable HTTPS identifier for the Registry service</td></tr>
+          <tr><td><tt>registry_name</tt></td><td>string</td><td>REQUIRED</td><td>Human-readable Registry name (maxLength: 128)</td></tr>
+          <tr><td><tt>aip_version</tt></td><td>string</td><td>REQUIRED</td><td>The AIP protocol compatibility version this Registry conforms to; not the Internet-Draft revision</td></tr>
+          <tr><td><tt>registry_trust_uri</tt></td><td>string</td><td>REQUIRED</td><td>URI of the current Registry Trust Record</td></tr>
+          <tr><td><tt>endpoints</tt></td><td>object</td><td>REQUIRED</td><td>Map of service names to relative paths or absolute HTTPS URIs</td></tr>
+          <tr><td><tt>enterprise_idp_federation_supported</tt></td><td>boolean</td><td>OPTIONAL</td><td>True only when the Registry supports the Enterprise IdP Federation Profile in <xref target="enterprise-idp-federation-profile"/>. SHOULD be present in all Registry Metadata documents. Absence is treated as equivalent to false. Gateways that surface this capability through <tt>/.well-known/oauth-protected-resource</tt> SHOULD ensure the value is consistent with the Registry's declared support in this document. A mismatch between the two documents MUST be treated as a Registry configuration error.</td></tr>
+        </tbody>
+      </table>
+
+      <t>
+        The <em>endpoints</em> object MUST include at minimum:
+      </t>
+
+      <table>
+        <thead>
+          <tr><th>Key</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><tt>agents</tt></td><td>Base path for agent endpoints (e.g., <tt>/v1/agents</tt>)</td></tr>
+          <tr><td><tt>crl</tt></td><td>Preferred CRL retrieval URI. This value MAY be the origin path <tt>/v1/crl</tt> or an absolute HTTPS CDN/distribution URI.</td></tr>
+          <tr><td><tt>revocations</tt></td><td>Revocation submission path (e.g., <tt>/v1/revocations</tt>)</td></tr>
+        </tbody>
+      </table>
+
+      <t>
+        First-contact bootstrapping: On first contact with a Registry, Relying Parties MUST:
+      </t>
+      <ul>
+        <li>Fetch <tt>/v1/registry-metadata</tt> over HTTPS.</li>
+        <li>Verify that the response <tt>registry_id</tt> matches the Registry URI established via the root principal DID Document when such a DID binding is available. Unless otherwise specified, this comparison MUST use origin comparison per <xref target="RFC6454"/> (scheme + host + port).</li>
+        <li>Fetch the Registry Trust Record from <tt>registry_trust_uri</tt>.</li>
+        <li>Pin the <tt>registry_id</tt>, the trusted Registry Trust Record version, and the trust keys from that record locally.</li>
+        <li>Use the accepted Registry Trust Record's signed <tt>endpoints</tt> object as the authoritative endpoint map for Registry interactions. The Registry Metadata <tt>endpoints</tt> object is a bootstrap hint and MUST NOT override a valid signed Registry Trust Record.</li>
+        <li>On subsequent contacts, use the versioned trust-update procedure in
+        <xref target="registry-genesis-registry-key-rotation-planned"/> before
+        updating the local trust state.</li>
+      </ul>
+
+      <t>
+        Endpoint values that begin with <tt>/</tt> are resolved relative to
+        <tt>registry_id</tt>. Absolute endpoint values MUST use HTTPS. The
+        <tt>endpoints.crl</tt> value MAY use a different HTTPS origin from
+        <tt>registry_id</tt> so that CRL documents can be served from a CDN
+        or distributed object store. A different CRL origin does not identify
+        a different Registry; verifiers bind CRL documents to the Registry by
+        verifying the CRL signature against the accepted Registry Trust Record
+        version current at CRL issuance time.
+      </t>
+
+      <t>
+        The <tt>registry_id</tt> identifies the Registry instance and MUST remain stable across planned Registry key rotation.
+        Planned key rotation updates the Registry Trust Record and the
+        Registry's active verification keys while preserving the same
+        <tt>registry_id</tt>. Emergency compromise recovery is handled
+        separately under
+        <xref target="registry-genesis-registry-key-rotation-emergency"/>.
+      </t>
+
+      <t>
+        The Registry Metadata document is discovery metadata. The canonical
+        trust state for a Registry is defined by its Registry Trust Record,
+        not by the Registry Metadata document itself.
+      </t>
+    </section>
+
+    <section anchor="registry-genesis-trust-record" numbered="true">
+      <name>Registry Trust Record</name>
+      <t>
+        A Registry Trust Record is the canonical versioned trust metadata
+        object for a Registry. It MUST be published at:
+      </t>
+      <table>
+        <thead>
+          <tr><th>Method</th><th>Path</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>GET</td><td>/v1/registry-trust/current</td><td>Current Registry Trust Record</td></tr>
+          <tr><td>GET</td><td>/v1/registry-trust/{version}</td><td>Immutable Registry Trust Record for the specified version</td></tr>
+        </tbody>
+      </table>
+
+      <t>
+        The Registry Trust Record MUST use a detached-signature structure
+        consisting of a <tt>signed</tt> object and a <tt>signatures</tt>
+        array. The <tt>signed</tt> object MUST include at minimum:
+      </t>
+      <ul>
+        <li><tt>registry_id</tt></li>
+        <li><tt>version</tt></li>
+        <li><tt>issued_at</tt></li>
+        <li><tt>expires_at</tt></li>
+        <li><tt>discovery_uri</tt></li>
+        <li><tt>endpoints</tt></li>
+        <li><tt>trust_signature_threshold</tt></li>
+        <li><tt>trusted_keys</tt></li>
+        <li><tt>active_verification_keys</tt></li>
+      </ul>
+
+      <t>
+        The canonical signing input is the RFC 8785 JCS serialisation of the
+        <tt>signed</tt> object only. Signature verification MUST ignore the
+        <tt>signatures</tt> array except as the container for detached
+        signatures over that <tt>signed</tt> object.
+      </t>
+
+      <t>
+        Verifiers use the latest trusted Registry Trust Record for current
+        Registry interactions. For historical verification of Step
+        Execution Tokens, CRLs, or signed notifications, verifiers MUST use
+        the Registry Trust Record version that was current at artifact
+        issuance time. The <tt>trusted_keys</tt> set governs trust-record
+        acceptance, while <tt>active_verification_keys</tt> governs which
+        runtime keys are valid for Registry-signed artifacts issued under
+        that trust-record version.
+      </t>
+
+      <t>
+        Each entry in <tt>active_verification_keys.step_execution</tt>,
+        <tt>active_verification_keys.crl</tt>, and
+        <tt>active_verification_keys.notifications</tt> MUST be an Ed25519
+        public JWK containing <tt>kty</tt>, <tt>crv</tt>, <tt>x</tt>, and
+        <tt>keyid</tt>. A verifier MUST NOT treat a bare key identifier as
+        sufficient for runtime artifact verification; the accepted Registry
+        Trust Record version must provide the public key material used to
+        verify the artifact signature.
+      </t>
+
+      <t>
+        For CRL retrieval, verifiers MUST use <tt>signed.endpoints.crl</tt>
+        from the accepted Registry Trust Record, resolving it according to
+        the endpoint rules above. The unsigned Registry Metadata
+        <tt>endpoints.crl</tt> value MAY be used only to locate bootstrap
+        metadata before the Registry Trust Record is accepted.
+      </t>
+
+      <t>
+        Historical Registry Trust Records MUST remain retrievable for at
+        least the maximum lifetime of Step Execution Tokens and CRL
+        artifacts plus a 30-day audit margin.
+      </t>
+    </section>
+
+    <!-- 7.3.5 Single-Instance Constraint -->
+    <section anchor="registry-genesis-single-instance-constraint">
+      <name>Single-Instance Constraint</name>
+      
+      <t>
+        Each Registry deployment MUST have exactly one active Registry ID. Provisioning a second Registry ID within the same deployment
+        MUST be treated as a fatal configuration error. Horizontal scaling and high-availability deployments MUST share a single Registry ID
+        and trust state.
+      </t>
+    </section>
+
+    <!-- 7.3.6 Registry Key Rotation -->
+    <section anchor="registry-genesis-registry-key-rotation">
+      <name>Registry Key Rotation</name>
+      
+      <t>
+        AIP defines two Registry key rotation paths:
+      </t>
+      <ul>
+        <li><strong>Planned rotation:</strong> continuity-preserving rotation in which the Registry keeps the same <tt>registry_id</tt> and publishes a new Registry Trust Record version.</li>
+        <li><strong>Emergency re-bootstrap:</strong> continuity-breaking recovery for suspected key compromise or loss of the retiring private key.</li>
+      </ul>
+
+      <t>
+        Validators bootstrapping trust in a Registry MUST fetch and pin the current Registry Trust Record before processing any
+        Step Execution Tokens or CRL documents signed by that Registry. Cached trust state MUST NOT be used beyond the
+        trust record's <tt>expires_at</tt> without refresh.
+      </t>
+      <t>
+        A Step Execution Token is not a trust-bootstrap artifact. Relying
+        Parties MUST NOT establish first-contact Registry trust from a SET
+        received in an application request. A SET whose <tt>iss</tt> Registry
+        ID is unknown, unpinned, expired, or missing the locally retained
+        Registry Trust Record version named by the SET protected header
+        <tt>aip_trv</tt> MUST be rejected with
+        <tt>registry_untrusted</tt>. An implementation MAY perform
+        first-contact bootstrap or sequential trust update as a separate
+        pre-validation operation, but it MUST complete and pin the accepted
+        trust state before reprocessing the SET.
+      </t>
+
+      <section anchor="registry-genesis-registry-key-rotation-planned">
+        <name>Planned Rotation</name>
+        <t>
+          During planned rotation, the Registry MUST publish a new immutable
+          Registry Trust Record whose <tt>signed.version</tt> is exactly one
+          greater than the previously trusted version and whose
+          <tt>signed.registry_id</tt> matches the existing pinned
+          <tt>registry_id</tt>.
+        </t>
+
+        <t>
+          The <tt>signed.trust_signature_threshold</tt> value defines the
+          minimum number of signatures from <tt>signed.trusted_keys</tt>
+          required for ordinary acceptance of a Registry Trust Record.
+          Implementations MAY require a higher threshold than 1 for
+          high-assurance deployments, but they MUST still preserve the
+          overlapping-signature rule below during planned rotation.
+        </t>
+
+        <t>
+          Planned rotation MUST use overlapping trust signatures. A new
+          Registry Trust Record version MUST satisfy the threshold rules in
+          both the currently pinned and the candidate new trust record. At
+          a minimum, a planned rotation update MUST be signed by:
+        </t>
+        <ol>
+          <li>at least one key trusted in the currently pinned Registry Trust Record; and</li>
+          <li>at least one key trusted in the new Registry Trust Record.</li>
+        </ol>
+
+        <t>
+          If the Registry Metadata document's <tt>registry_trust_uri</tt> does not
+          share the same origin as <tt>registry_id</tt>, the Relying Party
+          MUST treat the Registry as untrusted unless an explicit trust
+          policy permits that alternate trust-record origin.
+        </t>
+
+        <t>
+          A Relying Party that has pinned trust version <tt>N</tt> MUST
+          update sequentially. It MUST fetch and validate version
+          <tt>N+1</tt> before accepting version <tt>N+2</tt> or later.
+        </t>
+        <t>
+          This sequential trust-update model is intentionally similar to
+          repository root update patterns in The Update Framework
+          <xref target="TUF"/>,
+          where clients advance trust state one version at a time to resist
+          rollback and mix-and-match attacks.
+        </t>
+        <ol>
+          <li>The fetched record's <tt>signed.registry_id</tt> MUST match the pinned value.</li>
+          <li>The fetched record's <tt>signed.version</tt> MUST equal the pinned version plus exactly 1.</li>
+          <li>The fetched record's signatures MUST satisfy the overlapping-signature rule above.</li>
+          <li>The fetched record's <tt>expires_at</tt> MUST be in the future.</li>
+          <li>The fetched record MUST NOT be older than or equal to any previously accepted version for that <tt>registry_id</tt>.</li>
+        </ol>
+
+        <t>
+          If all checks succeed, the Relying Party MAY replace its pinned
+          trust state with the new Registry Trust Record while retaining the
+          prior trust records for historical verification.
+        </t>
+
+        <t>
+          Historical Step Execution Tokens and CRL documents signed before
+          the rotation remain valid for their stated <em>exp</em> period
+          only. Relying Parties MUST verify such historical artifacts
+          against the Registry Trust Record version that was current at
+          issuance time; they MUST NOT re-verify them against the newest
+          trust record automatically.
+        </t>
+      </section>
+
+      <section anchor="registry-genesis-registry-key-rotation-emergency">
+        <name>Emergency Re-Bootstrap</name>
+        <t>
+          This distinction between planned rollover and emergency
+          continuity-breaking recovery is similar in spirit to DNSSEC trust
+          anchor rollover guidance in <xref target="RFC5011"/>, where
+          automated trust continuity and exceptional recovery are treated as
+          different operational cases.
+        </t>
+        <t>
+          If a Registry Trust Record update cannot satisfy the planned
+          rotation checks, or if the retiring trust key is suspected
+          compromised or unavailable, the event MUST be treated as an
+          emergency re-bootstrap.
+        </t>
+
+        <ol>
+        <li>
+          Relying Parties that have pinned Registry trust state and
+          subsequently receive discovery or trust metadata that does not
+          satisfy the planned-rotation checks above MUST treat this as a
+          potential MITM condition.
+        </li>
+        <li>
+          Relying Parties MUST NOT use the new trust state automatically.
+          They MUST halt Registry-dependent operations and require explicit
+          re-bootstrap or out-of-band operator confirmation before
+          re-pinning.
+        </li>
+        <li>
+          Emergency re-bootstrap is continuity-breaking by design.
+          Automatic verifier acceptance rules for planned rotation do not
+          apply.
+        </li>
+        <li>
+          Historical Step Execution Tokens and CRL documents signed by the
+          previous Registry trust state remain valid for their stated
+          <em>exp</em> period only. Relying Parties MUST verify historical
+          artifacts against the trust record version that was current at
+          issuance time; they MUST NOT re-verify them against the emergency
+          replacement trust state.
+        </li>
+        </ol>
+      </section>
+
+    </section>
+  </section>
+
+  <section anchor="aip-gateway-discovery-document" numbered="true">
+    <name>AIP Gateway Protected Resource Metadata</name>
+    <t>
+      Any MCP gateway that enforces AIP authentication for tool listing or
+      tool execution MUST publish OAuth Protected Resource Metadata
+      <xref target="RFC9728"/> using the registered
+      <tt>oauth-protected-resource</tt> well-known URI suffix:
+    </t>
+    <artwork type="text"><![CDATA[
+https://{gateway-host}/.well-known/oauth-protected-resource
+    ]]></artwork>
+    <t>
+      AIP does not define or require an AIP-specific well-known URI suffix for
+      gateway discovery. The response MUST be a JSON object conforming to
+      RFC 9728 and containing the following fields:
+    </t>
+    <sourcecode type="json"><![CDATA[
+{
+  "resource": "https://gateway.example.com/",
+  "authorization_servers": ["https://registry.example.com"],
+  "scopes_supported": ["email.read", "calendar.read"],
+  "bearer_methods_supported": ["header"],
+  "dpop_signing_alg_values_supported": ["EdDSA"],
+  "dpop_bound_access_tokens_required": true,
+  "resource_name": "Example AIP MCP Gateway",
+  "resource_documentation": "https://gateway.example.com/docs"
+}
+    ]]></sourcecode>
+    <dl newline="false">
+      <dt><tt>resource</tt></dt>
+      <dd>REQUIRED. The gateway protected resource identifier. It MUST be an
+      HTTPS URL with no fragment, as defined by <xref target="RFC9728"/>.</dd>
+
+      <dt><tt>authorization_servers</tt></dt>
+      <dd>REQUIRED for AIP gateways. The array MUST contain at least one AIP
+      Registry OAuth authorization-server issuer identifier acceptable for this
+      protected resource.</dd>
+
+      <dt><tt>scopes_supported</tt></dt>
+      <dd>RECOMMENDED. When present, values MUST be AIP scope strings from the
+      synced AIP Scope Catalog or accepted local extension policy.</dd>
+
+      <dt><tt>bearer_methods_supported</tt></dt>
+      <dd>REQUIRED for AIP gateways that accept non-DPoP Bearer tokens and
+      MUST include <tt>"header"</tt> when present. AIP uses the registered
+      Bearer authentication scheme for requests that do not require
+      proof-of-possession and the registered DPoP authentication scheme for
+      DPoP-bound tokens.</dd>
+
+      <dt><tt>dpop_signing_alg_values_supported</tt></dt>
+      <dd>REQUIRED when any advertised scope or endpoint requires DPoP, and
+      MUST include <tt>"EdDSA"</tt>.</dd>
+
+      <dt><tt>dpop_bound_access_tokens_required</tt></dt>
+      <dd>REQUIRED when the gateway requires DPoP-bound access tokens for all
+      requests to the protected resource. If omitted or false, clients MUST
+      still apply AIP DPoP requirements derived from the requested scope Tier,
+      Scope Catalog metadata, and endpoint policy.</dd>
+
+      <dt><tt>tls_client_certificate_bound_access_tokens</tt></dt>
+      <dd>REQUIRED and set to <tt>true</tt> when the gateway enforces AIP
+      Tier 3 mTLS-bound access tokens for the protected resource.</dd>
+    </dl>
+    <t>
+      <strong>Endpoint Requirements:</strong>
+    </t>
+    <ol type="%d">
+      <li>The <tt>/.well-known/oauth-protected-resource</tt> endpoint MUST respond to
+      unauthenticated HTTP GET requests. Authentication MUST NOT be required
+      to retrieve the Protected Resource Metadata document.</li>
+      <li>The response MUST use HTTP status 200 and
+      <tt>Content-Type: application/json</tt>.</li>
+      <li>The response SHOULD include a <tt>Cache-Control</tt> header with a
+      <tt>max-age</tt> value between 60 and 300 seconds. Clients MUST NOT
+      cache the Protected Resource Metadata document for longer than 300
+      seconds.</li>
+      <li><strong>Consistency Constraint:</strong> If a gateway advertises
+      Tier 2 or Tier 3 scopes in <tt>scopes_supported</tt>, or if local
+      endpoint policy marks the protected resource as Tier 2 or Tier 3, the
+      gateway MUST either set <tt>dpop_bound_access_tokens_required</tt> to
+      <tt>true</tt> or document per-scope DPoP requirements through Registry
+      policy. A client MUST treat contradictory metadata as
+      <tt>gateway_config_invalid</tt>.</li>
+      <li>For stateless gateway deployments
+      (<xref target="token-cache-requirements-stateless"/>), the gateway MUST
+      NOT serve stale Protected Resource Metadata; the document MUST reflect
+      the currently active resource configuration from the shared configuration
+      store.</li>
+    </ol>
+    <t>
+      MCP clients that discover a gateway through OAuth Protected Resource
+      Metadata SHOULD fetch this document before tool listing or tool
+      execution. If the document is absent, malformed, or does not identify an
+      acceptable AIP Registry authorization server, an AIP-aware MCP client
+      MUST NOT assume that unauthenticated tool access is permitted.
+    </t>
+  </section>
+</section>

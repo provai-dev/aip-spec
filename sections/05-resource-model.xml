@@ -120,6 +120,33 @@
       <dd><t>Type: string. Required: REQUIRED. Constraints: pattern <tt>^[A-Za-z0-9_-]{43}$</tt> (32 bytes base64url, no padding).</t></dd>
       <dt>public_key.kid</dt>
       <dd><t>Type: string. Required: REQUIRED. Constraints: DID URL using the agent AID followed by <tt>#key-N</tt> where <tt>N</tt> is a positive integer.</t></dd>
+      <dt>fallback_public_key_x</dt>
+      <dd><t>Type: string. Required: OPTIONAL. Constraints: pattern
+      <tt>^[A-Za-z0-9_-]{43}$</tt> (32 bytes base64url, no padding,
+      same encoding as <tt>public_key.x</tt>). The <tt>x</tt> value of an
+      Ed25519 fallback public key recorded for disaster recovery. When
+      present, the Registry persists it and uses it to authenticate
+      Emergency Key Rotation (<xref target="agent-emergency-key-rotation-registry"/>)
+      if the active private key is lost. MUST NOT equal
+      <tt>public_key.x</tt>. MUST be accompanied by
+      <tt>fallback_key_proof</tt>. Set at initial registration
+      (version=1); immutable during ordinary key rotation; MAY be
+      replaced or removed only as part of Emergency Key Rotation.</t></dd>
+      <dt>fallback_key_proof</dt>
+      <dd><t>Type: string. Required: REQUIRED when
+      <tt>fallback_public_key_x</tt> is present; MUST be absent otherwise.
+      Constraints: pattern <tt>^[A-Za-z0-9_-]+$</tt>. A base64url-encoded
+      EdDSA signature proving possession of the fallback private key. The
+      signing input is the UTF-8 byte sequence of the string
+      <tt>"aip:fallback-key-proof:v1:" + aid + ":" + fallback_public_key_x</tt>
+      (literal colon separators, no whitespace, no trailing newline),
+      signed with the fallback private key. Because the signing input
+      binds only the immutable <tt>aid</tt> and the fallback key value
+      itself, the proof remains valid across ordinary key rotations and
+      the fallback private key never needs to leave cold storage except
+      during Emergency Key Rotation. The Registry verifies this proof
+      whenever the fallback key is introduced or replaced; Relying Parties
+      MUST NOT evaluate this field.</t></dd>
       <dt>previous_key_signature</dt>
       <dd><t>Type: string. Required: OPTIONAL (version=1); REQUIRED
       (version&gt;=2). Constraints: base64url EdDSA signature computed by the
@@ -137,6 +164,20 @@
       <li>The type field MUST exactly match the namespace component of the aid field.</li>
       <li>The version field MUST start at 1 and MUST increment by exactly 1 on each key rotation.</li>
       <li>The public_key.kid MUST use format &lt;aid&gt;#key-&lt;n&gt; where &lt;n&gt; starts at 1.</li>
+      <li>When <tt>fallback_public_key_x</tt> is present, it MUST differ
+        from <tt>public_key.x</tt> and MUST be accompanied by a valid
+        <tt>fallback_key_proof</tt>. It MUST NOT already be associated with
+        any other registered AID (including as a primary or fallback
+        key).</li>
+      <li>The <tt>fallback_public_key_x</tt> and <tt>fallback_key_proof</tt>
+        fields are recorded at initial registration and MUST NOT change
+        during ordinary key rotation. They MAY be replaced (with a fresh
+        proof for the new fallback key) or removed only as part of Emergency
+        Key Rotation
+        (<xref target="agent-emergency-key-rotation-registry"/>). A
+        fallback key is single-use: once it has authenticated an Emergency
+        Key Rotation, the Registry MUST NOT accept it again for any
+        AID.</li>
       <li>The <tt>model.attestation_hash</tt> field is the protocol binding
         between the registered agent identity and a model binary or version
         manifest. It SHOULD be present for Tier 2 deployments and MUST be

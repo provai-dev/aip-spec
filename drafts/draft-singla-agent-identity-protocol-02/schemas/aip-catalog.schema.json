@@ -1,0 +1,559 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provai.dev/schemas/aip/aip-catalog/draft-02",
+  "$comment": "Normatively defined by the AIP Catalog Snapshot rules. This schema describes the immutable Draft-02 Catalog Bundle consumed by conformant Registries.",
+  "title": "AIP Catalog Bundle",
+  "description": "Immutable Draft-02 catalog bundle containing standard and extension scope, scope-family, and namespace metadata.",
+  "type": "object",
+  "required": [
+    "catalog_name",
+    "catalog_version",
+    "aip_draft",
+    "catalog_source_uri",
+    "scopes",
+    "scope_families",
+    "namespaces"
+  ],
+  "properties": {
+    "catalog_name": {
+      "const": "aip-catalog",
+      "description": "Catalog bundle name."
+    },
+    "catalog_version": {
+      "const": "draft-02",
+      "description": "Draft-aligned catalog version."
+    },
+    "aip_draft": {
+      "const": "draft-02",
+      "description": "Internet-Draft revision line to which this catalog applies."
+    },
+    "catalog_source_uri": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://.+$",
+      "description": "Source repository URI for the catalog bundle."
+    },
+    "scopes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/scope_entry"
+      }
+    },
+    "scope_families": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/scope_family_entry"
+      }
+    },
+    "namespaces": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/namespace_entry"
+      }
+    }
+  },
+  "allOf": [
+    { "$ref": "#/$defs/requires_personal_namespace" },
+    { "$ref": "#/$defs/requires_enterprise_namespace" },
+    { "$ref": "#/$defs/requires_service_namespace" },
+    { "$ref": "#/$defs/requires_orchestrator_namespace" },
+    { "$ref": "#/$defs/requires_ephemeral_namespace" },
+    { "$ref": "#/$defs/requires_registry_namespace" },
+    { "$ref": "#/$defs/requires_transactions_scope" },
+    { "$ref": "#/$defs/requires_web_forms_submit_scope" },
+    { "$ref": "#/$defs/requires_email_send_scope" },
+    { "$ref": "#/$defs/requires_web_download_scope" },
+    { "$ref": "#/$defs/requires_spawn_agents_create_scope" },
+    { "$ref": "#/$defs/requires_spawn_agents_manage_scope" },
+    { "$ref": "#/$defs/requires_approvals_create_scope" },
+    { "$ref": "#/$defs/requires_transactions_family" },
+    { "$ref": "#/$defs/requires_communicate_family" }
+  ],
+  "$defs": {
+    "scope_name": {
+      "type": "string",
+      "pattern": "^[a-z_][a-z0-9_]*([.][a-z_][a-z0-9_]*)*$"
+    },
+    "scope_family_name": {
+      "type": "string",
+      "pattern": "^[a-z_][a-z0-9_]*([.][a-z_][a-z0-9_]*)*[.][*]$"
+    },
+    "draft_version": {
+      "type": "string",
+      "pattern": "^draft-[0-9]{2}$"
+    },
+    "tier": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "enum": [1, 2, 3]
+        },
+        {
+          "type": "string",
+          "enum": ["1", "2", "3", "T1", "T2", "T3", "Tier 1", "Tier 2", "Tier 3"]
+        }
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "deprecated", "experimental", "reserved", "removed"]
+    },
+    "entry_class": {
+      "type": "string",
+      "enum": ["standard", "community", "reserved"]
+    },
+    "change_type": {
+      "type": "string",
+      "enum": ["additive", "metadata-correction", "deprecation", "breaking"]
+    },
+    "locale_tag": {
+      "type": "string",
+      "pattern": "^[a-z]{2}(-[A-Z]{2})?$"
+    },
+    "scope_display": {
+      "type": "object",
+      "required": ["default_locale", "strings"],
+      "additionalProperties": false,
+      "properties": {
+        "default_locale": {
+          "$ref": "#/$defs/locale_tag",
+          "description": "Locale to use when the wallet has no trusted display string for its selected locale."
+        },
+        "strings": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "$ref": "#/$defs/locale_tag"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "required": ["title", "summary"],
+            "additionalProperties": false,
+            "properties": {
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120,
+                "description": "Canonical human-readable capability string for this locale."
+              },
+              "summary": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512,
+                "description": "Plain-language explanation of the same scope. MUST NOT broaden the authorization represented by the scope."
+              }
+            }
+          }
+        }
+      }
+    },
+    "scope_entry": {
+      "type": "object",
+      "required": [
+        "id",
+        "uri",
+        "family",
+        "description",
+        "tier",
+        "destructive",
+        "requires_dpop",
+        "ttl_max_seconds",
+        "grant_tier_min",
+        "constraint_schema",
+        "status",
+        "class",
+        "owner",
+        "introduced_in",
+        "updated_in",
+        "change_type",
+        "source"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/scope_name"
+        },
+        "uri": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://.+$",
+          "description": "HTTPS identifier for documentation and catalog linking. This is not the OAuth scope value; the canonical on-wire scope value is id."
+        },
+        "family": {
+          "type": ["string", "null"],
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tier": {
+          "$ref": "#/$defs/tier"
+        },
+        "destructive": {
+          "type": "boolean"
+        },
+        "requires_dpop": {
+          "type": "boolean"
+        },
+        "ttl_max_seconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "grant_tier_min": {
+          "type": "string",
+          "enum": ["G1", "G2", "G3"]
+        },
+        "constraint_schema": {
+          "anyOf": [
+            { "type": "object" },
+            { "type": "null" }
+          ]
+        },
+        "constraint_schema_id": {
+          "anyOf": [
+            { "type": "string", "minLength": 1 },
+            { "type": "null" }
+          ]
+        },
+        "constraint_schema_version": {
+          "anyOf": [
+            { "type": "string", "minLength": 1 },
+            { "type": "null" }
+          ]
+        },
+        "display": {
+          "$ref": "#/$defs/scope_display"
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        },
+        "class": {
+          "$ref": "#/$defs/entry_class"
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "introduced_in": {
+          "$ref": "#/$defs/draft_version"
+        },
+        "updated_in": {
+          "$ref": "#/$defs/draft_version"
+        },
+        "change_type": {
+          "$ref": "#/$defs/change_type"
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "scope_family_entry": {
+      "type": "object",
+      "required": [
+        "id",
+        "description",
+        "status",
+        "class",
+        "introduced_in",
+        "updated_in"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/scope_family_name"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        },
+        "class": {
+          "$ref": "#/$defs/entry_class"
+        },
+        "introduced_in": {
+          "$ref": "#/$defs/draft_version"
+        },
+        "updated_in": {
+          "$ref": "#/$defs/draft_version"
+        }
+      }
+    },
+    "namespace_entry": {
+      "type": "object",
+      "required": [
+        "id",
+        "description",
+        "reserved",
+        "spawnable",
+        "requires_task_id",
+        "lifecycle_rules",
+        "status",
+        "class",
+        "introduced_in",
+        "updated_in"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reserved": {
+          "type": "boolean"
+        },
+        "spawnable": {
+          "type": "boolean"
+        },
+        "requires_task_id": {
+          "type": "boolean"
+        },
+        "lifecycle_rules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        },
+        "class": {
+          "$ref": "#/$defs/entry_class"
+        },
+        "introduced_in": {
+          "$ref": "#/$defs/draft_version"
+        },
+        "updated_in": {
+          "$ref": "#/$defs/draft_version"
+        }
+      }
+    },
+    "requires_namespace": {
+      "properties": {
+        "namespaces": {
+          "contains": {
+            "type": "object",
+            "required": ["id", "class"],
+            "properties": {
+              "class": { "const": "standard" }
+            }
+          }
+        }
+      }
+    },
+    "requires_scope": {
+      "properties": {
+        "scopes": {
+          "contains": {
+            "type": "object",
+            "required": ["id", "class"],
+            "properties": {
+              "class": { "const": "standard" }
+            }
+          }
+        }
+      }
+    },
+    "requires_scope_family": {
+      "properties": {
+        "scope_families": {
+          "contains": {
+            "type": "object",
+            "required": ["id", "class"],
+            "properties": {
+              "class": { "const": "standard" }
+            }
+          }
+        }
+      }
+    },
+    "requires_personal_namespace": {
+      "properties": {
+        "namespaces": {
+          "contains": {
+            "allOf": [
+              { "$ref": "#/$defs/namespace_entry" },
+              { "properties": { "id": { "const": "personal" }, "class": { "const": "standard" } } }
+            ]
+          }
+        }
+      }
+    },
+    "requires_enterprise_namespace": {
+      "properties": {
+        "namespaces": {
+          "contains": {
+            "allOf": [
+              { "$ref": "#/$defs/namespace_entry" },
+              { "properties": { "id": { "const": "enterprise" }, "class": { "const": "standard" } } }
+            ]
+          }
+        }
+      }
+    },
+    "requires_service_namespace": {
+      "properties": {
+        "namespaces": {
+          "contains": {
+            "allOf": [
+              { "$ref": "#/$defs/namespace_entry" },
+              { "properties": { "id": { "const": "service" }, "class": { "const": "standard" } } }
+            ]
+          }
+        }
+      }
+    },
+    "requires_orchestrator_namespace": {
+      "properties": {
+        "namespaces": {
+          "contains": {
+            "allOf": [
+              { "$ref": "#/$defs/namespace_entry" },
+              { "properties": { "id": { "const": "orchestrator" }, "class": { "const": "standard" } } }
+            ]
+          }
+        }
+      }
+    },
+    "requires_ephemeral_namespace": {
+      "properties": {
+        "namespaces": {
+          "contains": {
+            "allOf": [
+              { "$ref": "#/$defs/namespace_entry" },
+              { "properties": { "id": { "const": "ephemeral" }, "class": { "const": "standard" } } }
+            ]
+          }
+        }
+      }
+    },
+    "requires_registry_namespace": {
+      "properties": {
+        "namespaces": {
+          "contains": {
+            "allOf": [
+              { "$ref": "#/$defs/namespace_entry" },
+              { "properties": { "id": { "const": "registry" }, "class": { "const": "reserved" } } }
+            ]
+          }
+        }
+      }
+    },
+    "requires_transactions_scope": {
+      "properties": {
+        "scopes": {
+          "contains": {
+            "allOf": [
+              { "$ref": "#/$defs/scope_entry" },
+              { "properties": { "id": { "const": "transactions" }, "class": { "const": "standard" } } }
+            ]
+          }
+        }
+      }
+    },
+    "requires_web_forms_submit_scope": {
+      "properties": {
+        "scopes": {
+          "contains": {
+            "allOf": [
+              { "$ref": "#/$defs/scope_entry" },
+              { "properties": { "id": { "const": "web.forms_submit" }, "class": { "const": "standard" } } }
+            ]
+          }
+        }
+      }
+    },
+    "requires_email_send_scope": {
+      "properties": {
+        "scopes": {
+          "contains": {
+            "allOf": [
+              { "$ref": "#/$defs/scope_entry" },
+              { "properties": { "id": { "const": "email.send" }, "class": { "const": "standard" } } }
+            ]
+          }
+        }
+      }
+    },
+    "requires_web_download_scope": {
+      "properties": {
+        "scopes": {
+          "contains": {
+            "allOf": [
+              { "$ref": "#/$defs/scope_entry" },
+              { "properties": { "id": { "const": "web.download" }, "class": { "const": "standard" } } }
+            ]
+          }
+        }
+      }
+    },
+    "requires_spawn_agents_create_scope": {
+      "properties": {
+        "scopes": {
+          "contains": {
+            "allOf": [
+              { "$ref": "#/$defs/scope_entry" },
+              { "properties": { "id": { "const": "spawn_agents.create" }, "class": { "const": "standard" } } }
+            ]
+          }
+        }
+      }
+    },
+    "requires_spawn_agents_manage_scope": {
+      "properties": {
+        "scopes": {
+          "contains": {
+            "allOf": [
+              { "$ref": "#/$defs/scope_entry" },
+              { "properties": { "id": { "const": "spawn_agents.manage" }, "class": { "const": "standard" } } }
+            ]
+          }
+        }
+      }
+    },
+    "requires_approvals_create_scope": {
+      "properties": {
+        "scopes": {
+          "contains": {
+            "allOf": [
+              { "$ref": "#/$defs/scope_entry" },
+              { "properties": { "id": { "const": "approvals.create" }, "class": { "const": "standard" } } }
+            ]
+          }
+        }
+      }
+    },
+    "requires_transactions_family": {
+      "properties": {
+        "scope_families": {
+          "contains": {
+            "allOf": [
+              { "$ref": "#/$defs/scope_family_entry" },
+              { "properties": { "id": { "const": "transactions.*" }, "class": { "const": "standard" } } }
+            ]
+          }
+        }
+      }
+    },
+    "requires_communicate_family": {
+      "properties": {
+        "scope_families": {
+          "contains": {
+            "allOf": [
+              { "$ref": "#/$defs/scope_family_entry" },
+              { "properties": { "id": { "const": "communicate.*" }, "class": { "const": "standard" } } }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

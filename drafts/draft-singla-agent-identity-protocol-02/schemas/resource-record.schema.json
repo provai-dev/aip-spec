@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://provai.dev/schemas/aip/resource-record/draft-02",
+  "$comment": "Normatively defined by the AIP Resource Registration rules. A Registered Resource Record binds an RFC 9728 resource identifier to the authorization server and optional Enterprise IdP federation metadata used during token exchange.",
+  "title": "AIP Registered Resource Record",
+  "description": "Registry-stored authorization configuration for a target resource used by token exchange and Enterprise IdP federation.",
+  "type": "object",
+  "required": [
+    "resource_id",
+    "resource_uri",
+    "authorization_server",
+    "status",
+    "created_at",
+    "updated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "resource_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "Lowercase SHA-256 digest of the UTF-8 resource_uri value."
+    },
+    "resource_uri": {
+      "type": "string",
+      "format": "uri",
+      "description": "RFC 9728 resource identifier for the protected resource."
+    },
+    "authorization_server": {
+      "type": "string",
+      "format": "uri",
+      "description": "Authorization server URI for this resource. This can be the AIP Registry itself or an external authorization server."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "suspended"],
+      "description": "Only active resource records are eligible for token-exchange matching."
+    },
+    "owner_did": {
+      "type": "string",
+      "pattern": "^did:[a-z][a-z0-9]*:.+$",
+      "description": "OPTIONAL. DID of the resource owner or operator authorized to manage this record."
+    },
+    "scopes_supported": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z_][a-z0-9_]*([.][a-z_][a-z0-9_]*)*$"
+      },
+      "uniqueItems": true,
+      "description": "OPTIONAL. AIP scope identifiers that this resource can accept through token exchange."
+    },
+    "enterprise_idp_required": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, token exchange requests targeting this resource MUST use the Enterprise IdP Federation Profile."
+    },
+    "enterprise_idp_issuer": {
+      "type": "string",
+      "minLength": 1,
+      "description": "CONDITIONAL. OIDC issuer identifier for the Enterprise IdP when enterprise_idp_required is true."
+    },
+    "enterprise_idp_token_endpoint": {
+      "type": "string",
+      "format": "uri",
+      "description": "CONDITIONAL. Enterprise IdP token endpoint used by the Registry for secondary token exchange."
+    },
+    "enterprise_idp_client_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "CONDITIONAL. Registry client_id registered with the Enterprise IdP."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC timestamp when this resource record was created."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC timestamp when this resource record was last modified."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "enterprise_idp_required": {
+            "const": true
+          }
+        },
+        "required": ["enterprise_idp_required"]
+      },
+      "then": {
+        "required": [
+          "enterprise_idp_token_endpoint",
+          "enterprise_idp_client_id"
+        ]
+      }
+    }
+  ]
+}

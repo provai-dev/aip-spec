@@ -1,0 +1,124 @@
+<section anchor="versioning">
+  <name>Versioning and Compatibility</name>
+  <t>
+    AIP uses separate identifiers for Internet-Draft document revisions and
+    wire protocol compatibility. The suffix in an Internet-Draft name, such as
+    <tt>-00</tt>, <tt>-01</tt>, or <tt>-02</tt>, is a document revision
+    identifier only. It is not an AIP protocol version and MUST NOT appear in
+    <tt>aip_version</tt>, <tt>X-AIP-Version</tt>, Credential Tokens,
+    GrantRequests, Registry metadata, or other protocol messages.
+  </t>
+  <t>
+    The <tt>aip_version</tt> claim and the <tt>X-AIP-Version</tt> HTTP header
+    carry the AIP protocol compatibility version. This Internet-Draft revision
+    defines AIP protocol version <tt>0.3</tt>. Multiple Internet-Draft
+    revisions MAY define the same protocol version when they contain editorial
+    changes, clarifications, examples, schema corrections, or other changes
+    that do not intentionally create a new wire compatibility class.
+  </t>
+  <t>
+    AIP protocol versions follow Semantic Versioning compatibility intent,
+    represented on the wire as <tt>MAJOR.MINOR</tt>. Before v1.0, MINOR
+    versions MAY include breaking changes. A future Internet-Draft revision
+    that intentionally introduces breaking wire behavior, incompatible
+    validation semantics, or incompatible message schemas MUST allocate a new
+    protocol version before publication, for example by moving from
+    <tt>0.3</tt> to <tt>0.4</tt>. Backward-compatible clarifications and
+    non-breaking errata MAY retain the existing <tt>aip_version</tt>.
+  </t>
+  <t>
+    AIP Catalog snapshot identifiers, such as <tt>draft-02</tt>, are also
+    separate from <tt>aip_version</tt>. A Registry MAY report both its AIP
+    protocol version and its synced Catalog snapshot, but verifiers MUST NOT
+    treat a Catalog snapshot identifier or Internet-Draft revision as a
+    substitute for protocol version negotiation.
+  </t>
+  <table>
+    <name>Draft Revision to Protocol Version Mapping</name>
+    <thead>
+      <tr>
+        <th align="left">Internet-Draft revision</th>
+        <th align="left">AIP protocol version</th>
+        <th align="left">Catalog snapshot</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><tt>draft-singla-agent-identity-protocol-00</tt></td><td><tt>0.1</tt></td><td><tt>draft-00</tt></td></tr>
+      <tr><td><tt>draft-singla-agent-identity-protocol-01</tt></td><td><tt>0.2</tt></td><td><tt>draft-01</tt></td></tr>
+      <tr><td><tt>draft-singla-agent-identity-protocol-02</tt></td><td><tt>0.3</tt></td><td><tt>draft-02</tt></td></tr>
+    </tbody>
+  </table>
+  <t>
+    Catalog snapshots are immutable for conformance purposes. A Registry
+    claiming Draft-02 conformance MUST advertise
+    <tt>aip_catalog_version: "draft-02"</tt>,
+    <tt>aip_catalog_snapshot_id: "https://provai.dev/aip/catalog/draft-02"</tt>, and a
+    pinned <tt>aip_catalog_sha256</tt> digest as defined in
+    <xref target="scope-map-registry"/>. A change to any standard Catalog
+    entry or standard Catalog security metadata requires a new Catalog
+    Snapshot identifier and MUST NOT be silently introduced under the existing
+    Draft-02 snapshot.
+  </t>
+  <t>
+    Breaking changes from v0.2:
+  </t>
+  <ul>
+    <li><tt>aip_version</tt> is now <tt>"0.3"</tt> for conforming implementations.</li>
+    <li><tt>X-AIP-Version: 0.3</tt> replaces <tt>X-AIP-Version: 0.2</tt>.</li>
+    <li>The bare <tt>spawn_agents</tt> scope is retired; use <tt>spawn_agents.create</tt> and <tt>spawn_agents.manage</tt> (<xref target="scope-map-registry"/>).</li>
+    <li>Registration Envelopes MUST include <tt>grant_tier</tt>.</li>
+    <li>Principal DID Documents for Tier 2 agents MUST include an <tt>AIPRegistry</tt> service entry.</li>
+    <li>The <tt>/v1/registry-metadata</tt> response MUST include <tt>registry_id</tt>, <tt>registry_trust_uri</tt>, <tt>registry_name</tt>, and <tt>endpoints</tt>. Registry Trust Records are versioned separately and MUST support sequential updates.</li>
+    <li>Section 19.6 (Graduated Backoff Requirements): the backoff formula
+    has been corrected to use exponential backoff with a base interval of 1
+    second, a multiplier of 2, and a maximum interval of 3600 seconds, replacing
+    the previous linear backoff formula. This change ensures that Registry
+    lookup storms are dampened under sustained failure conditions.</li>
+  </ul>
+  <t>
+    Implementations MUST NOT silently accept tokens from unsupported
+    versions without logging a version warning.
+  </t>
+  <t>
+    A Relying Party or Registry conforming only to protocol version
+    <tt>0.3</tt> MUST reject any request, Credential Token, Step Execution
+    Token, GrantRequest, or other AIP protocol message whose
+    <tt>aip_version</tt> or <tt>X-AIP-Version</tt> value is absent, not
+    <tt>"0.3"</tt>, or mutually inconsistent, unless the implementation has
+    explicitly implemented that other protocol version. The error response MUST
+    be <tt>unsupported_version</tt> and SHOULD include
+    <tt>X-AIP-Supported-Versions</tt> and the unsupported value in the
+    <tt>details</tt> object. Implementations MUST NOT treat an unknown future
+    version, including a numerically greater value such as <tt>0.4</tt>, as
+    forward-compatible by default.
+  </t>
+
+  <section anchor="tier-conformance">
+    <name>Tier Conformance</name>
+    <table>
+      <thead>
+        <tr><th>Tier</th><th>Revocation</th><th>DPoP</th><th>mTLS</th><th><tt>grant_tier</tt></th><th>Principal DID Method</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>CRL (15 min)</td><td>NOT REQUIRED</td><td>NOT REQUIRED</td><td>G1, G2, or G3</td><td>Any non-<tt>did:aip</tt> W3C DID method; see requirements below</td></tr>
+        <tr><td>2</td><td>Real-time</td><td>REQUIRED</td><td>NOT REQUIRED</td><td>G2 or G3; see requirements below</td><td><tt>did:web</tt>; see requirements below</td></tr>
+        <tr><td>3</td><td>Real-time + OCSP</td><td>REQUIRED</td><td>REQUIRED</td><td>G3</td><td><tt>did:web</tt>; see requirements below</td></tr>
+      </tbody>
+    </table>
+    <dl newline="false">
+      <dt>Tier 1 Principal DID method</dt>
+      <dd><t>For Tier 1, the principal MAY use any W3C DID method except <tt>did:aip</tt>. Principals using <tt>did:key</tt> are permitted for Tier 1 only.</t></dd>
+      <dt>Principal DID method restrictions</dt>
+      <dd><t><tt>did:aip</tt> is NEVER a valid Principal DID method for any Tier. The <tt>principal.id</tt> field MUST NOT use the <tt>did:aip</tt> method. Principals using any DID method other than <tt>did:web</tt> for Tier 2 or Tier 3 agents MUST be rejected with <tt>principal_did_method_forbidden</tt>. For Tier 2 and Tier 3, the <tt>did:web</tt> DID Document MUST contain the <tt>AIPRegistry</tt> service entry required by Section 7.3.</t></dd>
+      <dt>Tier 2 Registry identity-proofing policy</dt>
+      <dd><t>If <tt>identity_proofing_required_for_tier2</tt> is <tt>true</tt> in Registry metadata, Tier 2 permits only <tt>G3</tt> for that Registry.</t></dd>
+    </dl>
+    <t>
+      The table defines minimum Grant Tier conformance. A higher-assurance
+      Grant Tier MAY satisfy a lower security Tier, but a lower-assurance
+      Grant Tier MUST NOT satisfy a higher security Tier. Relying Parties
+      enforce this relationship for each participating <tt>aip_chain</tt> AID
+      at runtime in Section 9, Step 9d.
+    </t>
+  </section>
+</section>
